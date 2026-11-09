@@ -156,3 +156,28 @@ pub async fn run(
 
     let _ = app.emit(DELTA_EVENT, Delta::finish(&request_id));
 }
+
+#[cfg(test)]
+mod tests {
+    use super::read_chunk;
+
+    #[test]
+    fn reads_the_delta_from_a_frame() {
+        let line = r#"data: {"choices":[{"delta":{"content":"Hello"}}]}"#;
+        assert_eq!(read_chunk(line).as_deref(), Some("Hello"));
+    }
+
+    #[test]
+    fn ignores_role_only_and_finish_frames() {
+        let role = r#"data: {"choices":[{"delta":{"content":"","role":"assistant"}}]}"#;
+        assert_eq!(read_chunk(role), None);
+        assert_eq!(read_chunk("data: [DONE]"), None);
+        assert_eq!(read_chunk(""), None);
+    }
+
+    #[test]
+    fn ignores_usage_frames_without_choices() {
+        let usage = r#"data: {"choices":[],"usage":{"total_tokens":3}}"#;
+        assert_eq!(read_chunk(usage), None);
+    }
+}
