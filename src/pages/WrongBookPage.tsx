@@ -103,13 +103,7 @@ export function WrongBookPage() {
                       size="sm"
                       variant="secondary"
                       onClick={() =>
-                        navigate(
-                          `/training/drill${
-                            attempt.knowledgePointId
-                              ? `?point=${attempt.knowledgePointId}`
-                              : ""
-                          }`,
-                        )
+                        navigate(`/training/drill?question=${attempt.questionId}`)
                       }
                     >
                       去重做

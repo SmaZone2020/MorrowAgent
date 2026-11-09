@@ -15,6 +15,7 @@ import { knowledgePoints, questions, questionsFor } from "@/features/knowledge";
 export function DrillPage() {
   const [params, setParams] = useSearchParams();
   const pointId = params.get("point");
+  const questionId = params.get("question");
   const [index, setIndex] = useState(0);
   // Keyed by question id so revisiting a point keeps the session tally.
   // "revealed" is a board question whose answer was shown without scoring.
@@ -25,10 +26,14 @@ export function DrillPage() {
   // single-question run whose id never changes.
   const [run, setRun] = useState(0);
 
-  const openQuestions = useMemo(
-    () => (pointId ? questionsFor(pointId) : questions),
-    [pointId],
-  );
+  const openQuestions = useMemo(() => {
+    // A `question` link wins over the point filter: the wrong book sends the
+    // user to the exact question they missed, not to its whole point. It does
+    // not fall back, because showing the whole set under a "single question"
+    // header would misrepresent what is on screen.
+    if (questionId) return questions.filter((entry) => entry.id === questionId);
+    return pointId ? questionsFor(pointId) : questions;
+  }, [pointId, questionId]);
 
   const point = pointId
     ? knowledgePoints.find((entry) => entry.id === pointId)
@@ -50,27 +55,47 @@ export function DrillPage() {
     else setParams({});
   };
 
+  // A single-question link hides the point chips, which would otherwise all
+  // look inactive while the list is clearly filtered.
+  const chipsVisible = !questionId;
+
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 p-5 sm:p-7">
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          size="sm"
-          variant={pointId ? "ghost" : "primary"}
-          onClick={() => selectPoint(null)}
-        >
-          全部题目
-        </Button>
-        {knowledgePoints.map((entry) => (
+      {chipsVisible ? (
+        <div className="flex flex-wrap items-center gap-2">
           <Button
-            key={entry.id}
             size="sm"
-            variant={entry.id === pointId ? "primary" : "ghost"}
-            onClick={() => selectPoint(entry.id)}
+            variant={pointId ? "ghost" : "primary"}
+            onClick={() => selectPoint(null)}
           >
-            {entry.name}
+            全部题目
           </Button>
-        ))}
-      </div>
+          {knowledgePoints.map((entry) => (
+            <Button
+              key={entry.id}
+              size="sm"
+              variant={entry.id === pointId ? "primary" : "ghost"}
+              onClick={() => selectPoint(entry.id)}
+            >
+              {entry.name}
+            </Button>
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center gap-2">
+          <AnimatedBadge status="info" size="sm" contentKey="single">
+            错题重做
+          </AnimatedBadge>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="ml-auto"
+            onClick={() => selectPoint(pointId)}
+          >
+            {pointId ? "返回本知识点" : "全部题目"}
+          </Button>
+        </div>
+      )}
 
       {current ? (
         <>
@@ -101,7 +126,9 @@ export function DrillPage() {
                 : undefined
             }
           />
-          {index + 1 >= openQuestions.length && current.id in results ? (
+          {!questionId &&
+          index + 1 >= openQuestions.length &&
+          current.id in results ? (
             <Panel title="本轮完成">
               <div className="flex flex-wrap items-center gap-3">
                 <AnimatedBadge
@@ -138,9 +165,11 @@ export function DrillPage() {
       ) : (
         <Panel title={point ? point.name : "专项训练"}>
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <span className="text-sm text-muted-foreground">该知识点暂无题目</span>
+            <span className="text-sm text-muted-foreground">
+              {questionId ? "这道题已不在当前知识包中" : "该知识点暂无题目"}
+            </span>
             <AnimatedBadge status="neutral" size="sm" contentKey="empty">
-              待补充
+              {questionId ? "已下线" : "待补充"}
             </AnimatedBadge>
           </div>
         </Panel>
