@@ -4,6 +4,7 @@ import { Button } from "@/vendor/beui/components/motion/button";
 import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
 import { Panel } from "@/components/Panel";
 import { QuestionCard } from "@/features/training/QuestionCard";
+import { recordAttempt } from "@/features/training/attempts";
 import { knowledgePoints, questions, questionsFor } from "@/features/knowledge";
 
 /**
@@ -15,6 +16,8 @@ export function DrillPage() {
   const [params, setParams] = useSearchParams();
   const pointId = params.get("point");
   const [index, setIndex] = useState(0);
+  // Keyed by question id so revisiting a point keeps the session tally.
+  const [results, setResults] = useState<Record<string, boolean>>({});
 
   const openQuestions = useMemo(
     () => (pointId ? questionsFor(pointId) : questions),
@@ -26,8 +29,12 @@ export function DrillPage() {
     : undefined;
   const current = openQuestions[index];
 
+  const answered = openQuestions.filter((entry) => entry.id in results).length;
+  const correct = openQuestions.filter((entry) => results[entry.id]).length;
+
   const selectPoint = (next: string | null) => {
     setIndex(0);
+    setResults({});
     if (next) setParams({ point: next });
     else setParams({});
   };
@@ -61,6 +68,16 @@ export function DrillPage() {
             question={current}
             index={index + 1}
             total={openQuestions.length}
+            onAnswered={(answer, isCorrect) => {
+              setResults((previous) => ({
+                ...previous,
+                [current.id]: isCorrect,
+              }));
+              void recordAttempt(current, answer, isCorrect).catch(() => {
+                // A failed write must not block the drill; the answer stays on
+                // screen and the next submit simply tries again.
+              });
+            }}
             onNext={
               index + 1 < openQuestions.length
                 ? () => setIndex((value) => value + 1)
@@ -69,11 +86,29 @@ export function DrillPage() {
           />
           {index + 1 >= openQuestions.length ? (
             <Panel title="本轮完成">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <span className="text-sm text-muted-foreground">
-                  共 {openQuestions.length} 题
-                </span>
-                <Button size="sm" variant="secondary" onClick={() => setIndex(0)}>
+              <div className="flex flex-wrap items-center gap-3">
+                <AnimatedBadge
+                  status={
+                    answered === 0
+                      ? "neutral"
+                      : correct === answered
+                        ? "success"
+                        : "warning"
+                  }
+                  size="sm"
+                  contentKey={`${correct}-${answered}`}
+                >
+                  {answered === 0 ? "尚未作答" : `${correct} / ${answered} 正确`}
+                </AnimatedBadge>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="ml-auto"
+                  onClick={() => {
+                    setResults({});
+                    setIndex(0);
+                  }}
+                >
                   重做
                 </Button>
               </div>

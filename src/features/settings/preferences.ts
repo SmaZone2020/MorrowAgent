@@ -11,6 +11,9 @@ export interface StoreStats {
   sizeBytes: number;
   conversations: number;
   messages: number;
+  attempts: number;
+  correctAttempts: number;
+  attemptedPoints: number;
 }
 
 export const defaultPreferences: Preferences = {

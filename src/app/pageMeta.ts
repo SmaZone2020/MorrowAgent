@@ -78,7 +78,7 @@ export const pageMetaList: PageMeta[] = [
     path: "/wrong-book",
     title: "错题本",
     section: "资源与记录",
-    stage: "planned",
+    stage: "skeleton",
     scope: ["自动收录与手动编辑", "错误类型与知识点标签", "画板证据关联"],
   },
   {

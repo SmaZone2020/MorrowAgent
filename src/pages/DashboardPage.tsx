@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/vendor/beui/components/motion/button";
 import {
@@ -15,19 +16,31 @@ import {
   questions,
   weakPointCandidates,
 } from "@/features/knowledge";
+import { loadStats } from "@/features/settings/preferences";
 
 const cardClass = "border-transparent bg-card shadow-surface";
 
-// The dashboard has no measured progress yet, so the counters report what the
-// bundle actually contains instead of a dash that means "we never wired this".
+// Counters report what the bundle and the local database actually contain,
+// so a zero means zero known things rather than a missing wire.
 export function DashboardPage() {
   const navigate = useNavigate();
   const candidates = weakPointCandidates().slice(0, 3);
+  const [attemptedPoints, setAttemptedPoints] = useState<number | null>(null);
+
+  useEffect(() => {
+    void loadStats().then((stats) => {
+      if (stats) setAttemptedPoints(stats.attemptedPoints);
+    });
+  }, []);
 
   const metrics = [
     { key: "points", label: "知识库知识点", value: String(knowledgePoints.length) },
     { key: "questions", label: "知识库题目", value: String(questions.length) },
-    { key: "observed", label: "已诊断知识点", value: "0" },
+    {
+      key: "observed",
+      label: "已作答知识点",
+      value: attemptedPoints === null ? "—" : String(attemptedPoints),
+    },
     { key: "trend", label: "学习趋势", value: "--" },
   ];
 

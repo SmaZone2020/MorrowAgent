@@ -8,7 +8,9 @@ mod store;
 
 use provider::secret::{self, StoredProvider};
 use provider::types::{ChatRequest, ModelInfo, ProviderConfig};
-use store::{ConversationSummary, NewMessage, Store, StoreStats, StoredMessage};
+use store::{
+    ConversationSummary, NewAttempt, NewMessage, Store, StoreStats, StoredAttempt, StoredMessage,
+};
 use tauri::Manager;
 use tauri::State;
 
@@ -99,6 +101,24 @@ fn data_stats(state: State<'_, Store>) -> Result<StoreStats, String> {
 }
 
 #[tauri::command]
+fn attempt_record(state: State<'_, Store>, attempt: NewAttempt) -> Result<(), String> {
+    state.record_attempt(attempt)
+}
+
+#[tauri::command]
+fn attempt_wrong_list(
+    state: State<'_, Store>,
+    limit: Option<i64>,
+) -> Result<Vec<StoredAttempt>, String> {
+    state.wrong_attempts(limit.unwrap_or(50))
+}
+
+#[tauri::command]
+fn attempt_forget(state: State<'_, Store>, question_id: String) -> Result<(), String> {
+    state.forget_attempt(&question_id)
+}
+
+#[tauri::command]
 fn prefs_load(app: tauri::AppHandle) -> Result<prefs::Preferences, String> {
     prefs::load(&app)
 }
@@ -143,6 +163,9 @@ pub fn run() {
             chat_delete,
             chat_reset,
             data_stats,
+            attempt_record,
+            attempt_wrong_list,
+            attempt_forget,
             prefs_load,
             prefs_save
         ])

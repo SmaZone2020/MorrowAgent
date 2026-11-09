@@ -18,6 +18,8 @@ export interface QuestionCardProps {
   index: number;
   total: number;
   onNext?: () => void;
+  /** Fires once when the answer is submitted, with the choice and its verdict. */
+  onAnswered?: (answer: string, isCorrect: boolean) => void;
 }
 
 /**
@@ -29,12 +31,19 @@ export function QuestionCard({
   index,
   total,
   onNext,
+  onAnswered,
 }: QuestionCardProps) {
   const [selected, setSelected] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>("answering");
 
   const isChoice = question.options.length > 0;
   const correct = selected === question.answer;
+
+  const submit = () => {
+    if (!selected) return;
+    setPhase("submitted");
+    onAnswered?.(selected, selected === question.answer);
+  };
 
   return (
     <Card
@@ -136,11 +145,7 @@ export function QuestionCard({
 
         <div className="flex items-center justify-end gap-2">
           {phase === "answering" ? (
-            <Button
-              size="sm"
-              disabled={!selected}
-              onClick={() => setPhase("submitted")}
-            >
+            <Button size="sm" disabled={!selected} onClick={submit}>
               提交
             </Button>
           ) : onNext ? (

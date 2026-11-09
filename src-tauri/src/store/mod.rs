@@ -3,10 +3,12 @@ use std::sync::Mutex;
 
 use rusqlite::{params, Connection};
 
+pub mod attempts;
 pub mod migrations;
 pub mod types;
 
-pub use types::{ConversationSummary, NewMessage, StoreStats, StoredMessage};
+pub use attempts::StoredAttempt;
+pub use types::{ConversationSummary, NewAttempt, NewMessage, StoreStats, StoredMessage};
 
 /// The database handle shared by every command. SQLite serialises writes
 /// anyway, and the app has one window, so a single connection behind a mutex is
@@ -186,16 +188,18 @@ impl Store {
         Ok(())
     }
 
-    /// Wipes conversations only; credentials live outside the database.
+    /// Wipes conversations and attempts; credentials live outside the database.
     pub fn reset(&self) -> Result<(), String> {
         let connection = self.lock()?;
         connection
-            .execute_batch("DELETE FROM messages; DELETE FROM conversations;")
+            .execute_batch(
+                "DELETE FROM messages; DELETE FROM conversations; DELETE FROM answer_attempts;",
+            )
             .map_err(|error| format!("清空数据失败：{}", error))
     }
 
     pub fn stats(&self) -> Result<StoreStats, String> {
-        let (conversations, messages) = {
+        let (conversations, messages, attempts, correct_attempts, attempted_points) = {
             let connection = self.lock()?;
             let conversations: i64 = connection
                 .query_row("SELECT COUNT(*) FROM conversations", [], |row| row.get(0))
@@ -203,7 +207,31 @@ impl Store {
             let messages: i64 = connection
                 .query_row("SELECT COUNT(*) FROM messages", [], |row| row.get(0))
                 .map_err(|error| format!("统计消息失败：{}", error))?;
-            (conversations, messages)
+            let attempts: i64 = connection
+                .query_row("SELECT COUNT(*) FROM answer_attempts", [], |row| row.get(0))
+                .map_err(|error| format!("统计作答失败：{}", error))?;
+            let correct_attempts: i64 = connection
+                .query_row(
+                    "SELECT COUNT(*) FROM answer_attempts WHERE is_correct = 1",
+                    [],
+                    |row| row.get(0),
+                )
+                .map_err(|error| format!("统计正确作答失败：{}", error))?;
+            let attempted_points: i64 = connection
+                .query_row(
+                    "SELECT COUNT(DISTINCT knowledge_point_id) FROM answer_attempts
+                     WHERE knowledge_point_id <> ''",
+                    [],
+                    |row| row.get(0),
+                )
+                .map_err(|error| format!("统计已作答知识点失败：{}", error))?;
+            (
+                conversations,
+                messages,
+                attempts,
+                correct_attempts,
+                attempted_points,
+            )
         };
 
         // WAL keeps recent writes in a sidecar, so the page count alone would
@@ -220,6 +248,9 @@ impl Store {
             SizeBytes: size_bytes,
             Conversations: conversations,
             Messages: messages,
+            Attempts: attempts,
+            CorrectAttempts: correct_attempts,
+            AttemptedPoints: attempted_points,
         })
     }
 }

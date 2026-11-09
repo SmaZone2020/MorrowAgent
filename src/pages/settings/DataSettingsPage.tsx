@@ -53,6 +53,14 @@ export function DataSettingsPage() {
               {stats ? stats.messages : "—"}
             </dd>
           </div>
+          <div className="flex items-baseline justify-between gap-4">
+            <dt className="text-muted-foreground">作答</dt>
+            <dd className="tabular-nums text-foreground">
+              {stats
+                ? `${stats.correctAttempts} / ${stats.attempts}`
+                : "—"}
+            </dd>
+          </div>
           {stats ? (
             <div className="flex flex-col gap-1 pt-1">
               <dt className="text-muted-foreground">位置</dt>
@@ -66,7 +74,7 @@ export function DataSettingsPage() {
 
       <Panel
         title="重置"
-        action={<InfoHint label="只删除对话记录，Provider 凭据不受影响。" />}
+        action={<InfoHint label="删除全部对话与作答记录，Provider 凭据不受影响。" />}
       >
         <div className="flex flex-wrap items-center gap-2">
           {confirming ? (
@@ -95,7 +103,7 @@ export function DataSettingsPage() {
               disabled={!stats}
               onClick={() => setConfirming(true)}
             >
-              清除所有对话
+              清除所有学习记录
             </Button>
           )}
         </div>
