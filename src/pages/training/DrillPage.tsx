@@ -17,7 +17,10 @@ export function DrillPage() {
   const pointId = params.get("point");
   const [index, setIndex] = useState(0);
   // Keyed by question id so revisiting a point keeps the session tally.
-  const [results, setResults] = useState<Record<string, boolean>>({});
+  // "revealed" is a board question whose answer was shown without scoring.
+  const [results, setResults] = useState<
+    Record<string, "correct" | "wrong" | "revealed">
+  >({});
   // Bumping this remounts the card, which is how "redo" clears a finished
   // single-question run whose id never changes.
   const [run, setRun] = useState(0);
@@ -33,7 +36,12 @@ export function DrillPage() {
   const current = openQuestions[index];
 
   const answered = openQuestions.filter((entry) => entry.id in results).length;
-  const correct = openQuestions.filter((entry) => results[entry.id]).length;
+  const scored = openQuestions.filter(
+    (entry) => results[entry.id] === "correct" || results[entry.id] === "wrong",
+  ).length;
+  const correct = openQuestions.filter(
+    (entry) => results[entry.id] === "correct",
+  ).length;
 
   const selectPoint = (next: string | null) => {
     setIndex(0);
@@ -74,12 +82,18 @@ export function DrillPage() {
             onAnswered={(answer, isCorrect) => {
               setResults((previous) => ({
                 ...previous,
-                [current.id]: isCorrect,
+                [current.id]: isCorrect ? "correct" : "wrong",
               }));
               void recordAttempt(current, answer, isCorrect).catch(() => {
                 // A failed write must not block the drill; the answer stays on
                 // screen and the next submit simply tries again.
               });
+            }}
+            onRevealed={() => {
+              setResults((previous) => ({
+                ...previous,
+                [current.id]: "revealed",
+              }));
             }}
             onNext={
               index + 1 < openQuestions.length
@@ -92,16 +106,18 @@ export function DrillPage() {
               <div className="flex flex-wrap items-center gap-3">
                 <AnimatedBadge
                   status={
-                    answered === 0
+                    scored === 0
                       ? "neutral"
-                      : correct === answered
+                      : correct === scored
                         ? "success"
                         : "warning"
                   }
                   size="sm"
-                  contentKey={`${correct}-${answered}`}
+                  contentKey={`${correct}-${scored}`}
                 >
-                  {answered === 0 ? "尚未作答" : `${correct} / ${answered} 正确`}
+                  {scored === 0
+                    ? `看了 ${answered} 道答案`
+                    : `${correct} / ${scored} 正确`}
                 </AnimatedBadge>
                 <Button
                   size="sm"

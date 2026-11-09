@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Magnifier } from "@gravity-ui/icons";
+import { Button } from "@/vendor/beui/components/motion/button";
 import { Input } from "@/vendor/beui/components/motion/input";
 import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
 import { Panel } from "@/components/Panel";
@@ -23,6 +25,7 @@ const IMPORTANCE: Record<
 const FALLBACK_BADGE = { label: "了解", status: "neutral" as const };
 
 function PointRow({ point }: { point: KnowledgePoint }) {
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const badge = IMPORTANCE[point.examImportance] ?? FALLBACK_BADGE;
   const related = questionsFor(point.id).length;
@@ -68,6 +71,17 @@ function PointRow({ point }: { point: KnowledgePoint }) {
                 </li>
               ))}
             </ul>
+          ) : null}
+          {related > 0 ? (
+            <div>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => navigate(`/training/drill?point=${point.id}`)}
+              >
+                练这个知识点
+              </Button>
+            </div>
           ) : null}
         </div>
       ) : null}
