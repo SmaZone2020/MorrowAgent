@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   AnimatedSidebar,
@@ -31,9 +31,10 @@ import { AppStatusFooter } from "@/app/shell/AppStatusFooter";
 import { RailFlyout } from "@/app/shell/RailFlyout";
 
 // Rail-state spacing is zeroed out so the icon column reads as one even stack
-// instead of five groups each keeping their own padding and gap.
+// instead of five groups each keeping their own padding and gap. Horizontal
+// padding also has to go, otherwise the circular icon target overflows the rail.
 const groupClass =
-  "group-data-[state=collapsed]/sidebar:py-0 group-data-[state=collapsed]/sidebar:pb-0";
+  "group-data-[state=collapsed]/sidebar:px-0 group-data-[state=collapsed]/sidebar:py-0 group-data-[state=collapsed]/sidebar:pb-0";
 
 export function AppShell() {
   const location = useLocation();
@@ -49,7 +50,10 @@ export function AppShell() {
   const [expanded, setExpanded] = useState<string | null>(
     activeEntry?.item.children ? activeEntry.item.key : null,
   );
+  // The key is kept after closing so the flyout can animate out with its real
+  // contents still mounted; only `flyoutOpen` controls visibility.
   const [flyoutKey, setFlyoutKey] = useState<string | null>(null);
+  const [flyoutOpen, setFlyoutOpen] = useState(false);
   const itemRefs = useRef(new Map<string, HTMLLIElement | null>());
 
   const flyoutItem: NavigationItem | undefined = flyoutKey
@@ -57,6 +61,12 @@ export function AppShell() {
         .flatMap((group) => group.items)
         .find((item) => item.key === flyoutKey)
     : undefined;
+
+  // Going back to the wide sidebar puts the children inline again, so a rail
+  // flyout left open would be a second copy of the same menu.
+  useEffect(() => {
+    if (!collapsed) setFlyoutOpen(false);
+  }, [collapsed]);
 
   return (
     <div className="flex h-full min-h-0 w-full min-w-0">
@@ -74,14 +84,14 @@ export function AppShell() {
           </div>
         </AnimatedSidebarHeader>
 
-        <AnimatedSidebarContent className="scrollbar-thin px-2 group-data-[state=collapsed]/sidebar:gap-0">
+        <AnimatedSidebarContent className="scrollbar-thin px-2 group-data-[state=collapsed]/sidebar:gap-[4px]">
           {navigationGroups.map((group) => (
             <AnimatedSidebarGroup key={group.key} className={groupClass}>
-              <AnimatedSidebarGroupLabel className="group-data-[state=collapsed]/sidebar:hidden">
+              <AnimatedSidebarGroupLabel className="group-data-[state=collapsed]/sidebar:hidden text-sm">
                 {group.label}
               </AnimatedSidebarGroupLabel>
               <AnimatedSidebarGroupContent>
-                <AnimatedSidebarMenu>
+                <AnimatedSidebarMenu className="group-data-[state=collapsed]/sidebar:gap-[4px]">
                   {group.items.map((item) => {
                     const childActive = item.children?.some(
                       (child) => location.pathname === child.path,
@@ -99,7 +109,7 @@ export function AppShell() {
                         }}
                       >
                         <AnimatedSidebarMenuButton
-                          icon={<item.icon className="size-4" />}
+                          icon={<item.icon className="size-5" />}
                           isActive={Boolean(selfActive || childActive)}
                           ariaExpanded={
                             item.children ? expanded === item.key : undefined
@@ -109,9 +119,12 @@ export function AppShell() {
                               // The rail cannot render an inline submenu, so
                               // a group opens the same children as a flyout.
                               if (collapsed) {
-                                setFlyoutKey((current) =>
-                                  current === item.key ? null : item.key,
-                                );
+                                if (flyoutKey === item.key && flyoutOpen) {
+                                  setFlyoutOpen(false);
+                                  return;
+                                }
+                                setFlyoutKey(item.key);
+                                setFlyoutOpen(true);
                                 return;
                               }
                               setExpanded((current) =>
@@ -131,11 +144,12 @@ export function AppShell() {
                                 <AnimatedSidebarMenuSubButton
                                   icon={
                                     child.icon ? (
-                                      <child.icon className="size-3.5" />
+                                      <child.icon className="size-4.5" />
                                     ) : undefined
                                   }
                                   isActive={location.pathname === child.path}
                                   onSelect={() => navigate(child.path)}
+                                  className="text-sm"
                                 >
                                   {child.label}
                                 </AnimatedSidebarMenuSubButton>
@@ -161,19 +175,19 @@ export function AppShell() {
 
       {flyoutItem?.children ? (
         <RailFlyout
-          open
+          open={flyoutOpen}
           anchor={itemRefs.current.get(flyoutItem.key) ?? null}
           title={flyoutItem.label}
           items={flyoutItem.children}
           activePath={location.pathname}
           onSelect={navigate}
-          onClose={() => setFlyoutKey(null)}
+          onClose={() => setFlyoutOpen(false)}
         />
       ) : null}
 
       <AnimatedSidebarInset className="min-h-0">
         <header className="flex h-11 shrink-0 items-center gap-2 border-b border-border px-4">
-          <span className="truncate text-xs text-muted-foreground">
+          <span className="truncate text-sm text-muted-foreground">
             {locationInfo.section}
           </span>
           <span className="text-xs text-muted-foreground">/</span>

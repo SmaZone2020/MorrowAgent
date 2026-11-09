@@ -1134,8 +1134,11 @@ export function AnimatedSidebarMenuButton({
     "focus-visible:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring",
     isActive && "text-foreground",
     disabled && "cursor-not-allowed opacity-40",
-    // In the rail the label is hidden, so the icon takes the whole row.
-    panel.collapsed && "justify-center px-0",
+    // In the rail the row collapses into a single circular icon target: zero
+    // gap (a leftover gap would push the icon off centre) and a square box
+    // rounded into a circle, so the hit area reads as a round button.
+    panel.collapsed &&
+      "mx-auto size-9 min-h-0 flex-none justify-center gap-0 rounded-full px-0",
     className,
   );
 
