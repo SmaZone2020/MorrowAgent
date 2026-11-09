@@ -9,6 +9,7 @@ import { SettingsOverviewPage } from "@/pages/settings/SettingsOverviewPage";
 import { ProviderSettingsPage } from "@/pages/settings/ProviderSettingsPage";
 import { ModelSettingsPage } from "@/pages/settings/ModelSettingsPage";
 import { DataSettingsPage } from "@/pages/settings/DataSettingsPage";
+import { KnowledgePage } from "@/pages/KnowledgePage";
 
 export const router = createHashRouter([
   {
@@ -27,7 +28,7 @@ export const router = createHashRouter([
       { path: "training/drill", element: <PlaceholderPage /> },
       { path: "training/mock", element: <PlaceholderPage /> },
       { path: "wrong-book", element: <PlaceholderPage /> },
-      { path: "knowledge", element: <PlaceholderPage /> },
+      { path: "knowledge", element: <KnowledgePage /> },
       {
         path: "settings",
         element: <SettingsLayout />,

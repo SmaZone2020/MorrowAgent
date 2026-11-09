@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
+import { MathText } from "@/components/MathText";
 import { LumiMark } from "@/features/lumi/LumiMark";
 import type { ConversationTurn } from "@/features/lumi/conversation";
 
@@ -40,7 +41,7 @@ export function MessageList({ turns }: MessageListProps) {
                 </AnimatedBadge>
               ) : (
                 <p className="text-sm leading-7 whitespace-pre-wrap text-foreground">
-                  {turn.content}
+                  <MathText>{turn.content}</MathText>
                   {turn.pending ? (
                     <span
                       aria-hidden="true"
