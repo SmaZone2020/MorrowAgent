@@ -12,8 +12,8 @@ const SHAPES = ["blob", "pebble"] as const;
 /** Lumi reads as near-black ink rather than the app's blue-grey foreground. */
 const LUMI_INK = "#1a1c1e";
 
-/** Idle reactions cycle every 5s, per the Lumi empty-state brief. */
-const REACTION_INTERVAL = 5000;
+/** Lumi switches action on its own every 15s; a click restarts that clock. */
+const ACTION_INTERVAL = 15000;
 
 export function LumiCharacter({ className }: { className?: string }) {
   const stageRef = useRef<HTMLDivElement>(null);
@@ -28,17 +28,43 @@ export function LumiCharacter({ className }: { className?: string }) {
     svg.style.height = "100%";
     stage.appendChild(svg);
 
-    const states = readLumiStates("Lifecycle", "Reactions");
+    // Only the Reactions group is in play: Lifecycle poses (sleeping, working…)
+    // read as app state, not as Lumi's mood on an empty page.
+    const states = readLumiStates("Reactions");
     const pool = states.length > 0 ? states : ["idle"];
+    const others = pool.filter((state) => state !== "angry");
 
     let engine: LumiEngine | null = null;
     let timer = 0;
     let shapeIndex = 0;
+    let current = "idle";
 
-    const play = () => {
+    const pickOther = () => {
+      // Never repeat the pose that is already playing, so a click always reads
+      // as a fresh reaction even when the random draw lands twice.
+      const options =
+        others.length > 1 ? others.filter((state) => state !== current) : others;
+      return options[Math.floor(Math.random() * options.length)] ?? "happy";
+    };
+
+    const swapShape = () => {
+      shapeIndex = (shapeIndex + 1) % SHAPES.length;
+      engine?.setShape(SHAPES[shapeIndex]!);
+    };
+
+    const play = (next: string, changeShape: boolean) => {
       if (!engine) return;
-      const next = pool[Math.floor(Math.random() * pool.length)] ?? "idle";
+      current = next;
       engine.setState(next, { resetEyes: false });
+      if (changeShape) swapShape();
+    };
+
+    const schedule = (delay: number) => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        play(pickOther(), true);
+        schedule(ACTION_INTERVAL);
+      }, delay);
     };
 
     try {
@@ -54,27 +80,21 @@ export function LumiCharacter({ className }: { className?: string }) {
       engine.setInk(LUMI_INK);
       engine.setEyeColor("var(--card)");
 
+      // Poking Lumi is a coin flip: half the time it sulks, otherwise it
+      // switches to any other reaction. No body flourish on top — the state
+      // change alone carries the response.
       pokeRef.current = () => {
-        if (!engine) return;
-        play();
-        engine.bounceOnce();
+        play(Math.random() < 0.5 ? "angry" : pickOther(), Math.random() < 0.5);
+        schedule(ACTION_INTERVAL);
       };
 
-      // Alternate silhouettes alongside the reaction cadence so the body and
-      // the expression never change on the same beat.
-      timer = window.setInterval(() => {
-        play();
-        if (Math.random() < 0.55) {
-          shapeIndex = (shapeIndex + 1) % SHAPES.length;
-          engine?.setShape(SHAPES[shapeIndex]!);
-        }
-      }, REACTION_INTERVAL);
+      schedule(ACTION_INTERVAL);
     } catch (error) {
       console.error(error);
     }
 
     return () => {
-      window.clearInterval(timer);
+      window.clearTimeout(timer);
       engine?.destroy();
       svg.remove();
       pokeRef.current = () => {};

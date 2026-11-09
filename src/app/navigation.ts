@@ -6,10 +6,10 @@ import {
   GraduationCap,
   House,
   Persons,
-  Sparkles,
   Target,
   TargetDart,
 } from "@gravity-ui/icons";
+import { LumiMark } from "@/features/lumi/LumiMark";
 
 export type NavigationIcon = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -42,8 +42,8 @@ export const navigationGroups: NavigationGroup[] = [
     key: "core",
     label: "学习主线",
     items: [
-      { key: "dashboard", label: "Dashboard", path: "/", icon: House },
-      { key: "lumi", label: "Lumi AI", path: "/lumi", icon: Sparkles },
+      { key: "dashboard", label: "仪表盘", path: "/", icon: House },
+      { key: "lumi", label: "Lumi AI", path: "/lumi", icon: LumiMark },
     ],
   },
   {
