@@ -7,7 +7,7 @@ mod provider;
 mod store;
 
 use provider::secret::{self, StoredProvider};
-use provider::types::{ChatRequest, ChatResponse, ModelInfo, ProviderConfig};
+use provider::types::{ChatRequest, ModelInfo, ProviderConfig};
 use store::{ConversationSummary, NewMessage, Store, StoreStats, StoredMessage};
 use tauri::Manager;
 use tauri::State;
@@ -24,15 +24,6 @@ async fn ai_list_models(
     config: ProviderConfig,
 ) -> Result<Vec<ModelInfo>, String> {
     provider::list_models(&state.Client, &config).await
-}
-
-#[tauri::command]
-async fn ai_chat(
-    state: State<'_, AppState>,
-    config: ProviderConfig,
-    request: ChatRequest,
-) -> Result<ChatResponse, String> {
-    provider::chat(&state.Client, &config, &request).await
 }
 
 /// Spawns the stream and returns immediately; fragments arrive on
@@ -142,7 +133,6 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             ai_list_models,
-            ai_chat,
             ai_chat_stream,
             provider_save,
             provider_load,

@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use super::protocol::Protocol;
+
 // Rust struct fields are PascalCase per AGENT.md; the wire format stays
 // camelCase for the webview, so every field maps explicitly.
 
@@ -11,6 +13,8 @@ pub struct ProviderConfig {
     pub ApiKey: String,
     #[serde(rename = "model")]
     pub Model: String,
+    #[serde(rename = "protocol", default)]
+    pub Protocol: Protocol,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -32,20 +36,6 @@ pub struct ChatRequest {
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct ChatResponse {
-    #[serde(rename = "content")]
-    pub Content: String,
-    #[serde(rename = "model")]
-    pub Model: String,
-    #[serde(rename = "finishReason", skip_serializing_if = "Option::is_none")]
-    pub FinishReason: Option<String>,
-    #[serde(rename = "promptTokens", skip_serializing_if = "Option::is_none")]
-    pub PromptTokens: Option<u32>,
-    #[serde(rename = "completionTokens", skip_serializing_if = "Option::is_none")]
-    pub CompletionTokens: Option<u32>,
-}
-
-#[derive(Debug, Clone, Serialize)]
 pub struct ModelInfo {
     #[serde(rename = "id")]
     pub Id: String,
@@ -53,9 +43,8 @@ pub struct ModelInfo {
     pub DisplayName: Option<String>,
 }
 
-// Wire shapes for OpenAI-compatible endpoints. Kept private to the adapter so a
-// protocol change never leaks into the command surface.
-
+// Wire shape for the model catalog. Anthropic returns the same envelope with a
+// different id field name, so both are accepted.
 #[derive(Deserialize)]
 pub struct WireModels {
     #[serde(rename = "data", default)]
@@ -64,34 +53,10 @@ pub struct WireModels {
 
 #[derive(Deserialize)]
 pub struct WireModel {
-    #[serde(rename = "id")]
+    #[serde(rename = "id", default)]
     pub Id: String,
     #[serde(rename = "display_name", default)]
     pub DisplayName: Option<String>,
-}
-
-#[derive(Deserialize)]
-pub struct WireChat {
-    #[serde(rename = "model", default)]
-    pub Model: String,
-    #[serde(rename = "choices", default)]
-    pub Choices: Vec<WireChoice>,
-    #[serde(rename = "usage", default)]
-    pub Usage: Option<WireUsage>,
-}
-
-#[derive(Deserialize)]
-pub struct WireChoice {
-    #[serde(rename = "message", default)]
-    pub Message: Option<ChatMessage>,
-    #[serde(rename = "finish_reason", default)]
-    pub FinishReason: Option<String>,
-}
-
-#[derive(Deserialize)]
-pub struct WireUsage {
-    #[serde(rename = "prompt_tokens", default)]
-    pub PromptTokens: Option<u32>,
-    #[serde(rename = "completion_tokens", default)]
-    pub CompletionTokens: Option<u32>,
+    #[serde(rename = "displayName", default)]
+    pub DisplayNameCamel: Option<String>,
 }

@@ -7,13 +7,25 @@ import {
   activeProvider,
   useProviderStatus,
 } from "@/features/settings/providerStatus";
-import { listModels, type ModelInfo } from "@/features/settings/aiBridge";
+import {
+  listModels,
+  type ModelInfo,
+  type Protocol,
+} from "@/features/settings/aiBridge";
 
 type TestState =
   | { status: "idle" }
   | { status: "testing" }
   | { status: "ok"; count: number }
   | { status: "error"; message: string };
+
+// The protocol decides the URL path and the auth header, so it is a first-class
+// choice rather than something inferred from the base URL.
+const PROTOCOLS: { value: Protocol; label: string }[] = [
+  { value: "openai-chat", label: "Chat Completions" },
+  { value: "openai-responses", label: "Responses" },
+  { value: "anthropic", label: "Anthropic" },
+];
 
 export function ProviderSettingsPage() {
   const provider = useProviderStatus((state) => state.provider);
@@ -27,6 +39,9 @@ export function ProviderSettingsPage() {
   const [baseUrl, setBaseUrl] = useState(initial?.baseUrl ?? "");
   const [model, setModel] = useState(initial?.model ?? "");
   const [apiKey, setApiKey] = useState(initial?.apiKey ?? "");
+  const [protocol, setProtocol] = useState<Protocol>(
+    initial?.protocol ?? "openai-chat",
+  );
   const [test, setTest] = useState<TestState>({ status: "idle" });
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [saving, setSaving] = useState(false);
@@ -37,6 +52,7 @@ export function ProviderSettingsPage() {
     setBaseUrl(provider.baseUrl);
     setModel(provider.model);
     setApiKey(provider.apiKey);
+    setProtocol(provider.protocol);
   }, [provider]);
 
   const canSave = Boolean(baseUrl.trim() && model.trim() && apiKey.trim());
@@ -48,6 +64,7 @@ export function ProviderSettingsPage() {
         baseUrl: baseUrl.trim(),
         apiKey: apiKey.trim(),
         model: model.trim(),
+        protocol,
       });
       setModels(list);
       setTest({ status: "ok", count: list.length });
@@ -67,6 +84,7 @@ export function ProviderSettingsPage() {
         baseUrl: baseUrl.trim(),
         model: model.trim(),
         apiKey: apiKey.trim(),
+        protocol,
       });
     } finally {
       setSaving(false);
@@ -88,6 +106,19 @@ export function ProviderSettingsPage() {
         }
       >
         <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap gap-2">
+            {PROTOCOLS.map((entry) => (
+              <Button
+                key={entry.value}
+                size="sm"
+                variant={protocol === entry.value ? "primary" : "secondary"}
+                onClick={() => setProtocol(entry.value)}
+              >
+                {entry.label}
+              </Button>
+            ))}
+          </div>
+
           <Input
             label="Base URL"
             value={baseUrl}
@@ -124,12 +155,18 @@ export function ProviderSettingsPage() {
             <Button
               size="sm"
               variant="secondary"
-              disabled={!baseUrl.trim() || !apiKey.trim() || test.status === "testing"}
+              disabled={
+                !baseUrl.trim() || !apiKey.trim() || test.status === "testing"
+              }
               onClick={() => void runTest()}
             >
               {test.status === "testing" ? "测试中" : "测试连接"}
             </Button>
-            <Button size="sm" disabled={!canSave || saving} onClick={() => void submit()}>
+            <Button
+              size="sm"
+              disabled={!canSave || saving}
+              onClick={() => void submit()}
+            >
               {saving ? "保存中" : "保存"}
             </Button>
             {provider ? (

@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use super::protocol::Protocol;
+
 /// What gets persisted for a provider. The API key travels through here but is
 /// never written in plaintext: the whole record is encrypted as one blob.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -10,6 +12,8 @@ pub struct StoredProvider {
     pub Model: String,
     #[serde(rename = "apiKey")]
     pub ApiKey: String,
+    #[serde(rename = "protocol", default)]
+    pub Protocol: Protocol,
 }
 
 #[cfg(target_os = "windows")]

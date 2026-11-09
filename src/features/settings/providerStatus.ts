@@ -6,25 +6,31 @@ import {
   type StoredProvider,
 } from "@/features/settings/providerStore";
 import { readDebugProvider } from "@/features/settings/debugProvider";
+import type { Protocol } from "@/features/settings/aiBridge";
+
+export interface ProviderProfile extends StoredProvider {
+  protocol: Protocol;
+}
 
 interface ProviderStatus {
   /** The stored credential, if the user has saved one. */
-  provider: StoredProvider | null;
+  provider: ProviderProfile | null;
   /** Whether Lumi can reach a model right now. */
   configured: boolean;
   /** Read the encrypted blob once at startup. */
   hydrate: () => Promise<void>;
-  save: (provider: StoredProvider) => Promise<void>;
+  save: (provider: ProviderProfile) => Promise<void>;
   clear: () => Promise<void>;
 }
 
-function debugAsProvider(): StoredProvider | null {
+function debugAsProvider(): ProviderProfile | null {
   const debug = readDebugProvider();
   if (!debug) return null;
   return {
     baseUrl: debug.baseUrl,
     model: debug.model,
     apiKey: debug.apiKey,
+    protocol: "openai-chat",
   };
 }
 
@@ -40,7 +46,9 @@ export const useProviderStatus = create<ProviderStatus>((set) => ({
     try {
       const stored = await loadProvider();
       set({
-        provider: stored,
+        provider: stored
+          ? { ...stored, protocol: stored.protocol ?? "openai-chat" }
+          : null,
         configured: Boolean(stored) || Boolean(debugAsProvider()),
       });
     } catch {
@@ -61,6 +69,6 @@ export const useProviderStatus = create<ProviderStatus>((set) => ({
 }));
 
 /** The credential to send with a request: stored first, debug env second. */
-export function activeProvider(): StoredProvider | null {
+export function activeProvider(): ProviderProfile | null {
   return useProviderStatus.getState().provider ?? debugAsProvider();
 }

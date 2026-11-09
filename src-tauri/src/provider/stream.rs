@@ -2,6 +2,7 @@ use futures_util::StreamExt;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
+use crate::provider::protocol::prepare;
 use crate::provider::types::{ChatRequest, ProviderConfig};
 
 /// Event name the webview listens on. One channel for every request: the
@@ -49,27 +50,6 @@ impl Delta {
     }
 }
 
-/// Pull the text out of one `data:` line. Anything without choices (role-only
-/// preambles, usage frames) yields nothing.
-fn read_chunk(line: &str) -> Option<String> {
-    let payload = line.strip_prefix("data:")?.trim();
-    if payload == "[DONE]" {
-        return None;
-    }
-    let value: serde_json::Value = serde_json::from_str(payload).ok()?;
-    let text = value
-        .get("choices")?
-        .get(0)?
-        .get("delta")?
-        .get("content")?
-        .as_str()?;
-    if text.is_empty() {
-        None
-    } else {
-        Some(text.to_string())
-    }
-}
-
 /// Streams one completion, emitting a delta per fragment. Errors are emitted
 /// rather than returned: by the time they happen the command has already
 /// resolved from the UI's point of view.
@@ -80,35 +60,31 @@ pub async fn run(
     request: ChatRequest,
     request_id: String,
 ) {
-    let url = format!(
-        "{}{}",
-        config.BaseUrl.trim_end_matches('/'),
-        "/chat/completions"
-    );
+    let prepared = prepare(&config, &request);
+    let mut builder = client
+        .post(&prepared.Url)
+        .header("Content-Type", "application/json")
+        .json(&prepared.Body);
 
-    let mut payload = serde_json::json!({
-        "model": config.Model,
-        "messages": request.Messages,
-        "stream": true,
-    });
-    if let Some(temperature) = request.Temperature {
-        payload["temperature"] = serde_json::json!(temperature);
+    // OpenAI-compatible endpoints authenticate with a bearer token; Anthropic
+    // sends its own header pair, so the default is only applied when no
+    // protocol-specific header names a key.
+    let has_key_header = prepared.Headers.iter().any(|(name, _)| name == "x-api-key");
+    if !has_key_header {
+        builder = builder.bearer_auth(&config.ApiKey);
     }
-    if let Some(max_tokens) = request.MaxTokens {
-        payload["max_tokens"] = serde_json::json!(max_tokens);
+    for (name, value) in prepared.Headers {
+        builder = builder.header(name, value);
     }
 
-    let response = client
-        .post(url)
-        .bearer_auth(&config.ApiKey)
-        .json(&payload)
-        .send()
-        .await;
-
+    let response = builder.send().await;
     let response = match response {
         Ok(response) => response,
         Err(error) => {
-            let _ = app.emit(DELTA_EVENT, Delta::fail(&request_id, format!("请求失败：{}", error)));
+            let _ = app.emit(
+                DELTA_EVENT,
+                Delta::fail(&request_id, format!("请求失败：{}", error)),
+            );
             return;
         }
     };
@@ -128,6 +104,7 @@ pub async fn run(
 
     let mut stream = response.bytes_stream();
     let mut buffer = String::new();
+    let read = prepared.Reads;
 
     while let Some(next) = stream.next().await {
         let bytes = match next {
@@ -150,7 +127,7 @@ pub async fn run(
         while let Some(index) = buffer.find("\n\n") {
             let frame: String = buffer.drain(..index + 2).collect();
             for line in frame.lines() {
-                if let Some(text) = read_chunk(line) {
+                if let Some(text) = read(line) {
                     let _ = app.emit(DELTA_EVENT, Delta::chunk(&request_id, text));
                 }
             }
@@ -159,35 +136,10 @@ pub async fn run(
 
     // A last frame without its trailing blank line still carries content.
     for line in buffer.lines() {
-        if let Some(text) = read_chunk(line) {
+        if let Some(text) = read(line) {
             let _ = app.emit(DELTA_EVENT, Delta::chunk(&request_id, text));
         }
     }
 
     let _ = app.emit(DELTA_EVENT, Delta::finish(&request_id));
-}
-
-#[cfg(test)]
-mod tests {
-    use super::read_chunk;
-
-    #[test]
-    fn reads_the_delta_from_a_frame() {
-        let line = r#"data: {"choices":[{"delta":{"content":"Hello"}}]}"#;
-        assert_eq!(read_chunk(line).as_deref(), Some("Hello"));
-    }
-
-    #[test]
-    fn ignores_role_only_and_finish_frames() {
-        let role = r#"data: {"choices":[{"delta":{"content":"","role":"assistant"}}]}"#;
-        assert_eq!(read_chunk(role), None);
-        assert_eq!(read_chunk("data: [DONE]"), None);
-        assert_eq!(read_chunk(""), None);
-    }
-
-    #[test]
-    fn ignores_usage_frames_without_choices() {
-        let usage = r#"data: {"choices":[],"usage":{"total_tokens":3}}"#;
-        assert_eq!(read_chunk(usage), None);
-    }
 }

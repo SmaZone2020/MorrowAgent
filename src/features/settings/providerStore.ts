@@ -1,10 +1,13 @@
 import { invoke } from "@tauri-apps/api/core";
 import { isTauriRuntime } from "@/app/shell/windowControls";
+import type { Protocol } from "@/features/settings/aiBridge";
 
 export interface StoredProvider {
   baseUrl: string;
   model: string;
   apiKey: string;
+  /** Defaults to `openai-chat` when absent, which keeps old blobs readable. */
+  protocol?: Protocol;
 }
 
 function requireRuntime(): void {
