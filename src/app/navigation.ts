@@ -48,7 +48,9 @@ export const navigationGroups: NavigationGroup[] = [
   },
   {
     key: "learning",
-    label: "我的学习",
+    // The group used to repeat its own first item's label, which read as a
+    // heading plus a same-named row. This label covers everything it holds.
+    label: "学习与记录",
     items: [
       {
         key: "myLearning",

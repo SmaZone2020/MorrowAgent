@@ -56,6 +56,9 @@ export function LumiPage() {
 
       <div className="shrink-0 rounded-2xl bg-card p-2 shadow-surface">
         <textarea
+          id="lumi-draft"
+          name="lumi-draft"
+          aria-label="和 Lumi 说点什么"
           rows={2}
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
