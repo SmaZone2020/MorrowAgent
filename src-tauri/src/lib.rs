@@ -3,9 +3,12 @@
 #![allow(non_snake_case)]
 
 mod provider;
+mod store;
 
 use provider::secret::{self, StoredProvider};
 use provider::types::{ChatRequest, ChatResponse, ModelInfo, ProviderConfig};
+use store::{ConversationSummary, NewMessage, Store, StoredMessage};
+use tauri::Manager;
 use tauri::State;
 
 // One shared client keeps the connection pool warm across turns; a per-request
@@ -63,6 +66,41 @@ fn provider_clear(app: tauri::AppHandle) -> Result<(), String> {
     secret::clear(&app)
 }
 
+#[tauri::command]
+fn chat_append(
+    state: State<'_, Store>,
+    conversation_id: String,
+    message: NewMessage,
+) -> Result<StoredMessage, String> {
+    state.append(&conversation_id, message)
+}
+
+#[tauri::command]
+fn chat_messages(
+    state: State<'_, Store>,
+    conversation_id: String,
+) -> Result<Vec<StoredMessage>, String> {
+    state.messages(&conversation_id)
+}
+
+#[tauri::command]
+fn chat_conversations(
+    state: State<'_, Store>,
+    limit: Option<i64>,
+) -> Result<Vec<ConversationSummary>, String> {
+    state.conversations(limit.unwrap_or(20))
+}
+
+#[tauri::command]
+fn chat_delete(state: State<'_, Store>, conversation_id: String) -> Result<(), String> {
+    state.delete_conversation(&conversation_id)
+}
+
+#[tauri::command]
+fn chat_reset(state: State<'_, Store>) -> Result<(), String> {
+    state.reset()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let client = reqwest::Client::builder()
@@ -73,13 +111,31 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(AppState { Client: client })
+        .setup(|app| {
+            // The database lives in the app data dir, so it can only be opened
+            // once Tauri knows which platform path that is.
+            let dir = app
+                .path()
+                .app_data_dir()
+                .map_err(|error| format!("无法定位应用数据目录：{}", error))?;
+            std::fs::create_dir_all(&dir)
+                .map_err(|error| format!("无法创建数据目录：{}", error))?;
+            let store = store::open(&dir.join("morrow.db"))?;
+            app.manage(store);
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             ai_list_models,
             ai_chat,
             ai_chat_stream,
             provider_save,
             provider_load,
-            provider_clear
+            provider_clear,
+            chat_append,
+            chat_messages,
+            chat_conversations,
+            chat_delete,
+            chat_reset
         ])
         .run(tauri::generate_context!())
         .expect("error while running Morrow Agent");

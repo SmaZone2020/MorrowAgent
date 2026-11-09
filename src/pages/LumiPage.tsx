@@ -12,11 +12,20 @@ export function LumiPage() {
   const [draft, setDraft] = useState("");
   const [greeting, setGreeting] = useState(() => greetingFor());
   const configured = useProviderStatus((state) => state.configured);
+  const conversationId = useConversation((state) => state.conversationId);
   const turns = useConversation((state) => state.turns);
   const sending = useConversation((state) => state.sending);
   const send = useConversation((state) => state.send);
   const stop = useConversation((state) => state.stop);
+  const hydrate = useConversation((state) => state.hydrate);
+  const reset = useConversation((state) => state.reset);
   const empty = turns.length === 0;
+
+  // Pick up the last conversation once, then leave the store alone: a reload
+  // mid-conversation should not look like a fresh page.
+  useEffect(() => {
+    if (!conversationId) void hydrate();
+  }, [conversationId, hydrate]);
 
   // The greeting names a slice of the day, so it only has to change when that
   // slice does; a minute tick is the cheapest way to catch the boundary.
@@ -59,7 +68,19 @@ export function LumiPage() {
           placeholder="和 Lumi 说点什么"
           className="min-h-16 max-h-40 w-full resize-none rounded-xl bg-transparent px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground"
         />
-        <div className="flex items-center justify-end gap-2 px-1 pb-1">
+        <div className="flex items-center justify-between gap-2 px-1 pb-1">
+          {empty ? (
+            <span />
+          ) : (
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={sending}
+              onClick={reset}
+            >
+              新对话
+            </Button>
+          )}
           {/* Without a provider there is nothing to send to, so the banner
               replaces the send button instead of sitting next to a dead one. */}
           {configured ? (
