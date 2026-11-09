@@ -89,6 +89,13 @@ export const pageMetaList: PageMeta[] = [
     scope: ["章节树与知识点详情", "前置依赖与关联关系", "资源包版本策略"],
   },
   {
+    path: "/settings",
+    title: "设置",
+    section: "设置",
+    stage: "skeleton",
+    scope: ["分区导航", "AI Provider 与模型配置", "数据管理"],
+  },
+  {
     path: "/settings/provider",
     title: "AI Provider",
     section: "Settings",
