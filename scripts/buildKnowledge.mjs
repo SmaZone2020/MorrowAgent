@@ -82,6 +82,7 @@ function pickQuestion(question) {
     estimatedMinutes: question.estimated_minutes,
     sourceType: question.source_type,
     sourceReference: question.source_reference,
+    version: question.version ?? "",
   };
 }
 

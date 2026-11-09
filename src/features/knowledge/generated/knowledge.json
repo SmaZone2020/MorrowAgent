@@ -131,7 +131,8 @@
       ],
       "estimatedMinutes": 3,
       "sourceType": "ai_generated",
-      "sourceReference": "ai_batch_001"
+      "sourceReference": "ai_batch_001",
+      "version": "1.0.0"
     },
     {
       "id": "math_higher_q_000002",
@@ -161,7 +162,8 @@
       ],
       "estimatedMinutes": 5,
       "sourceType": "ai_generated",
-      "sourceReference": "ai_batch_001"
+      "sourceReference": "ai_batch_001",
+      "version": "1.0.0"
     }
   ]
 }

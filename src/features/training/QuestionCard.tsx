@@ -40,7 +40,7 @@ export function QuestionCard({
   const correct = selected === question.answer;
 
   const submit = () => {
-    if (!selected) return;
+    if (!selected || phase === "submitted") return;
     setPhase("submitted");
     onAnswered?.(selected, selected === question.answer);
   };

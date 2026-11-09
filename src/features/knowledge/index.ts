@@ -42,6 +42,7 @@ export interface Question {
   estimatedMinutes?: number;
   sourceType: string;
   sourceReference?: string;
+  version: string;
 }
 
 export interface KnowledgeBundle {

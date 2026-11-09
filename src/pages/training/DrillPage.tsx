@@ -18,6 +18,9 @@ export function DrillPage() {
   const [index, setIndex] = useState(0);
   // Keyed by question id so revisiting a point keeps the session tally.
   const [results, setResults] = useState<Record<string, boolean>>({});
+  // Bumping this remounts the card, which is how "redo" clears a finished
+  // single-question run whose id never changes.
+  const [run, setRun] = useState(0);
 
   const openQuestions = useMemo(
     () => (pointId ? questionsFor(pointId) : questions),
@@ -64,7 +67,7 @@ export function DrillPage() {
       {current ? (
         <>
           <QuestionCard
-            key={current.id}
+            key={`${current.id}-${run}`}
             question={current}
             index={index + 1}
             total={openQuestions.length}
@@ -84,7 +87,7 @@ export function DrillPage() {
                 : undefined
             }
           />
-          {index + 1 >= openQuestions.length ? (
+          {index + 1 >= openQuestions.length && current.id in results ? (
             <Panel title="本轮完成">
               <div className="flex flex-wrap items-center gap-3">
                 <AnimatedBadge
@@ -107,6 +110,7 @@ export function DrillPage() {
                   onClick={() => {
                     setResults({});
                     setIndex(0);
+                    setRun((value) => value + 1);
                   }}
                 >
                   重做

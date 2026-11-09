@@ -321,4 +321,32 @@ mod tests {
 
         let _ = std::fs::remove_file(path);
     }
+
+    #[test]
+    fn opening_a_version_one_database_applies_the_rest() {
+        let (path, _) = temp_store();
+        {
+            // Build a database that only knows migration 1, the shape shipped
+            // before attempts existed, and mark it as such.
+            let connection = rusqlite::Connection::open(&path).expect("open");
+            connection
+                .execute_batch(super::migrations::MIGRATIONS[0])
+                .expect("v1 schema");
+            connection
+                .execute_batch("PRAGMA user_version = 1")
+                .expect("version");
+        }
+
+        let store = open(&path).expect("reopen migrates");
+        assert_eq!(store.stats().expect("stats").Attempts, 0);
+
+        let version: i64 = store
+            .lock()
+            .expect("lock")
+            .query_row("PRAGMA user_version", [], |row| row.get(0))
+            .expect("read version");
+        assert_eq!(version, super::migrations::MIGRATIONS.len() as i64);
+
+        let _ = std::fs::remove_file(path);
+    }
 }

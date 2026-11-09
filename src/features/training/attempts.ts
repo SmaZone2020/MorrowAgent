@@ -28,7 +28,7 @@ export async function recordAttempt(
       id: crypto.randomUUID(),
       questionId: question.id,
       knowledgePointId: question.knowledgeTags[0] ?? "",
-      questionVersion: "",
+      questionVersion: question.version ?? "",
       questionSnapshot: question.content,
       answer,
       isCorrect,
