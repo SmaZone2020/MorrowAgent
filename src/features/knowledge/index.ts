@@ -45,7 +45,6 @@ export interface Question {
 }
 
 export interface KnowledgeBundle {
-  generatedAt: string;
   chapters: KnowledgeChapter[];
   questions: Question[];
 }
@@ -57,7 +56,6 @@ const data = bundle as unknown as KnowledgeBundle;
 
 export const chapters = data.chapters;
 export const questions = data.questions;
-export const bundleVersion = data.generatedAt;
 
 export const knowledgePoints: KnowledgePoint[] = chapters.flatMap(
   (chapter) => chapter.points,

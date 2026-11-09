@@ -5,7 +5,7 @@
  * authors, and this script is the only bridge. Run through `predev` / `prebuild`
  * so a stale bundle is impossible to ship by accident.
  */
-import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
@@ -118,14 +118,18 @@ function main() {
     throw new Error(`${relative(projectRoot, file)} 无法识别：需要 chapter 或 questions 顶层键`);
   }
 
+  // No timestamp: the bundle is a pure function of the YAML, so regenerating it
+  // without source changes must not produce a diff or a rebuild.
   const payload = {
-    generatedAt: new Date().toISOString(),
     chapters: [...chapters.values()],
     questions,
   };
 
+  const next = `${JSON.stringify(payload, null, 2)}\n`;
   mkdirSync(join(outFile, ".."), { recursive: true });
-  writeFileSync(outFile, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+
+  const previous = existsSync(outFile) ? readFileSync(outFile, "utf8") : "";
+  if (previous !== next) writeFileSync(outFile, next, "utf8");
 
   console.log(
     `\u2713 知识包已生成：${chapters.size} 章，${[...chapters.values()].reduce((sum, chapter) => sum + chapter.points.length, 0)} 个知识点，${questions.length} 道题 -> ${relative(projectRoot, outFile)}`,
