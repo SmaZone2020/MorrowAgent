@@ -1,8 +1,7 @@
 import { create } from "zustand";
-import {
-  activeProvider,
-} from "@/features/settings/providerStatus";
-import { sendChat, type ChatMessage } from "@/features/settings/aiBridge";
+import { activeProvider } from "@/features/settings/providerStatus";
+import { streamChat } from "@/features/settings/aiStream";
+import type { ChatMessage } from "@/features/settings/aiBridge";
 
 export interface ConversationTurn {
   id: string;
@@ -17,6 +16,7 @@ interface ConversationState {
   turns: ConversationTurn[];
   sending: boolean;
   send: (message: string) => Promise<void>;
+  stop: () => void;
   reset: () => void;
 }
 
@@ -30,6 +30,8 @@ const SYSTEM_PROMPT = [
   "用户备考陕西专升本高等数学。回答用中文，简洁、直接，先给结论再解释。",
   "数学式子用 LaTeX 行内写法，不要长篇铺陈，也不要反复确认用户意图。",
 ].join("\n");
+
+let controller: AbortController | null = null;
 
 function toHistory(turns: ConversationTurn[], skipId: string): ChatMessage[] {
   return turns
@@ -46,7 +48,7 @@ export const useConversation = create<ConversationState>((set, get) => ({
 
   send: async (message) => {
     const text = message.trim();
-    if (!text) return;
+    if (!text || get().sending) return;
 
     const userTurn: ConversationTurn = {
       id: nextId(),
@@ -65,19 +67,17 @@ export const useConversation = create<ConversationState>((set, get) => ({
       sending: true,
     }));
 
-    const fail = (reason: string) =>
+    const patchReply = (patch: Partial<ConversationTurn>) =>
       set((state) => ({
-        sending: false,
         turns: state.turns.map((turn) =>
-          turn.id === replyTurn.id
-            ? { ...turn, pending: false, error: reason }
-            : turn,
+          turn.id === replyTurn.id ? { ...turn, ...patch } : turn,
         ),
       }));
 
     const config = activeProvider();
     if (!config) {
-      fail("还没有配置 Provider");
+      set({ sending: false });
+      patchReply({ pending: false, error: "还没有配置 Provider" });
       return;
     }
 
@@ -86,20 +86,38 @@ export const useConversation = create<ConversationState>((set, get) => ({
       ...toHistory(get().turns, replyTurn.id),
     ];
 
+    controller = new AbortController();
+
     try {
-      const reply = await sendChat(config, history);
-      set((state) => ({
-        sending: false,
-        turns: state.turns.map((turn) =>
-          turn.id === replyTurn.id
-            ? { ...turn, pending: false, content: reply.content }
-            : turn,
-        ),
-      }));
+      const answer = await streamChat(config, history, {
+        signal: controller.signal,
+        onProgress: (partial) => patchReply({ content: partial }),
+      });
+      // An empty answer with no error means the user stopped mid-flight.
+      patchReply({
+        pending: false,
+        content: answer || "（已停止）",
+      });
     } catch (error) {
-      fail(error instanceof Error ? error.message : "请求失败");
+      patchReply({
+        pending: false,
+        error: error instanceof Error ? error.message : "请求失败",
+      });
+    } finally {
+      controller = null;
+      set({ sending: false });
     }
   },
 
-  reset: () => set({ turns: [], sending: false }),
+  stop: () => {
+    controller?.abort();
+    controller = null;
+    set({ sending: false });
+  },
+
+  reset: () => {
+    controller?.abort();
+    controller = null;
+    set({ turns: [], sending: false });
+  },
 }));

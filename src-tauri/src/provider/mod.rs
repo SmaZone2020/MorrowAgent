@@ -1,4 +1,5 @@
 pub mod secret;
+pub mod stream;
 pub mod types;
 
 use types::{

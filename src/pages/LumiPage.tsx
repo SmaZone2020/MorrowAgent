@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/vendor/beui/components/motion/button";
 import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
@@ -9,17 +9,21 @@ import { greetingFor } from "@/features/lumi/greetings";
 import { useProviderStatus } from "@/features/settings/providerStatus";
 
 export function LumiPage() {
-  const composerRef = useRef<HTMLTextAreaElement>(null);
   const [draft, setDraft] = useState("");
-  // The greeting is recomputed on submit rather than on a timer: an empty page
-  // that sits open all evening does not need a midnight update more than it
-  // needs to not re-render every minute.
-  const [greeting] = useState(() => greetingFor());
+  const [greeting, setGreeting] = useState(() => greetingFor());
   const configured = useProviderStatus((state) => state.configured);
   const turns = useConversation((state) => state.turns);
   const sending = useConversation((state) => state.sending);
   const send = useConversation((state) => state.send);
+  const stop = useConversation((state) => state.stop);
   const empty = turns.length === 0;
+
+  // The greeting names a slice of the day, so it only has to change when that
+  // slice does; a minute tick is the cheapest way to catch the boundary.
+  useEffect(() => {
+    const tick = setInterval(() => setGreeting(greetingFor()), 60_000);
+    return () => clearInterval(tick);
+  }, []);
 
   const submit = () => {
     const text = draft.trim();
@@ -31,7 +35,7 @@ export function LumiPage() {
   return (
     <div className="mx-auto flex h-full w-full max-w-4xl flex-col gap-4 p-5 sm:p-7">
       {empty ? (
-        <div className="flex min-h-0 flex-1 -mt-18 flex-col items-center justify-center gap-4">
+        <div className="-mt-18 flex min-h-0 flex-1 flex-col items-center justify-center gap-4">
           <LumiCharacter className="size-28 sm:size-32" />
           <p className="max-w-md text-center text-lg text-muted-foreground">
             {greeting}
@@ -43,7 +47,6 @@ export function LumiPage() {
 
       <div className="shrink-0 rounded-2xl bg-card p-2 shadow-surface">
         <textarea
-          ref={composerRef}
           rows={2}
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
@@ -54,7 +57,7 @@ export function LumiPage() {
             }
           }}
           placeholder="和 Lumi 说点什么"
-          className="max-h-40 min-h-16 w-full resize-none rounded-xl bg-transparent px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground"
+          className="min-h-16 max-h-40 w-full resize-none rounded-xl bg-transparent px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground"
         />
         <div className="flex items-center justify-end gap-2 px-1 pb-1">
           {/* Without a provider there is nothing to send to, so the banner
@@ -63,10 +66,10 @@ export function LumiPage() {
             <Button
               size="md"
               className="px-6"
-              disabled={!draft.trim() || sending}
-              onClick={submit}
+              disabled={!draft.trim() && !sending}
+              onClick={sending ? stop : submit}
             >
-              {sending ? "思考中" : "发送"}
+              {sending ? "停止" : "发送"}
             </Button>
           ) : (
             <Link

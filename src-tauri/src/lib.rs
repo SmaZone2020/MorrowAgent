@@ -31,6 +31,23 @@ async fn ai_chat(
     provider::chat(&state.Client, &config, &request).await
 }
 
+/// Spawns the stream and returns immediately; fragments arrive on
+/// `ai://delta`, tagged with the caller's request id.
+#[tauri::command]
+fn ai_chat_stream(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    config: ProviderConfig,
+    request: ChatRequest,
+    request_id: String,
+) -> Result<(), String> {
+    let client = state.Client.clone();
+    tauri::async_runtime::spawn(async move {
+        provider::stream::run(app, client, config, request, request_id).await;
+    });
+    Ok(())
+}
+
 #[tauri::command]
 fn provider_save(app: tauri::AppHandle, provider: StoredProvider) -> Result<(), String> {
     secret::save(&app, &provider)
@@ -59,6 +76,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             ai_list_models,
             ai_chat,
+            ai_chat_stream,
             provider_save,
             provider_load,
             provider_clear

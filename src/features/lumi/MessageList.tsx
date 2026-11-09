@@ -2,7 +2,6 @@ import { useEffect, useRef } from "react";
 import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
 import { LumiMark } from "@/features/lumi/LumiMark";
 import type { ConversationTurn } from "@/features/lumi/conversation";
-import { cn } from "@/vendor/beui/lib/utils";
 
 interface MessageListProps {
   turns: ConversationTurn[];
@@ -10,15 +9,16 @@ interface MessageListProps {
 
 export function MessageList({ turns }: MessageListProps) {
   const endRef = useRef<HTMLDivElement>(null);
+  const lastId = turns.at(-1)?.id;
+  const lastLength = turns.at(-1)?.content.length ?? 0;
 
-  // New turns and streamed text both land here, so the end marker is the one
-  // thing worth keeping pinned.
+  // Follow the tail as tokens arrive, not just when a turn is added.
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
-  }, [turns]);
+  }, [lastId, lastLength]);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto scrollbar-thin py-2">
+    <div className="scrollbar-thin flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto py-2">
       {turns.map((turn) =>
         turn.role === "user" ? (
           <div key={turn.id} className="flex justify-end">
@@ -32,19 +32,21 @@ export function MessageList({ turns }: MessageListProps) {
               <LumiMark className="size-5" />
             </span>
             <div className="min-w-0 flex-1">
-              {turn.pending ? (
+              {turn.error ? (
+                <p className="text-sm leading-6 text-destructive">{turn.error}</p>
+              ) : turn.pending && !turn.content ? (
                 <AnimatedBadge status="info" size="sm" contentKey="thinking">
                   正在思考
                 </AnimatedBadge>
-              ) : turn.error ? (
-                <p className="text-sm leading-6 text-destructive">{turn.error}</p>
               ) : (
-                <p
-                  className={cn(
-                    "text-sm leading-7 whitespace-pre-wrap text-foreground",
-                  )}
-                >
+                <p className="text-sm leading-7 whitespace-pre-wrap text-foreground">
                   {turn.content}
+                  {turn.pending ? (
+                    <span
+                      aria-hidden="true"
+                      className="ml-0.5 inline-block h-4 w-[2px] animate-pulse bg-foreground align-middle"
+                    />
+                  ) : null}
                 </p>
               )}
             </div>
