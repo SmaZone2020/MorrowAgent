@@ -36,10 +36,13 @@ export function WrongBookPage() {
 
   const drop = async (questionId: string) => {
     setAttempts((rows) => rows.filter((row) => row.questionId !== questionId));
-    await forgetAttempt(questionId).catch(() => {
-      // The row is already gone locally, so a failed delete only means it will
-      // come back on the next load; retrying right away would just fail again.
-    });
+    try {
+      await forgetAttempt(questionId);
+    } catch {
+      // Put the row back from the database instead of leaving the list out of
+      // step with what is actually stored.
+      void loadWrongAttempts().then(setAttempts);
+    }
   };
 
   return (
