@@ -1,0 +1,168 @@
+{
+  "generatedAt": "2026-11-09T17:38:57.588Z",
+  "chapters": [
+    {
+      "id": "math_higher_limits",
+      "name": "函数与极限",
+      "subjectId": "math_higher",
+      "version": "1.0.0",
+      "points": [
+        {
+          "id": "math_higher_limits_function_concept",
+          "name": "函数的概念",
+          "chapterId": "math_higher_limits",
+          "description": "函数是从定义域到值域的对应关系，给定自变量有唯一因变量与之对应；研究极限前需先明确定义域与对应法则。",
+          "objectives": [
+            "能判断给定对应关系是否为函数",
+            "能求出简单函数的定义域与值域"
+          ],
+          "prerequisites": [],
+          "related": [
+            "math_higher_limits_one_sided_limit"
+          ],
+          "difficulty": "basic",
+          "examImportance": "medium",
+          "examLevels": [
+            "score_free"
+          ],
+          "commonErrors": [
+            "忽略分母不为零的限制条件",
+            "把多值对应误认为函数"
+          ]
+        },
+        {
+          "id": "math_higher_limits_one_sided_limit",
+          "name": "左右极限",
+          "chapterId": "math_higher_limits",
+          "description": "函数在一点的左极限与右极限分别描述自变量从该点左侧与右侧趋近时函数值的趋向。",
+          "objectives": [
+            "能写出左极限与右极限的记号并解释其含义",
+            "能用左右极限判断双侧极限是否存在"
+          ],
+          "prerequisites": [
+            "math_higher_limits_function_concept"
+          ],
+          "related": [
+            "math_higher_limits_limit_existence"
+          ],
+          "difficulty": "medium",
+          "examImportance": "high",
+          "examLevels": [
+            "basic",
+            "advanced"
+          ],
+          "commonErrors": [
+            "忽略分段点两侧表达式不同，直接用同一侧代入",
+            "误以为左极限等于右极限只是习惯约定"
+          ]
+        },
+        {
+          "id": "math_higher_limits_limit_existence",
+          "name": "极限存在的判定",
+          "chapterId": "math_higher_limits",
+          "description": "双侧极限存在的充要条件是左右极限都存在且相等；夹逼准则与单调有界准则给出不需要求出极限值也能判定存在的途径。",
+          "objectives": [
+            "能用左右极限相等判定双侧极限存在",
+            "能用夹逼准则判定极限存在并求值"
+          ],
+          "prerequisites": [
+            "math_higher_limits_one_sided_limit"
+          ],
+          "related": [
+            "math_higher_limits_function_concept"
+          ],
+          "difficulty": "medium",
+          "examImportance": "critical",
+          "examLevels": [
+            "basic",
+            "advanced",
+            "challenging"
+          ],
+          "commonErrors": [
+            "只验证单侧极限就断言双侧极限存在",
+            "使用夹逼准则时放缩方向不一致"
+          ]
+        }
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "id": "math_higher_q_000001",
+      "content": "设 $f(x)=\\begin{cases} x+1, & x<0 \\\\ x^2, & x \\ge 0 \\end{cases}$，则 $\\lim\\limits_{x \\to 0} f(x)$ 为",
+      "questionType": "single_choice",
+      "difficulty": "basic",
+      "examLevel": "basic",
+      "options": [
+        {
+          "key": "A",
+          "content": "$0$"
+        },
+        {
+          "key": "B",
+          "content": "$1$"
+        },
+        {
+          "key": "C",
+          "content": "不存在"
+        },
+        {
+          "key": "D",
+          "content": "$+\\infty$"
+        }
+      ],
+      "answer": "C",
+      "explanation": "左极限 $\\lim_{x\\to 0^-} f(x)=1$，右极限 $\\lim_{x\\to 0^+} f(x)=0$，两侧不相等，故双侧极限不存在。",
+      "knowledgeTags": [
+        "math_higher_limits_one_sided_limit",
+        "math_higher_limits_limit_existence"
+      ],
+      "solutionMethods": [
+        "分段点两侧分别求左右极限再比较"
+      ],
+      "commonErrors": [
+        {
+          "errorType": "concept",
+          "description": "只代入分段点所在的一侧表达式就下结论"
+        },
+        {
+          "errorType": "calculation",
+          "description": "把 $x^2$ 在 $0$ 处的右极限误算为 $1$"
+        }
+      ],
+      "estimatedMinutes": 3,
+      "sourceType": "ai_generated",
+      "sourceReference": "ai_batch_001"
+    },
+    {
+      "id": "math_higher_q_000002",
+      "content": "设 $f(x)=\\begin{cases} 2x+a, & x<1 \\\\ x^2, & x \\ge 1 \\end{cases}$，若 $\\lim\\limits_{x \\to 1} f(x)$ 存在，则 $a=$",
+      "questionType": "fill_blank",
+      "difficulty": "medium",
+      "examLevel": "basic",
+      "options": [],
+      "answer": "$-1$",
+      "explanation": "左极限为 $2+a$，右极限为 $1$。极限存在要求左右极限相等，故 $2+a=1$，解得 $a=-1$。",
+      "knowledgeTags": [
+        "math_higher_limits_one_sided_limit",
+        "math_higher_limits_limit_existence"
+      ],
+      "solutionMethods": [
+        "分段点两侧求极限后令其相等解参数"
+      ],
+      "commonErrors": [
+        {
+          "errorType": "concept",
+          "description": "直接代入 $x=1$ 到第二段表达式求参数"
+        },
+        {
+          "errorType": "calculation",
+          "description": "解方程时符号出错，得到 $a=1$"
+        }
+      ],
+      "estimatedMinutes": 5,
+      "sourceType": "ai_generated",
+      "sourceReference": "ai_batch_001"
+    }
+  ]
+}

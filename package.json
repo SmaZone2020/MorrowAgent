@@ -6,13 +6,16 @@
   "packageManager": "pnpm@11.1.2",
   "scripts": {
     "dev": "vite --host",
+    "predev": "node scripts/buildKnowledge.mjs",
     "build": "tsc -b && vite build",
+    "prebuild": "node scripts/buildKnowledge.mjs",
     "preview": "vite preview",
     "typecheck": "tsc -b --pretty false",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
-    "validate:knowledge": "node scripts/validateKnowledge.mjs"
+    "validate:knowledge": "node scripts/validateKnowledge.mjs",
+    "build:knowledge": "node scripts/buildKnowledge.mjs"
   },
   "dependencies": {
     "@floating-ui/dom": "^1.8.0",
