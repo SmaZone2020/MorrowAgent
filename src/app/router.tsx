@@ -10,6 +10,7 @@ import { ProviderSettingsPage } from "@/pages/settings/ProviderSettingsPage";
 import { ModelSettingsPage } from "@/pages/settings/ModelSettingsPage";
 import { DataSettingsPage } from "@/pages/settings/DataSettingsPage";
 import { KnowledgePage } from "@/pages/KnowledgePage";
+import { DrillPage } from "@/pages/training/DrillPage";
 
 export const router = createHashRouter([
   {
@@ -25,7 +26,7 @@ export const router = createHashRouter([
       { path: "learning/report", element: <PlaceholderPage /> },
       { path: "training", element: <Navigate to="/training/assessment" replace /> },
       { path: "training/assessment", element: <PlaceholderPage /> },
-      { path: "training/drill", element: <PlaceholderPage /> },
+      { path: "training/drill", element: <DrillPage /> },
       { path: "training/mock", element: <PlaceholderPage /> },
       { path: "wrong-book", element: <PlaceholderPage /> },
       { path: "knowledge", element: <KnowledgePage /> },
