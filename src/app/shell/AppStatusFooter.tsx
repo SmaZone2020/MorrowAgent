@@ -5,6 +5,7 @@ import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
 import { Tooltip } from "@/vendor/beui/components/motion/tooltip";
 import { useAnimatedSidebar } from "@/vendor/beui/components/motion/animated-sidebar";
 import { settingsPath } from "@/app/navigation";
+import { useProviderStatus } from "@/features/settings/providerStatus";
 
 // The footer is the settings entry itself, not a storage readout: the row
 // names the destination, and the badge is the only thing that reports a
@@ -15,6 +16,7 @@ export function AppStatusFooter() {
   const collapsed = state === "collapsed";
   const anchorRef = useRef<HTMLButtonElement | null>(null);
   const [hovered, setHovered] = useState(false);
+  const configured = useProviderStatus((provider) => provider.configured);
 
   return (
     <>
@@ -22,7 +24,7 @@ export function AppStatusFooter() {
         ref={anchorRef}
         type="button"
         onClick={() => navigate(settingsPath)}
-        aria-label="设置，AI Provider 未配置"
+        aria-label={configured ? "设置" : "设置，AI Provider 未配置"}
         onPointerEnter={() => setHovered(true)}
         onPointerLeave={() => setHovered(false)}
         onFocus={() => setHovered(true)}
@@ -35,14 +37,16 @@ export function AppStatusFooter() {
         <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground group-data-[state=collapsed]/sidebar:hidden">
           设置
         </span>
-        <AnimatedBadge
-          status="warning"
-          size="sm"
-          contentKey="skeleton"
-          className="shrink-0 group-data-[state=collapsed]/sidebar:hidden"
-        >
-          未配置
-        </AnimatedBadge>
+        {configured ? null : (
+          <AnimatedBadge
+            status="warning"
+            size="sm"
+            contentKey="skeleton"
+            className="shrink-0 group-data-[state=collapsed]/sidebar:hidden"
+          >
+            未配置
+          </AnimatedBadge>
+        )}
         <ChevronRight
           aria-hidden="true"
           className="size-3.5 shrink-0 text-muted-foreground group-data-[state=collapsed]/sidebar:hidden"

@@ -3,7 +3,10 @@ import { Button } from "@/vendor/beui/components/motion/button";
 import { Input } from "@/vendor/beui/components/motion/input";
 import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
 import { Panel } from "@/components/Panel";
-import { useProviderStatus } from "@/features/settings/providerStatus";
+import {
+  activeProvider,
+  useProviderStatus,
+} from "@/features/settings/providerStatus";
 import { listModels, type ModelInfo } from "@/features/settings/aiBridge";
 
 type TestState =
@@ -14,12 +17,16 @@ type TestState =
 
 export function ProviderSettingsPage() {
   const provider = useProviderStatus((state) => state.provider);
+  const configured = useProviderStatus((state) => state.configured);
   const save = useProviderStatus((state) => state.save);
   const clear = useProviderStatus((state) => state.clear);
 
-  const [baseUrl, setBaseUrl] = useState("");
-  const [model, setModel] = useState("");
-  const [apiKey, setApiKey] = useState("");
+  // Mirror the credential that requests actually use, so a debug-only setup
+  // shows its values here instead of an empty form that looks unconfigured.
+  const initial = activeProvider();
+  const [baseUrl, setBaseUrl] = useState(initial?.baseUrl ?? "");
+  const [model, setModel] = useState(initial?.model ?? "");
+  const [apiKey, setApiKey] = useState(initial?.apiKey ?? "");
   const [test, setTest] = useState<TestState>({ status: "idle" });
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [saving, setSaving] = useState(false);
@@ -72,11 +79,11 @@ export function ProviderSettingsPage() {
         title="AI Provider"
         action={
           <AnimatedBadge
-            status={provider ? "success" : "warning"}
+            status={configured ? "success" : "warning"}
             size="sm"
-            contentKey={provider ? "configured" : "missing"}
+            contentKey={configured ? "configured" : "missing"}
           >
-            {provider ? "已配置" : "未接入"}
+            {configured ? "已配置" : "未接入"}
           </AnimatedBadge>
         }
       >

@@ -98,8 +98,8 @@ export const pageMetaList: PageMeta[] = [
   {
     path: "/settings/provider",
     title: "AI Provider",
-    section: "Settings",
-    stage: "planned",
+    section: "设置",
+    stage: "skeleton",
     scope: [
       "OpenAI Chat Completions 与 Responses 协议",
       "Anthropic Messages 协议",
@@ -109,14 +109,14 @@ export const pageMetaList: PageMeta[] = [
   {
     path: "/settings/model",
     title: "模型配置",
-    section: "Settings",
+    section: "设置",
     stage: "planned",
     scope: ["默认模型与备用模型", "生成参数", "教学风格与难度偏好"],
   },
   {
     path: "/settings/data",
     title: "数据管理",
-    section: "Settings",
+    section: "设置",
     stage: "planned",
     scope: ["数据库位置与体积", "备份、导出与删除", "Demo 数据重置"],
   },
