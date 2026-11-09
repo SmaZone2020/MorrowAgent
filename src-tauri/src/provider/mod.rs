@@ -1,3 +1,4 @@
+pub mod secret;
 pub mod types;
 
 use types::{

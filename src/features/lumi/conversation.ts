@@ -1,9 +1,8 @@
 import { create } from "zustand";
 import {
-  debugProviderConfig,
-  sendChat,
-  type ChatMessage,
-} from "@/features/settings/aiBridge";
+  activeProvider,
+} from "@/features/settings/providerStatus";
+import { sendChat, type ChatMessage } from "@/features/settings/aiBridge";
 
 export interface ConversationTurn {
   id: string;
@@ -76,7 +75,7 @@ export const useConversation = create<ConversationState>((set, get) => ({
         ),
       }));
 
-    const config = debugProviderConfig();
+    const config = activeProvider();
     if (!config) {
       fail("还没有配置 Provider");
       return;

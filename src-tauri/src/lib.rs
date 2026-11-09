@@ -4,6 +4,7 @@
 
 mod provider;
 
+use provider::secret::{self, StoredProvider};
 use provider::types::{ChatRequest, ChatResponse, ModelInfo, ProviderConfig};
 use tauri::State;
 
@@ -30,6 +31,21 @@ async fn ai_chat(
     provider::chat(&state.Client, &config, &request).await
 }
 
+#[tauri::command]
+fn provider_save(app: tauri::AppHandle, provider: StoredProvider) -> Result<(), String> {
+    secret::save(&app, &provider)
+}
+
+#[tauri::command]
+fn provider_load(app: tauri::AppHandle) -> Result<Option<StoredProvider>, String> {
+    secret::load(&app)
+}
+
+#[tauri::command]
+fn provider_clear(app: tauri::AppHandle) -> Result<(), String> {
+    secret::clear(&app)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let client = reqwest::Client::builder()
@@ -40,7 +56,13 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(AppState { Client: client })
-        .invoke_handler(tauri::generate_handler![ai_list_models, ai_chat])
+        .invoke_handler(tauri::generate_handler![
+            ai_list_models,
+            ai_chat,
+            provider_save,
+            provider_load,
+            provider_clear
+        ])
         .run(tauri::generate_context!())
         .expect("error while running Morrow Agent");
 }
