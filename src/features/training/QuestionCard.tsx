@@ -93,20 +93,21 @@ export function QuestionCard({
         </MathText>
 
         {isChoice ? (
-          <div className="flex flex-col gap-2" role="radiogroup">
+          <div className="flex flex-col gap-2" role="group" aria-label="选项">
             {question.options.map((option) => {
               const chosen = selected === option.key;
-              const reveal = phase === "submitted" || showExplanation;
+              const reveal = revealExplanation;
               const isAnswer = option.key === question.answer;
               return (
                 <Button
                   key={option.key}
-                  role="radio"
-                  aria-checked={chosen}
+                  aria-pressed={chosen}
                   variant={chosen ? "secondary" : "ghost"}
                   className={`h-auto w-full justify-start rounded-xl px-4 py-2.5 text-left ${
                     reveal && isAnswer ? "ring-1 ring-primary/40" : ""
-                  } ${reveal && chosen && !isAnswer ? "opacity-55" : ""}`}
+                  } ${reveal && chosen && !isAnswer ? "opacity-55" : ""} ${
+                    phase === "submitted" ? "cursor-default" : ""
+                  }`}
                   onClick={() => {
                     // After submitting the choice is frozen, but keeping the
                     // button enabled preserves the revealed state's contrast;
