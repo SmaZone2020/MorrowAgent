@@ -1,13 +1,14 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Database, ChevronRight } from "@gravity-ui/icons";
+import { ChevronRight, Gear } from "@gravity-ui/icons";
 import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
 import { Tooltip } from "@/vendor/beui/components/motion/tooltip";
 import { useAnimatedSidebar } from "@/vendor/beui/components/motion/animated-sidebar";
 import { settingsPath } from "@/app/navigation";
 
-// The status bar doubles as the settings entry, so Settings needs no menu row
-// of its own while staying one click away in both the panel and the rail.
+// The footer is the settings entry itself, not a storage readout: the row
+// names the destination, and the badge is the only thing that reports a
+// sub-state (no provider connected yet).
 export function AppStatusFooter() {
   const navigate = useNavigate();
   const { state } = useAnimatedSidebar();
@@ -21,18 +22,18 @@ export function AppStatusFooter() {
         ref={anchorRef}
         type="button"
         onClick={() => navigate(settingsPath)}
-        aria-label="设置：本地模式，AI Provider 未接入"
+        aria-label="设置，AI Provider 未配置"
         onPointerEnter={() => setHovered(true)}
         onPointerLeave={() => setHovered(false)}
         onFocus={() => setHovered(true)}
         onBlur={() => setHovered(false)}
-        className="flex min-h-9 w-full min-w-0 items-center gap-2.5 overflow-hidden rounded-xl px-2 text-left outline-none transition-colors hover:bg-muted/60 focus-visible:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring group-data-[state=collapsed]/sidebar:justify-center group-data-[state=collapsed]/sidebar:px-0"
+        className="group-data-[state=collapsed]/sidebar:mx-auto group-data-[state=collapsed]/sidebar:size-9 group-data-[state=collapsed]/sidebar:min-h-0 group-data-[state=collapsed]/sidebar:flex-none group-data-[state=collapsed]/sidebar:justify-center group-data-[state=collapsed]/sidebar:gap-0 group-data-[state=collapsed]/sidebar:rounded-full group-data-[state=collapsed]/sidebar:px-0 flex min-h-9 w-full min-w-0 items-center gap-2.5 overflow-hidden rounded-xl px-2 text-left outline-none transition-colors hover:bg-muted/60 focus-visible:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring"
       >
         <span className="grid size-5 shrink-0 place-items-center text-muted-foreground">
-          <Database className="size-4" />
+          <Gear className="size-4" />
         </span>
         <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground group-data-[state=collapsed]/sidebar:hidden">
-          本地模式
+          设置
         </span>
         <AnimatedBadge
           status="warning"
@@ -40,7 +41,7 @@ export function AppStatusFooter() {
           contentKey="skeleton"
           className="shrink-0 group-data-[state=collapsed]/sidebar:hidden"
         >
-          未接入
+          未配置
         </AnimatedBadge>
         <ChevronRight
           aria-hidden="true"

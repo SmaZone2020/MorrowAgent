@@ -4,6 +4,8 @@ import { DashboardPage } from "@/pages/DashboardPage";
 import { LumiPage } from "@/pages/LumiPage";
 import { PlaceholderPage } from "@/pages/PlaceholderPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
+import { SettingsLayout } from "@/pages/settings/SettingsLayout";
+import { SettingsOverviewPage } from "@/pages/settings/SettingsOverviewPage";
 
 export const router = createHashRouter([
   {
@@ -23,10 +25,16 @@ export const router = createHashRouter([
       { path: "training/mock", element: <PlaceholderPage /> },
       { path: "wrong-book", element: <PlaceholderPage /> },
       { path: "knowledge", element: <PlaceholderPage /> },
-      { path: "settings", element: <Navigate to="/settings/provider" replace /> },
-      { path: "settings/provider", element: <PlaceholderPage /> },
-      { path: "settings/model", element: <PlaceholderPage /> },
-      { path: "settings/data", element: <PlaceholderPage /> },
+      {
+        path: "settings",
+        element: <SettingsLayout />,
+        children: [
+          { index: true, element: <SettingsOverviewPage /> },
+          { path: "provider", element: <PlaceholderPage /> },
+          { path: "model", element: <PlaceholderPage /> },
+          { path: "data", element: <PlaceholderPage /> },
+        ],
+      },
       { path: "*", element: <NotFoundPage /> },
     ],
   },
