@@ -64,7 +64,7 @@ export const pageMetaList: PageMeta[] = [
     path: "/training/drill",
     title: "专项训练",
     section: "训练中心",
-    stage: "planned",
+    stage: "skeleton",
     scope: ["训练时长与知识点选择", "诊断驱动的题目推荐", "训练后掌握度更新"],
   },
   {
@@ -85,7 +85,7 @@ export const pageMetaList: PageMeta[] = [
     path: "/knowledge",
     title: "知识库",
     section: "资源与记录",
-    stage: "planned",
+    stage: "skeleton",
     scope: ["章节树与知识点详情", "前置依赖与关联关系", "资源包版本策略"],
   },
   {
@@ -110,14 +110,14 @@ export const pageMetaList: PageMeta[] = [
     path: "/settings/model",
     title: "模型配置",
     section: "设置",
-    stage: "planned",
+    stage: "skeleton",
     scope: ["默认模型与备用模型", "生成参数", "教学风格与难度偏好"],
   },
   {
     path: "/settings/data",
     title: "数据管理",
     section: "设置",
-    stage: "planned",
+    stage: "skeleton",
     scope: ["数据库位置与体积", "备份、导出与删除", "Demo 数据重置"],
   },
 ];
