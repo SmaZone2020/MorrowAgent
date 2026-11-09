@@ -141,9 +141,12 @@ pub async fn run(
             }
         };
 
-        buffer.push_str(&String::from_utf8_lossy(&bytes));
+        // Providers terminate frames with CRLF; dropping the carriage returns
+        // up front makes the split below a plain "\n\n" search even when a
+        // chunk boundary lands between the two bytes. Inside a JSON string a
+        // real CR is always escaped, so nothing meaningful is lost.
+        buffer.push_str(&String::from_utf8_lossy(&bytes).replace('\r', ""));
 
-        // SSE frames end with a blank line; keep the tail for the next chunk.
         while let Some(index) = buffer.find("\n\n") {
             let frame: String = buffer.drain(..index + 2).collect();
             for line in frame.lines() {
@@ -151,6 +154,13 @@ pub async fn run(
                     let _ = app.emit(DELTA_EVENT, Delta::chunk(&request_id, text));
                 }
             }
+        }
+    }
+
+    // A last frame without its trailing blank line still carries content.
+    for line in buffer.lines() {
+        if let Some(text) = read_chunk(line) {
+            let _ = app.emit(DELTA_EVENT, Delta::chunk(&request_id, text));
         }
     }
 
