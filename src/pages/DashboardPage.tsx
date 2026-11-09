@@ -32,7 +32,7 @@ export function DashboardPage() {
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-5 sm:p-7">
       <header className="flex flex-wrap items-center gap-3">
-        <h1 className="min-w-0 flex-1 truncate text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+        <h1 className="min-w-0 flex-1 Siyuan truncate text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
           学习仪表盘
         </h1>
         <AnimatedBadge status="warning" size="sm" contentKey="no-diagnosis">

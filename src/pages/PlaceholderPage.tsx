@@ -13,7 +13,7 @@ export function PlaceholderPage() {
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 p-5 sm:p-7">
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="min-w-0 flex-1 truncate text-xl font-semibold tracking-tight text-foreground">
+        <h1 className="min-w-0 flex-1 Siyuan truncate text-xl font-semibold tracking-tight text-foreground">
           {meta?.title ?? "页面未就绪"}
         </h1>
         <StageBadge label={meta?.stage === "planned" ? "待实现" : "骨架"} />
