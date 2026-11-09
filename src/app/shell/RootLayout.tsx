@@ -5,17 +5,20 @@ import { TitleBar } from "@/app/shell/TitleBar";
 import { ResizeHandles } from "@/app/shell/ResizeHandles";
 import { AnimatedSidebarProvider } from "@/vendor/beui/components/motion/animated-sidebar";
 import { useProviderStatus } from "@/features/settings/providerStatus";
+import { usePreferences } from "@/features/settings/preferencesStore";
 
 // The sidebar provider wraps the title bar too, because the sidebar toggle now
 // lives there and reads its open state from the provider.
 export function RootLayout() {
   const hydrate = useProviderStatus((state) => state.hydrate);
+  const hydratePreferences = usePreferences((state) => state.hydrate);
 
   // One read of the encrypted credential blob at boot; every screen after that
   // subscribes to the same store.
   useEffect(() => {
     void hydrate();
-  }, [hydrate]);
+    void hydratePreferences();
+  }, [hydrate, hydratePreferences]);
 
   return (
     <AppProviders>

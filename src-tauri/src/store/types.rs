@@ -35,3 +35,15 @@ pub struct ConversationSummary {
     #[serde(rename = "updatedAt")]
     pub UpdatedAt: i64,
 }
+
+#[derive(Debug, Clone, Serialize)]
+pub struct StoreStats {
+    #[serde(rename = "path")]
+    pub Path: String,
+    #[serde(rename = "sizeBytes")]
+    pub SizeBytes: u64,
+    #[serde(rename = "conversations")]
+    pub Conversations: i64,
+    #[serde(rename = "messages")]
+    pub Messages: i64,
+}

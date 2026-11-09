@@ -7,6 +7,8 @@ import { NotFoundPage } from "@/pages/NotFoundPage";
 import { SettingsLayout } from "@/pages/settings/SettingsLayout";
 import { SettingsOverviewPage } from "@/pages/settings/SettingsOverviewPage";
 import { ProviderSettingsPage } from "@/pages/settings/ProviderSettingsPage";
+import { ModelSettingsPage } from "@/pages/settings/ModelSettingsPage";
+import { DataSettingsPage } from "@/pages/settings/DataSettingsPage";
 
 export const router = createHashRouter([
   {
@@ -32,8 +34,8 @@ export const router = createHashRouter([
         children: [
           { index: true, element: <SettingsOverviewPage /> },
           { path: "provider", element: <ProviderSettingsPage /> },
-          { path: "model", element: <PlaceholderPage /> },
-          { path: "data", element: <PlaceholderPage /> },
+          { path: "model", element: <ModelSettingsPage /> },
+          { path: "data", element: <DataSettingsPage /> },
         ],
       },
       { path: "*", element: <NotFoundPage /> },

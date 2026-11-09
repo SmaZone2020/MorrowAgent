@@ -2,12 +2,13 @@
 // camelCase, so the snake_case lint does not apply to this crate.
 #![allow(non_snake_case)]
 
+mod prefs;
 mod provider;
 mod store;
 
 use provider::secret::{self, StoredProvider};
 use provider::types::{ChatRequest, ChatResponse, ModelInfo, ProviderConfig};
-use store::{ConversationSummary, NewMessage, Store, StoredMessage};
+use store::{ConversationSummary, NewMessage, Store, StoreStats, StoredMessage};
 use tauri::Manager;
 use tauri::State;
 
@@ -101,6 +102,21 @@ fn chat_reset(state: State<'_, Store>) -> Result<(), String> {
     state.reset()
 }
 
+#[tauri::command]
+fn data_stats(state: State<'_, Store>) -> Result<StoreStats, String> {
+    state.stats()
+}
+
+#[tauri::command]
+fn prefs_load(app: tauri::AppHandle) -> Result<prefs::Preferences, String> {
+    prefs::load(&app)
+}
+
+#[tauri::command]
+fn prefs_save(app: tauri::AppHandle, preferences: prefs::Preferences) -> Result<(), String> {
+    prefs::save(&app, &preferences)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let client = reqwest::Client::builder()
@@ -135,7 +151,10 @@ pub fn run() {
             chat_messages,
             chat_conversations,
             chat_delete,
-            chat_reset
+            chat_reset,
+            data_stats,
+            prefs_load,
+            prefs_save
         ])
         .run(tauri::generate_context!())
         .expect("error while running Morrow Agent");

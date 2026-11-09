@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { activeProvider } from "@/features/settings/providerStatus";
+import { usePreferences } from "@/features/settings/preferencesStore";
 import { streamChat } from "@/features/settings/aiStream";
 import type { ChatMessage } from "@/features/settings/aiBridge";
 import {
@@ -135,6 +136,8 @@ export const useConversation = create<ConversationState>((set, get) => ({
     try {
       const answer = await streamChat(config, history, {
         signal: controller.signal,
+        maxTokens: usePreferences.getState().maxTokens,
+        temperature: usePreferences.getState().temperature,
         onProgress: (partial) => patchReply({ content: partial }),
       });
       const final = answer || "（已停止）";

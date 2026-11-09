@@ -6,13 +6,14 @@ use rusqlite::{params, Connection};
 pub mod migrations;
 pub mod types;
 
-pub use types::{ConversationSummary, NewMessage, StoredMessage};
+pub use types::{ConversationSummary, NewMessage, StoreStats, StoredMessage};
 
 /// The database handle shared by every command. SQLite serialises writes
 /// anyway, and the app has one window, so a single connection behind a mutex is
 /// simpler than a pool and never blocks on contention in practice.
 pub struct Store {
     pub Connection: Mutex<Connection>,
+    pub Path: std::path::PathBuf,
 }
 
 fn now() -> i64 {
@@ -36,6 +37,7 @@ pub fn open(path: &Path) -> Result<Store, String> {
 
     Ok(Store {
         Connection: Mutex::new(connection),
+        Path: path.to_path_buf(),
     })
 }
 
@@ -190,6 +192,35 @@ impl Store {
         connection
             .execute_batch("DELETE FROM messages; DELETE FROM conversations;")
             .map_err(|error| format!("清空数据失败：{}", error))
+    }
+
+    pub fn stats(&self) -> Result<StoreStats, String> {
+        let (conversations, messages) = {
+            let connection = self.lock()?;
+            let conversations: i64 = connection
+                .query_row("SELECT COUNT(*) FROM conversations", [], |row| row.get(0))
+                .map_err(|error| format!("统计会话失败：{}", error))?;
+            let messages: i64 = connection
+                .query_row("SELECT COUNT(*) FROM messages", [], |row| row.get(0))
+                .map_err(|error| format!("统计消息失败：{}", error))?;
+            (conversations, messages)
+        };
+
+        // WAL keeps recent writes in a sidecar, so the page count alone would
+        // understate what the user sees on disk.
+        let size_bytes = std::fs::metadata(&self.Path)
+            .map(|meta| meta.len())
+            .unwrap_or(0)
+            + std::fs::metadata(self.Path.with_extension("db-wal"))
+                .map(|meta| meta.len())
+                .unwrap_or(0);
+
+        Ok(StoreStats {
+            Path: self.Path.to_string_lossy().to_string(),
+            SizeBytes: size_bytes,
+            Conversations: conversations,
+            Messages: messages,
+        })
     }
 }
 

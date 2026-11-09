@@ -1,13 +1,13 @@
 import type { ComponentType, SVGProps } from "react";
 import { CloudGear, Database, Sliders } from "@gravity-ui/icons";
 
+export type SettingsSectionKey = "provider" | "model" | "data";
+
 export interface SettingsSection {
-  key: string;
+  key: SettingsSectionKey;
   label: string;
   path: string;
   icon: ComponentType<SVGProps<SVGSVGElement>>;
-  /** One-line state shown on the overview row. */
-  status: string;
 }
 
 // Section order follows the first-run path: connect a provider, pick a model,
@@ -18,20 +18,17 @@ export const settingsSections: SettingsSection[] = [
     label: "AI Provider",
     path: "/settings/provider",
     icon: CloudGear,
-    status: "未接入",
   },
   {
     key: "model",
     label: "模型配置",
     path: "/settings/model",
     icon: Sliders,
-    status: "未配置",
   },
   {
     key: "data",
     label: "数据管理",
     path: "/settings/data",
     icon: Database,
-    status: "本地",
   },
 ];
