@@ -35,7 +35,7 @@ export const pageMetaList: PageMeta[] = [
     path: "/learning/profile",
     title: "知识画像",
     section: "我的学习",
-    stage: "planned",
+    stage: "skeleton",
     scope: [
       "知识点树与前置依赖关系",
       "掌握度 0-100 与独立置信度",

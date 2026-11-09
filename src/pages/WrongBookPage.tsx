@@ -50,13 +50,15 @@ export function WrongBookPage() {
       <Panel
         title="错题本"
         action={
-          <AnimatedBadge
-            status={attempts.length > 0 ? "warning" : "neutral"}
-            size="sm"
-            contentKey={attempts.length}
-          >
-            {attempts.length} 道
-          </AnimatedBadge>
+          isTauriRuntime ? (
+            <AnimatedBadge
+              status={attempts.length > 0 ? "warning" : "neutral"}
+              size="sm"
+              contentKey={attempts.length}
+            >
+              {attempts.length} 道
+            </AnimatedBadge>
+          ) : null
         }
       >
         {!isTauriRuntime ? (

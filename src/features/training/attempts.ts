@@ -13,6 +13,13 @@ export interface WrongAttempt {
   createdAt: number;
 }
 
+export interface PointStats {
+  knowledgePointId: string;
+  attempts: number;
+  correct: number;
+  lastAttemptAt: number;
+}
+
 /**
  * Records one answered question. The snapshot travels with the row so a later
  * knowledge-pack edit can never rewrite what the user actually answered.
@@ -44,4 +51,9 @@ export async function loadWrongAttempts(limit = 50): Promise<WrongAttempt[]> {
 export async function forgetAttempt(questionId: string): Promise<void> {
   if (!isTauriRuntime) return;
   await invoke("attempt_forget", { questionId });
+}
+
+export async function loadPointStats(): Promise<PointStats[]> {
+  if (!isTauriRuntime) return [];
+  return invoke<PointStats[]>("attempt_point_stats");
 }

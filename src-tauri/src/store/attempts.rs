@@ -3,6 +3,19 @@ use serde::Serialize;
 
 use super::{now, NewAttempt, Store};
 
+/// Per knowledge point tallies, which is what the profile view ranks.
+#[derive(Debug, Clone, Serialize)]
+pub struct PointStats {
+    #[serde(rename = "knowledgePointId")]
+    pub KnowledgePointId: String,
+    #[serde(rename = "attempts")]
+    pub Attempts: i64,
+    #[serde(rename = "correct")]
+    pub Correct: i64,
+    #[serde(rename = "lastAttemptAt")]
+    pub LastAttemptAt: i64,
+}
+
 /// One answered question as recorded, with the snapshot taken at answer time.
 #[derive(Debug, Clone, Serialize)]
 pub struct StoredAttempt {
@@ -86,6 +99,39 @@ impl Store {
             .map_err(|error| format!("移除错题失败：{}", error))?;
         Ok(())
     }
+
+    /// Raw tallies per knowledge point. These are evidence, not mastery: the
+    /// 0-100 mastery model is still an open product question, so nothing here
+    /// pretends to be a score.
+    pub fn point_stats(&self) -> Result<Vec<PointStats>, String> {
+        let connection = self.lock()?;
+        let mut statement = connection
+            .prepare(
+                "SELECT knowledge_point_id,
+                        COUNT(*),
+                        SUM(is_correct),
+                        MAX(created_at)
+                 FROM answer_attempts
+                 WHERE knowledge_point_id <> ''
+                 GROUP BY knowledge_point_id
+                 ORDER BY COUNT(*) DESC",
+            )
+            .map_err(|error| format!("查询知识点统计失败：{}", error))?;
+
+        let rows = statement
+            .query_map([], |row| {
+                Ok(PointStats {
+                    KnowledgePointId: row.get(0)?,
+                    Attempts: row.get(1)?,
+                    Correct: row.get(2)?,
+                    LastAttemptAt: row.get(3)?,
+                })
+            })
+            .map_err(|error| format!("读取知识点统计失败：{}", error))?;
+
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(|error| format!("解析知识点统计失败：{}", error))
+    }
 }
 
 fn read_attempt(row: &rusqlite::Row<'_>) -> rusqlite::Result<StoredAttempt> {
@@ -154,6 +200,22 @@ mod tests {
 
         assert!(store.wrong_attempts(10).expect("list").is_empty());
         assert_eq!(store.stats().expect("stats").Attempts, 0);
+
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn point_tallies_count_every_attempt_not_just_the_latest() {
+        let (path, store) = temp_store();
+
+        store.record_attempt(attempt("a1", false)).expect("first");
+        store.record_attempt(attempt("a2", true)).expect("second");
+
+        let stats = store.point_stats().expect("point stats");
+        assert_eq!(stats.len(), 1);
+        assert_eq!(stats[0].KnowledgePointId, "limit");
+        assert_eq!(stats[0].Attempts, 2);
+        assert_eq!(stats[0].Correct, 1);
 
         let _ = std::fs::remove_file(path);
     }

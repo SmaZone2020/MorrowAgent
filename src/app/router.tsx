@@ -11,6 +11,7 @@ import { ModelSettingsPage } from "@/pages/settings/ModelSettingsPage";
 import { DataSettingsPage } from "@/pages/settings/DataSettingsPage";
 import { KnowledgePage } from "@/pages/KnowledgePage";
 import { WrongBookPage } from "@/pages/WrongBookPage";
+import { ProfilePage } from "@/pages/ProfilePage";
 import { DrillPage } from "@/pages/training/DrillPage";
 
 export const router = createHashRouter([
@@ -23,7 +24,7 @@ export const router = createHashRouter([
       { path: "learning", element: <Navigate to="/learning/goal" replace /> },
       { path: "learning/goal", element: <PlaceholderPage /> },
       { path: "learning/plan", element: <PlaceholderPage /> },
-      { path: "learning/profile", element: <PlaceholderPage /> },
+      { path: "learning/profile", element: <ProfilePage /> },
       { path: "learning/report", element: <PlaceholderPage /> },
       { path: "training", element: <Navigate to="/training/assessment" replace /> },
       { path: "training/assessment", element: <PlaceholderPage /> },

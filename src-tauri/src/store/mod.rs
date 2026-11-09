@@ -8,7 +8,7 @@ pub mod migrations;
 pub mod stats;
 pub mod types;
 
-pub use attempts::StoredAttempt;
+pub use attempts::{PointStats, StoredAttempt};
 pub use types::{ConversationSummary, NewAttempt, NewMessage, StoreStats, StoredMessage};
 
 /// The database handle shared by every command. SQLite serialises writes
