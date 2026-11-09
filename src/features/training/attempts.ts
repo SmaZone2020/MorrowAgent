@@ -23,6 +23,10 @@ export interface PointStats {
 /**
  * Records one answered question. The snapshot travels with the row so a later
  * knowledge-pack edit can never rewrite what the user actually answered.
+ *
+ * A question can carry several knowledge tags, but the row keeps one point id
+ * so tallies stay one-per-attempt; the first tag is the point the question is
+ * primarily filed under.
  */
 export async function recordAttempt(
   question: Question,
