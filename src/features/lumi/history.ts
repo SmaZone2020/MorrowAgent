@@ -38,13 +38,3 @@ export async function loadConversations(
   if (!isTauriRuntime) return [];
   return invoke<ConversationSummary[]>("chat_conversations", { limit });
 }
-
-export async function deleteConversation(conversationId: string): Promise<void> {
-  if (!isTauriRuntime) return;
-  await invoke("chat_delete", { conversationId });
-}
-
-export async function resetHistory(): Promise<void> {
-  if (!isTauriRuntime) return;
-  await invoke("chat_reset");
-}
