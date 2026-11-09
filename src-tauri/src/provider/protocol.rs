@@ -134,7 +134,9 @@ pub fn prepare(config: &ProviderConfig, request: &ChatRequest) -> Prepared {
 
 #[cfg(test)]
 mod tests {
-    use super::{read_anthropic, read_openai_chat, read_openai_responses};
+    use super::{prepare, read_anthropic, read_openai_chat, read_openai_responses};
+    use crate::provider::types::{ChatMessage, ChatRequest, ProviderConfig};
+    use crate::provider::protocol::Protocol;
 
     #[test]
     fn chat_reads_a_delta() {
@@ -156,5 +158,85 @@ mod tests {
             r#"data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"Hi"}}"#;
         assert_eq!(read_anthropic(delta).as_deref(), Some("Hi"));
         assert_eq!(read_anthropic(r#"data: {"type":"ping"}"#), None);
+    }
+
+    #[test]
+    fn anthropic_moves_the_system_prompt_out_of_messages() {
+        let config = ProviderConfig {
+            BaseUrl: "https://api.anthropic.com/v1".to_string(),
+            ApiKey: "k".to_string(),
+            Model: "claude".to_string(),
+            Protocol: Protocol::Anthropic,
+        };
+        let request = ChatRequest {
+            Messages: vec![
+                ChatMessage {
+                    Role: "system".to_string(),
+                    Content: "be brief".to_string(),
+                },
+                ChatMessage {
+                    Role: "user".to_string(),
+                    Content: "hi".to_string(),
+                },
+            ],
+            Temperature: None,
+            MaxTokens: None,
+        };
+
+        let prepared = prepare(&config, &request);
+        assert_eq!(prepared.Url, "https://api.anthropic.com/v1/messages");
+        assert_eq!(prepared.Body["system"], "be brief");
+        assert_eq!(prepared.Body["messages"].as_array().unwrap().len(), 1);
+        // Anthropic rejects a payload without max_tokens.
+        assert!(prepared.Body["max_tokens"].is_number());
+    }
+
+    /// Live check against a real endpoint. Run with:
+    /// `MORROW_TEST_BASE_URL=... MORROW_TEST_API_KEY=... cargo test -- --ignored`
+    #[test]
+    #[ignore]
+    fn streams_from_a_real_provider() {
+        let base = std::env::var("MORROW_TEST_BASE_URL").expect("MORROW_TEST_BASE_URL");
+        let key = std::env::var("MORROW_TEST_API_KEY").expect("MORROW_TEST_API_KEY");
+        let model = std::env::var("MORROW_TEST_MODEL").unwrap_or_else(|_| "deepseek-v4.1-flash".into());
+
+        let config = ProviderConfig {
+            BaseUrl: base,
+            ApiKey: key,
+            Model: model,
+            Protocol: Protocol::OpenaiChat,
+        };
+        let request = ChatRequest {
+            Messages: vec![ChatMessage {
+                Role: "user".to_string(),
+                Content: "只回复两个字：你好".to_string(),
+            }],
+            Temperature: Some(0.0),
+            MaxTokens: Some(16),
+        };
+
+        let prepared = prepare(&config, &request);
+
+        // `async_runtime::block_on` reuses the reqwest build already in the
+        // dependency tree, so the test needs no extra crate.
+        let text = tauri::async_runtime::block_on(async {
+            let response = reqwest::Client::new()
+                .post(&prepared.Url)
+                .bearer_auth(&config.ApiKey)
+                .json(&prepared.Body)
+                .send()
+                .await
+                .expect("request reaches the endpoint");
+
+            assert!(response.status().is_success(), "status {}", response.status());
+            response.text().await.expect("body reads")
+        });
+
+        let collected: String = text
+            .replace('\r', "")
+            .lines()
+            .filter_map(|line| (prepared.Reads)(line))
+            .collect();
+        assert!(!collected.is_empty(), "stream yielded no text: {}", text);
     }
 }
