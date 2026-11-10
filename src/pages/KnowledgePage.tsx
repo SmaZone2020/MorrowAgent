@@ -1,180 +1,84 @@
-import { useMemo } from "react";
-import { useNavigate } from "react-router-dom";
-import { Magnifier } from "@gravity-ui/icons";
-import { Button } from "@/vendor/beui/components/motion/button";
-import { Input } from "@/vendor/beui/components/motion/input";
-import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
-import { Panel } from "@/components/Panel";
-import { MathText } from "@/components/MathText";
+import { useEffect, useMemo } from "react";
+import { KnowledgeTree } from "@/features/knowledge/KnowledgeTree";
+import { KnowledgeDocument } from "@/features/knowledge/KnowledgeDocument";
 import { usePersistedState, useScrollMemory } from "@/features/uiState";
-import {
-  chapters,
-  questionsFor,
-  type KnowledgePoint,
-} from "@/features/knowledge";
+import { chapters, knowledgePoints } from "@/features/knowledge";
 
-const IMPORTANCE: Record<
-  string,
-  { label: string; status: "danger" | "warning" | "neutral" }
-> = {
-  critical: { label: "必考", status: "danger" },
-  high: { label: "高频", status: "warning" },
-  medium: { label: "常考", status: "neutral" },
-  low: { label: "了解", status: "neutral" },
-};
-
-const FALLBACK_BADGE = { label: "了解", status: "neutral" as const };
-
-function PointRow({
-  point,
-  open,
-  onToggle,
-}: {
-  point: KnowledgePoint;
-  open: boolean;
-  onToggle: () => void;
-}) {
-  const navigate = useNavigate();
-  const badge = IMPORTANCE[point.examImportance] ?? FALLBACK_BADGE;
-  const related = questionsFor(point.id).length;
-
-  return (
-    <li className="border-b border-border/60 last:border-0">
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={open}
-        className="flex w-full items-center gap-3 rounded-lg px-1 py-2.5 text-left outline-none transition-colors hover:bg-muted/40 focus-visible:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
-          {point.name}
-        </span>
-        <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-          {related} 题
-        </span>
-        <AnimatedBadge
-          status={badge.status}
-          size="sm"
-          contentKey={`${point.id}-${point.examImportance}`}
-          className="shrink-0"
-        >
-          {badge.label}
-        </AnimatedBadge>
-      </button>
-
-      {open ? (
-        <div className="flex flex-col gap-2 px-1 pb-3">
-          <MathText className="text-sm leading-6 text-muted-foreground">
-            {point.description}
-          </MathText>
-          {point.objectives.length > 0 ? (
-            <ul className="flex flex-col gap-1">
-              {point.objectives.map((objective) => (
-                <li
-                  key={objective}
-                  className="flex items-start gap-2 text-xs leading-5 text-muted-foreground"
-                >
-                  <span className="mt-1.5 size-1 shrink-0 rounded-full bg-accent-foreground/40" />
-                  <MathText className="min-w-0">{objective}</MathText>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-          {related > 0 ? (
-            <div>
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => navigate(`/training/drill?point=${point.id}`)}
-              >
-                练这个知识点
-              </Button>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-    </li>
-  );
-}
-
+/**
+ * A documentation view rather than a list of accordions: the tree is the
+ * navigation and the right pane is the page, so reading one point does not
+ * push everything else down.
+ */
 export function KnowledgePage() {
   const [query, setQuery] = usePersistedState("knowledge.query", "");
-  // Expanding a point is a deliberate reading choice, so it survives the trip
-  // to a drill and back.
-  const [openIds, setOpenIds] = usePersistedState<string[]>(
-    "knowledge.openIds",
-    [],
+  const [openChapters, setOpenChapters] = usePersistedState<string[]>(
+    "knowledge.openChapters",
+    [chapters[0]?.id ?? ""].filter(Boolean),
+  );
+  const [selectedId, setSelectedId] = usePersistedState<string | null>(
+    "knowledge.selectedId",
+    knowledgePoints[0]?.id ?? null,
   );
   const scrollRef = useScrollMemory<HTMLDivElement>("knowledge.scrollTop");
 
-  const filtered = useMemo(() => {
+  const firstMatch = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    if (!needle) return chapters;
-    return chapters
-      .map((chapter) => ({
-        ...chapter,
-        points: chapter.points.filter(
-          (point) =>
-            point.name.toLowerCase().includes(needle) ||
-            point.description.toLowerCase().includes(needle),
-        ),
-      }))
-      .filter((chapter) => chapter.points.length > 0);
+    if (!needle) return null;
+    for (const chapter of chapters) {
+      const hit = chapter.points.find(
+        (point) =>
+          point.name.toLowerCase().includes(needle) ||
+          point.description.toLowerCase().includes(needle),
+      );
+      if (hit) return hit.id;
+    }
+    return null;
   }, [query]);
 
-  const toggle = (pointId: string) =>
-    setOpenIds((ids) =>
-      ids.includes(pointId)
-        ? ids.filter((id) => id !== pointId)
-        : [...ids, pointId],
+  // Typing a search narrows the tree; jumping the pane to the first hit keeps
+  // the two panes from disagreeing about what is being looked at.
+  useEffect(() => {
+    if (firstMatch) setSelectedId(firstMatch);
+  }, [firstMatch, setSelectedId]);
+
+  const toggleChapter = (chapterId: string) =>
+    setOpenChapters((ids) =>
+      ids.includes(chapterId)
+        ? ids.filter((id) => id !== chapterId)
+        : [...ids, chapterId],
     );
 
-  return (
-    <div
-      ref={scrollRef}
-      className="mx-auto flex w-full max-w-4xl flex-col gap-4 p-5 sm:p-7"
-    >
-      <Input
-        value={query}
-        onChange={setQuery}
-        placeholder="搜索知识点"
-        leftIcon={<Magnifier className="size-4" />}
-        spellCheck={false}
-        autoComplete="off"
-      />
+  const selectPoint = (pointId: string) => {
+    setSelectedId(pointId);
+    const chapter = chapters.find((entry) =>
+      entry.points.some((point) => point.id === pointId),
+    );
+    if (chapter && !openChapters.includes(chapter.id)) {
+      setOpenChapters((ids) => [...ids, chapter.id]);
+    }
+  };
 
-      {filtered.length === 0 ? (
-        <Panel title="知识库">
-          <p className="py-4 text-sm text-muted-foreground">没有匹配的知识点。</p>
-        </Panel>
-      ) : (
-        filtered.map((chapter) => (
-          <Panel
-            key={chapter.id}
-            title={chapter.name}
-            action={
-              <AnimatedBadge
-                status="neutral"
-                size="sm"
-                contentKey={`${chapter.id}-${chapter.version}`}
-              >
-                v{chapter.version}
-              </AnimatedBadge>
-            }
-          >
-            <ul className="flex flex-col">
-              {chapter.points.map((point) => (
-                <PointRow
-                  key={point.id}
-                  point={point}
-                  open={openIds.includes(point.id)}
-                  onToggle={() => toggle(point.id)}
-                />
-              ))}
-            </ul>
-          </Panel>
-        ))
-      )}
+  return (
+    <div className="flex h-full min-h-0 w-full">
+      <aside className="flex w-64 shrink-0 flex-col border-r border-border p-3 sm:w-72 sm:p-4">
+        <KnowledgeTree
+          query={query}
+          onQueryChange={setQuery}
+          selectedId={selectedId}
+          onSelect={selectPoint}
+          openChapters={openChapters}
+          onToggleChapter={toggleChapter}
+        />
+      </aside>
+
+      <div
+        ref={scrollRef}
+        className="scrollbar-thin min-h-0 min-w-0 flex-1 overflow-y-auto"
+      >
+        <div className="mx-auto w-full max-w-3xl">
+          <KnowledgeDocument pointId={selectedId} onOpenPoint={selectPoint} />
+        </div>
+      </div>
     </div>
   );
 }
