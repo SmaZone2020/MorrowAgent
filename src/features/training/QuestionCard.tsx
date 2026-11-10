@@ -26,6 +26,10 @@ export interface QuestionCardProps {
   onAnswered?: (answer: string, isCorrect: boolean) => void;
   /** Fires when a board-only question reveals its answer without a score. */
   onRevealed?: () => void;
+  /** A choice already made in this run, so a reload shows it as submitted. */
+  initialAnswer?: string | null;
+  /** A board question whose answer was already revealed in this run. */
+  initialRevealed?: boolean;
 }
 
 /**
@@ -39,12 +43,16 @@ export function QuestionCard({
   onNext,
   onAnswered,
   onRevealed,
+  initialAnswer = null,
+  initialRevealed = false,
 }: QuestionCardProps) {
-  const [selected, setSelected] = useState<string | null>(null);
-  const [phase, setPhase] = useState<Phase>("answering");
+  const [selected, setSelected] = useState<string | null>(initialAnswer);
+  const [phase, setPhase] = useState<Phase>(
+    initialAnswer ? "submitted" : "answering",
+  );
   // Questions that need a board have nothing to submit yet, so they can only
   // reveal the worked answer.
-  const [showExplanation, setShowExplanation] = useState(false);
+  const [showExplanation, setShowExplanation] = useState(initialRevealed);
   // Only the question body follows the reader's text scale; the surrounding
   // chrome keeps its size so the page does not reflow wholesale.
   const scale = usePreferences((state) => state.questionScale);
@@ -114,7 +122,7 @@ export function QuestionCard({
             <AnswerVerdict verdict={verdict} />
             <div className="relative flex flex-col gap-2 p-3 pr-16">
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">正确答案</span>
+                <span className="text-base text-muted-foreground">正确答案</span>
                 <MathText
                   className="font-medium text-foreground"
                   style={scaledText(scale)}

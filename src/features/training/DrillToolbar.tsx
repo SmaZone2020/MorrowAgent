@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
 import { Button } from "@/vendor/beui/components/motion/button";
 import { Tooltip } from "@/vendor/beui/components/motion/tooltip";
@@ -11,6 +11,7 @@ import {
 } from "@gravity-ui/icons";
 import { ScratchpadPanel } from "@/features/scratchpad/Scratchpad";
 import { usePreferences } from "@/features/settings/preferencesStore";
+import { usePersistedState } from "@/features/uiState";
 
 export type ToolKey = "scratchpad" | "font";
 
@@ -25,7 +26,12 @@ const SCALE_STEP = 0.1;
  * question card only gives up the width the user actually asked for.
  */
 export function DrillToolbar() {
-  const [active, setActive] = useState<ToolKey | null>(null);
+  // Which panel is open is part of the drill layout, so it comes back after a
+  // reload instead of collapsing to the bare rail.
+  const [active, setActive] = usePersistedState<ToolKey | null>(
+    "drill.tool",
+    null,
+  );
 
   return (
     <div className="flex shrink-0 items-start gap-2">
