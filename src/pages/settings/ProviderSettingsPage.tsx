@@ -1,51 +1,34 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Plus } from "@gravity-ui/icons";
 import { Button } from "@/vendor/beui/components/motion/button";
-import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
-import { Panel } from "@/components/Panel";
-import { InfoHint } from "@/components/InfoHint";
-import { ProviderEditor, type TestState } from "@/pages/settings/ProviderEditor";
+import {
+  SettingsGroup,
+  SettingsPageShell,
+  SettingsRow,
+} from "@/pages/settings/SettingsBlocks";
+import { ProviderRow } from "@/pages/settings/ProviderRow";
+import { ProviderCreateDialog } from "@/pages/settings/ProviderCreateDialog";
+import { ProviderEditDialog } from "@/pages/settings/ProviderEditDialog";
+import type { TestState } from "@/pages/settings/ProviderEditor";
+import {
+  newProviderId,
+  stripKey,
+  type DraftProvider,
+  type ProviderDraft,
+} from "@/pages/settings/providerDraft";
 import { useProviderStatus } from "@/features/settings/providerStatus";
 import { listModels } from "@/features/settings/aiBridge";
 import type { StoredProviderProfile } from "@/features/settings/providerStore";
 import { usePersistedState } from "@/features/uiState";
 
-/**
- * The half-edited provider list, kept across page changes. API keys are
- * deliberately absent: interface state is a plain file (D-070).
- */
-interface DraftProvider {
-  id: string;
-  name: string;
-  baseUrl: string;
-  protocol: NonNullable<StoredProviderProfile["protocol"]>;
-  models: string[];
-}
-
-interface ProviderDraft {
-  providers: DraftProvider[];
-  activeProviderId: string | null;
-  activeModel: string | null;
-}
-
-const newId = () => `provider-${crypto.randomUUID()}`;
-
-function stripKey(profile: StoredProviderProfile): DraftProvider {
-  return {
-    id: profile.id,
-    name: profile.name,
-    baseUrl: profile.baseUrl,
-    protocol: profile.protocol ?? "openai-chat",
-    models: profile.models,
-  };
-}
+/** How long an edit rests before it is written to the encrypted store. */
+const AUTOSAVE_MS = 600;
 
 export function ProviderSettingsPage() {
   const providers = useProviderStatus((state) => state.providers);
   const activeProviderId = useProviderStatus((state) => state.activeProviderId);
   const activeModel = useProviderStatus((state) => state.activeModel);
-  const configured = useProviderStatus((state) => state.configured);
   const saveBook = useProviderStatus((state) => state.saveBook);
-  const clear = useProviderStatus((state) => state.clear);
 
   const [draft, setDraft] = usePersistedState<ProviderDraft | null>(
     "settings.providers.draft",
@@ -54,7 +37,12 @@ export function ProviderSettingsPage() {
   // Keys live only in memory; they are re-seeded from the encrypted store.
   const [keys, setKeys] = useState<Record<string, string>>({});
   const [tests, setTests] = useState<Record<string, TestState>>({});
+  const [creating, setCreating] = useState(false);
+  // Which provider card is unfolded. Without a dialog component, editing is an
+  // inline expansion of the same row rather than a modal.
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(false);
 
   useEffect(() => {
     setKeys((current) => {
@@ -80,6 +68,7 @@ export function ProviderSettingsPage() {
     ...entry,
     apiKey: keys[entry.id] ?? "",
   }));
+  const editing = profiles.find((entry) => entry.id === editingId) ?? null;
 
   const patchProvider = (id: string, patch: Partial<DraftProvider>) =>
     setDraft((current) => {
@@ -92,9 +81,15 @@ export function ProviderSettingsPage() {
       };
     });
 
-  const addProvider = () => {
-    const id = newId();
-    setKeys((current) => ({ ...current, [id]: "" }));
+  const createProvider = (values: {
+    name: string;
+    baseUrl: string;
+    apiKey: string;
+    protocol: NonNullable<StoredProviderProfile["protocol"]>;
+  }) => {
+    const id = newProviderId();
+    setCreating(false);
+    setKeys((current) => ({ ...current, [id]: values.apiKey }));
     setDraft((current) => {
       const source = current ?? storedDraft;
       return {
@@ -103,17 +98,20 @@ export function ProviderSettingsPage() {
           ...source.providers,
           {
             id,
-            name: `供应商 ${source.providers.length + 1}`,
-            baseUrl: "",
-            protocol: "openai-chat",
+            name: values.name || `供应商 ${source.providers.length + 1}`,
+            baseUrl: values.baseUrl,
+            protocol: values.protocol,
             models: [],
           },
         ],
+        // The first provider has nothing to be active against yet.
+        activeProviderId: source.activeProviderId ?? id,
       };
     });
   };
 
   const removeProvider = (id: string) => {
+    setEditingId((current) => (current === id ? null : current));
     setDraft((current) => {
       const source = current ?? storedDraft;
       const remaining = source.providers.filter((entry) => entry.id !== id);
@@ -180,100 +178,133 @@ export function ProviderSettingsPage() {
       return { ...source, activeProviderId: providerId, activeModel: model };
     });
 
-  const submit = async () => {
-    setSaving(true);
-    try {
-      await saveBook({
-        providers: profiles.map((entry) => ({
-          ...entry,
-          baseUrl: entry.baseUrl.trim(),
-          name: entry.name.trim() || "未命名供应商",
-          apiKey: (keys[entry.id] ?? "").trim(),
-        })),
-        activeProviderId: base.activeProviderId,
-        activeModel: base.activeModel,
-      });
-      // The draft now equals the stored book, so keeping it would only pin a
-      // copy that can drift from the real credential.
-      setDraft(null);
-      setTests({});
-    } finally {
-      setSaving(false);
-    }
-  };
+  // With no save button, every edit settles into the store on its own. The
+  // draft is the trigger: it is null until the first change.
+  const pending = useRef<ProviderDraft | null>(null);
+  pending.current = draft;
+  const keySnapshot = useRef(keys);
+  keySnapshot.current = keys;
+  // Guards against re-saving the same book, which would otherwise write on
+  // every mount and fight the backend's normalization.
+  const lastSaved = useRef("");
 
-  const forgetAll = async () => {
-    await clear();
-    setDraft(null);
-    setKeys({});
-    setTests({});
-  };
+  useEffect(() => {
+    if (!draft) return;
+    // A stored provider whose key has not been seeded yet would be saved with an
+    // empty key, wiping the credential. Draft-only providers have no stored key
+    // to protect, so they save right away.
+    const seeded = (id: string) =>
+      keys[id] !== undefined || !providers.some((profile) => profile.id === id);
+    if (!draft.providers.every((entry) => seeded(entry.id))) return;
+
+    const signature = JSON.stringify({
+      draft,
+      keys: draft.providers.map((entry) => keys[entry.id] ?? ""),
+    });
+    if (signature === lastSaved.current) return;
+
+    const timer = window.setTimeout(async () => {
+      const snapshot = pending.current;
+      if (!snapshot) return;
+      lastSaved.current = signature;
+      setSaving(true);
+      setSaveError(false);
+      try {
+        await saveBook({
+          providers: snapshot.providers.map((entry) => ({
+            ...entry,
+            baseUrl: entry.baseUrl.trim(),
+            name: entry.name.trim() || "未命名供应商",
+            apiKey: (keySnapshot.current[entry.id] ?? "").trim(),
+          })),
+          activeProviderId: snapshot.activeProviderId,
+          activeModel: snapshot.activeModel,
+        });
+      } catch {
+        // A failed write must be visible; the next edit retries.
+        lastSaved.current = "";
+        setSaveError(true);
+      } finally {
+        setSaving(false);
+      }
+    }, AUTOSAVE_MS);
+    return () => window.clearTimeout(timer);
+  }, [draft, keys, saveBook]);
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 p-5 sm:p-7">
-      <Panel
-        title="AI 供应商"
-        action={
-          <div className="flex items-center gap-2">
-            <InfoHint label="每个供应商保存自己的地址、密钥和模型列表；同一时间只有一个模型在用。" />
-            <AnimatedBadge
-              status={configured ? "success" : "warning"}
-              size="sm"
-              contentKey={configured ? "configured" : "missing"}
-            >
-              {configured ? "已配置" : "未接入"}
-            </AnimatedBadge>
-          </div>
-        }
-      >
-        <div className="flex flex-col gap-3">
-          {profiles.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              还没有供应商，先添加一个。
-            </p>
-          ) : (
-            profiles.map((profile) => (
-              <ProviderEditor
-                key={profile.id}
-                profile={profile}
-                activeModel={base.activeModel}
-                isActiveProvider={profile.id === base.activeProviderId}
-                test={tests[profile.id] ?? { status: "idle" }}
-                busy={saving}
-                canRemove={profiles.length > 1}
-                onChange={(patch) => patchProvider(profile.id, patch)}
-                onFetchModels={() => void fetchModels(profile)}
-                onUseModel={(model) => useModel(profile.id, model)}
-                onRemove={() => removeProvider(profile.id)}
-              />
-            ))
-          )}
-
-          <div className="flex flex-wrap items-center gap-2 pt-1">
-            <Button size="sm" variant="secondary" className="text-sm" onClick={addProvider}>
-              添加供应商
-            </Button>
-            <Button
-              size="sm"
-              className="text-sm"
-              disabled={saving || profiles.length === 0}
-              onClick={() => void submit()}
-            >
-              {saving ? "保存中" : "保存"}
-            </Button>
-            {providers.length > 0 ? (
+    <SettingsPageShell
+      title="AI 供应商"
+      action={
+        <Button
+          size="sm"
+          variant="secondary"
+          className="text-sm"
+          onClick={() => setCreating(true)}
+        >
+          <Plus className="size-4" />
+          添加供应商
+        </Button>
+      }
+    >
+      <SettingsGroup>
+        {profiles.length === 0 ? (
+          <SettingsRow
+            title="还没有供应商"
+            hint="添加供应商后先拉取模型，再在列表里选择要用的模型；改动会自动保存。"
+            control={
               <Button
                 size="sm"
-                variant="ghost"
+                variant="secondary"
                 className="text-sm"
-                onClick={() => void forgetAll()}
+                onClick={() => setCreating(true)}
               >
-                清除全部
+                添加供应商
               </Button>
-            ) : null}
-          </div>
-        </div>
-      </Panel>
-    </div>
+            }
+          />
+        ) : (
+          profiles.map((profile) => (
+            <ProviderRow
+              key={profile.id}
+              profile={profile}
+              activeModel={base.activeModel}
+              isActiveProvider={profile.id === base.activeProviderId}
+              onEdit={() => setEditingId(profile.id)}
+            />
+          ))
+        )}
+      </SettingsGroup>
+
+      {saveError || saving ? (
+        <p
+          className={`text-sm ${saveError ? "text-destructive" : "text-muted-foreground"}`}
+        >
+          {saveError ? "保存失败，改动会在下次编辑时重试。" : "正在保存…"}
+        </p>
+      ) : null}
+
+      {creating ? (
+        <ProviderCreateDialog
+          onCancel={() => setCreating(false)}
+          onCreate={createProvider}
+        />
+      ) : null}
+
+      {editing ? (
+        <ProviderEditDialog
+          profile={editing}
+          activeModel={base.activeModel}
+          isActiveProvider={editing.id === base.activeProviderId}
+          test={tests[editing.id] ?? { status: "idle" }}
+          busy={saving}
+          canRemove={profiles.length > 1}
+          onClose={() => setEditingId(null)}
+          onChange={(patch) => patchProvider(editing.id, patch)}
+          onFetchModels={() => void fetchModels(editing)}
+          onUseModel={(model) => useModel(editing.id, model)}
+          onRemove={() => removeProvider(editing.id)}
+        />
+      ) : null}
+    </SettingsPageShell>
   );
 }

@@ -13,6 +13,9 @@ const slugs = [
   "input",
   "animated-badge",
   "tooltip",
+  // Dialogs come from the same registry so every overlay shares one unfold
+  // animation and one focus trap instead of a per-page portal.
+  "center-morph-modal",
   // The agents family ships as one graph: message pulls in the bubble, the
   // scroller and the composer, so listing the entry points that the app
   // actually renders is enough to resolve the whole set.

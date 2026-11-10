@@ -1,6 +1,6 @@
 import { Input } from "@/vendor/beui/components/motion/input";
 import { Button } from "@/vendor/beui/components/motion/button";
-import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
+import { InfoHint } from "@/components/InfoHint";
 import {
   Select,
   SelectContent,
@@ -8,8 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/vendor/beui/components/motion/select";
-import { InfoHint } from "@/components/InfoHint";
-import type { Protocol } from "@/features/settings/aiBridge";
+import { ProtocolSelect } from "@/pages/settings/ProtocolSelect";
 import type { StoredProviderProfile } from "@/features/settings/providerStore";
 
 export type TestState =
@@ -17,12 +16,6 @@ export type TestState =
   | { status: "testing" }
   | { status: "ok"; count: number }
   | { status: "error"; message: string };
-
-const PROTOCOLS: { value: Protocol; label: string }[] = [
-  { value: "openai-chat", label: "Chat" },
-  { value: "openai-responses", label: "Responses" },
-  { value: "anthropic", label: "Anthropic" },
-];
 
 export interface ProviderEditorProps {
   profile: StoredProviderProfile;
@@ -34,13 +27,10 @@ export interface ProviderEditorProps {
   onChange: (patch: Partial<StoredProviderProfile>) => void;
   onFetchModels: () => void;
   onUseModel: (model: string) => void;
-  onRemove: () => void;
-  /** Hidden for the last remaining provider: there must be somewhere to send. */
-  canRemove: boolean;
 }
 
-// One card per provider. The API key is a password field with no reveal: it is
-// the one value on this page that is never shown back to the user.
+// The expanded body of one provider. The API key is a password field with no
+// reveal: it is the one value here that is never shown back to the user.
 export function ProviderEditor({
   profile,
   activeModel,
@@ -50,12 +40,10 @@ export function ProviderEditor({
   onChange,
   onFetchModels,
   onUseModel,
-  onRemove,
-  canRemove,
 }: ProviderEditorProps) {
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-border/70 p-3">
-      <div className="flex items-center gap-2">
+    <div className="flex flex-col gap-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <Input
           label="名称"
           value={profile.name}
@@ -63,50 +51,24 @@ export function ProviderEditor({
           placeholder="例如：DeepSeek"
           autoComplete="off"
         />
-        <div className="flex shrink-0 items-end gap-1 pb-0.5">
-          {isActiveProvider ? (
-            <AnimatedBadge status="success" size="sm" contentKey="active">
-              使用中
-            </AnimatedBadge>
-          ) : null}
-          {canRemove ? (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-sm"
-              onClick={onRemove}
-            >
-              删除
-            </Button>
-          ) : null}
-        </div>
+        <Input
+          label="Base URL"
+          value={profile.baseUrl}
+          onChange={(baseUrl) => onChange({ baseUrl })}
+          placeholder="https://api.example.com/v1"
+          spellCheck={false}
+          autoComplete="off"
+        />
       </div>
 
       <div className="flex flex-col gap-2">
         <span className="text-sm font-medium text-foreground">协议</span>
-        <div className="flex flex-wrap gap-2">
-          {PROTOCOLS.map((entry) => (
-            <Button
-              key={entry.value}
-              size="sm"
-              variant={profile.protocol === entry.value ? "primary" : "secondary"}
-              className="text-sm"
-              onClick={() => onChange({ protocol: entry.value })}
-            >
-              {entry.label}
-            </Button>
-          ))}
-        </div>
+        <ProtocolSelect
+          value={profile.protocol ?? "openai-chat"}
+          onChange={(protocol) => onChange({ protocol })}
+        />
       </div>
 
-      <Input
-        label="Base URL"
-        value={profile.baseUrl}
-        onChange={(baseUrl) => onChange({ baseUrl })}
-        placeholder="https://api.example.com/v1"
-        spellCheck={false}
-        autoComplete="off"
-      />
       <Input
         label="API Key"
         type="password"
@@ -122,9 +84,7 @@ export function ProviderEditor({
           size="sm"
           variant="secondary"
           className="text-sm"
-          disabled={
-            busy || !profile.baseUrl.trim() || !profile.apiKey.trim()
-          }
+          disabled={busy || !profile.baseUrl.trim() || !profile.apiKey.trim()}
           onClick={onFetchModels}
         >
           {test.status === "testing" ? "拉取中" : "拉取模型"}
@@ -145,7 +105,7 @@ export function ProviderEditor({
       <div className="flex flex-col gap-2">
         <span className="flex items-center gap-1 text-sm font-medium text-foreground">
           模型
-          <InfoHint label="从「拉取模型」得到的列表里选一个；列表为空时先在供应商侧拉取。" />
+          <InfoHint label="从「拉取模型」得到的列表里选一个；选中即切换到这个供应商。" />
         </span>
         {profile.models.length > 0 ? (
           <Select
@@ -167,15 +127,6 @@ export function ProviderEditor({
           <p className="text-sm text-muted-foreground">
             还没有模型，先点「拉取模型」。
           </p>
-        )}
-        {isActiveProvider ? (
-          <span className="text-sm text-muted-foreground">
-            当前请求使用这个模型。
-          </span>
-        ) : (
-          <span className="text-sm text-muted-foreground">
-            选一个模型即切换到该供应商。
-          </span>
         )}
       </div>
     </div>
