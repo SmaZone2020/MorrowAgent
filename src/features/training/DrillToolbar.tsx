@@ -12,8 +12,11 @@ import {
 import { ScratchpadPanel } from "@/features/scratchpad/Scratchpad";
 import { usePreferences } from "@/features/settings/preferencesStore";
 import { usePersistedState } from "@/features/uiState";
+import { LumiMark } from "@/features/lumi/LumiMark";
+import { DrillLumiPanel } from "@/features/training/DrillLumiPanel";
+import type { Question } from "@/features/knowledge";
 
-export type ToolKey = "scratchpad" | "font";
+export type ToolKey = "lumi" | "scratchpad" | "font";
 
 // The scale is a multiplier on the drill text, not a CSS zoom: only the
 // question body and its explanation grow, so the toolbar and chrome stay put.
@@ -25,7 +28,14 @@ const SCALE_STEP = 0.1;
  * Right-hand tool rail for the drill. Tools open one panel at a time so the
  * question card only gives up the width the user actually asked for.
  */
-export function DrillToolbar() {
+export function DrillToolbar({
+  className,
+  question,
+}: {
+  className?: string;
+  /** The card on screen; the Lumi rail opens preloaded with it. */
+  question?: Question;
+}) {
   // Which panel is open is part of the drill layout, so it comes back after a
   // reload instead of collapsing to the bare rail.
   const [active, setActive] = usePersistedState<ToolKey | null>(
@@ -34,7 +44,8 @@ export function DrillToolbar() {
   );
 
   return (
-    <div className="flex shrink-0 items-start gap-2">
+    <div className={`flex shrink-0 items-start gap-2 ${className || ""}`}>
+      {active === "lumi" ? <DrillLumiPanel question={question} /> : null}
       {active === "scratchpad" ? (
         <div className="w-[min(22rem,42vw)]">
           <ScratchpadPanel />
@@ -47,6 +58,15 @@ export function DrillToolbar() {
       ) : null}
 
       <div className="flex flex-col gap-1 rounded-2xl border border-border/60 bg-card p-1 shadow-surface">
+        <ToolButton
+          label="问 Lumi"
+          active={active === "lumi"}
+          onClick={() =>
+            setActive((current) => (current === "lumi" ? null : "lumi"))
+          }
+        >
+          <LumiMark className="size-4" />
+        </ToolButton>
         <ToolButton
           label="草稿纸"
           active={active === "scratchpad"}
@@ -114,7 +134,7 @@ function FontPanel() {
 
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-border/60 bg-card p-3 shadow-surface">
-      <span className="text-xs text-muted-foreground">题目字号</span>
+      <span className="text-sm text-muted-foreground">题目字号</span>
       <div className="flex items-center gap-1">
         <Button
           size="sm"
@@ -160,3 +180,4 @@ function FontPanel() {
     </div>
   );
 }
+
