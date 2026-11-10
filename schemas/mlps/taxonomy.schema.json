@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morrow.dev/schemas/mlps/taxonomy.schema.json",
+  "title": "LearningPackageTaxonomy",
+  "description": "taxonomy/tags.yaml 与 taxonomy/error-types.yaml 共用的条目结构。ID 稳定，名称可变。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tags"],
+  "properties": {
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$" },
+          "name": { "type": "string", "minLength": 1, "maxLength": 24 },
+          "description": { "type": "string", "maxLength": 120 },
+          "color": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$",
+            "description": "书架上标签的底色，制作者可以不给。"
+          }
+        }
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    }
+  }
+}

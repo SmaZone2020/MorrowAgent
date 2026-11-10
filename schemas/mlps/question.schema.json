@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morrow.dev/schemas/mlps/question.schema.json",
+  "title": "LearningPackageQuestion",
+  "description": "题目 JSON 中的单条题目。解析不在这里，按 MLPS §9 放在 solutions/ 下以 question_id 关联。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "type",
+    "content",
+    "answer",
+    "knowledge_points",
+    "tags",
+    "difficulty",
+    "source",
+    "status"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(\\.[a-z0-9-]+)+$",
+      "description": "全局唯一稳定 ID。不得使用数组下标，不得因改名而改变。"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "single_choice",
+        "multiple_choice",
+        "true_false",
+        "fill_blank",
+        "calculation",
+        "proof",
+        "short_answer",
+        "application",
+        "ordering"
+      ]
+    },
+    "content": { "type": "string", "minLength": 1 },
+    "options": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "content"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[A-H]$" },
+          "content": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "answer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "value"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["single", "multiple", "boolean", "text", "ordering"]
+        },
+        "value": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "统一用字符串数组：单选 ['B']、多选 ['A','C']、填空 ['-1']、排序按期望顺序列出。"
+        }
+      }
+    },
+    "knowledge_points": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[a-z][a-z0-9]*(\\.[a-z0-9-]+)+$" },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$" },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "difficulty": { "type": "integer", "minimum": 1, "maximum": 5 },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["original", "adapted", "imported", "generated"],
+          "description": "不得把 AI 生成题标成历年真题。"
+        },
+        "source_id": {
+          "type": ["string", "null"],
+          "pattern": "^[a-z0-9][a-z0-9._-]*$",
+          "description": "citations/sources.yaml 中的来源 ID。"
+        }
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "pending", "reviewed", "deprecated"],
+      "description": "默认只有 reviewed 进入正式训练与诊断。"
+    },
+    "estimated_minutes": { "type": "integer", "minimum": 1, "maximum": 120 },
+    "images": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "path"],
+        "properties": {
+          "type": { "type": "string", "enum": ["formula", "figure", "screenshot", "other"] },
+          "path": { "type": "string", "pattern": "^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$" },
+          "position": { "type": "string", "pattern": "^(stem|explanation|option:[A-H])$" },
+          "caption": { "type": "string", "maxLength": 200 },
+          "alt": { "type": "string", "maxLength": 200 }
+        }
+      }
+    },
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" }
+  }
+}

@@ -15,6 +15,8 @@
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
     "validate:knowledge": "node scripts/validateKnowledge.mjs",
+    "validate:package": "node scripts/validatePackage.mjs",
+    "checksums:package": "node scripts/writeChecksums.mjs",
     "build:knowledge": "node scripts/buildKnowledge.mjs"
   },
   "dependencies": {

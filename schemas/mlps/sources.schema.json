@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morrow.dev/schemas/mlps/sources.schema.json",
+  "title": "SourceRegistry",
+  "description": "citations/sources.yaml。每份外部资料与导入题目都应关联一个来源 ID。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["sources"],
+  "properties": {
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "type", "license"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$" },
+          "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "type": {
+            "type": "string",
+            "enum": ["exam", "textbook", "syllabus", "slides", "notes", "web", "other"]
+          },
+          "year": { "type": "integer", "minimum": 1900, "maximum": 2200 },
+          "author": { "type": ["string", "null"], "maxLength": 200 },
+          "publisher": { "type": ["string", "null"], "maxLength": 200 },
+          "url": { "type": ["string", "null"], "format": "uri" },
+          "license": {
+            "type": "string",
+            "enum": [
+              "original",
+              "public_domain",
+              "open_license",
+              "licensed",
+              "permission_required",
+              "unknown"
+            ],
+            "description": "授权状态未知时填 unknown，不得默认按公开分发处理。"
+          },
+          "attribution": { "type": "string", "maxLength": 400 }
+        }
+      },
+      "uniqueItems": true
+    }
+  }
+}

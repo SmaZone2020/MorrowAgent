@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morrow.dev/schemas/mlps/knowledge.schema.json",
+  "title": "KnowledgePointDocument",
+  "description": "knowledge/concepts/*.md 的 YAML front matter。正文是 Markdown，元数据在这里，两者不重复维护。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "name", "chapter", "tags", "difficulty", "learning_objectives"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(\\.[a-z0-9-]+)+$",
+      "description": "全局唯一稳定 ID，形如 calculus.limit.one-sided-rule。"
+    },
+    "name": { "type": "string", "minLength": 1, "maxLength": 60 },
+    "chapter": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(\\.[a-z0-9-]+)+$"
+    },
+    "parent": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(\\.[a-z0-9-]+)+$"
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$" },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "difficulty": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "1 入门、2 基础、3 中等、4 较难、5 高难。只表示学习难度，不代表用户掌握度。"
+    },
+    "prerequisites": {
+      "type": "array",
+      "description": "课程体系中的正式前置关系，不得填入 AI 推断的理由。",
+      "items": { "type": "string", "pattern": "^[a-z][a-z0-9]*(\\.[a-z0-9-]+)+$" },
+      "uniqueItems": true
+    },
+    "learning_objectives": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 4 },
+      "minItems": 1,
+      "maxItems": 8
+    },
+    "exam_importance": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "critical"]
+    },
+    "common_errors": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 6 }
+    },
+    "summary": {
+      "type": "string",
+      "maxLength": 400,
+      "description": "一句话概述，用于列表与检索摘要；正文第一段也应当能独立读懂。"
+    },
+    "sources": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$" },
+      "description": "citations/sources.yaml 中的来源 ID。",
+      "uniqueItems": true
+    },
+    "images": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "path"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["formula", "figure", "screenshot", "other"]
+          },
+          "path": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$",
+            "description": "media/ 下的包内相对路径。学习包不接受内联 SVG 或 data URI。"
+          },
+          "caption": { "type": "string", "maxLength": 200 },
+          "alt": { "type": "string", "maxLength": 200 }
+        }
+      }
+    },
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morrow.dev/schemas/mlps/relation.schema.json",
+  "title": "KnowledgeRelation",
+  "description": "knowledge/relations.yaml 中的一条关系。独立于知识点维护，避免同一事实写两遍。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "from", "to", "type", "strength"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^relation\\.[a-z0-9._-]+$",
+      "description": "形如 relation.limit.function。删除后不得重新分配给其他关系。"
+    },
+    "from": { "type": "string", "pattern": "^[a-z][a-z0-9]*(\\.[a-z0-9-]+)+$" },
+    "to": { "type": "string", "pattern": "^[a-z][a-z0-9]*(\\.[a-z0-9-]+)+$" },
+    "type": {
+      "type": "string",
+      "enum": ["prerequisite", "related", "contains", "extends", "contrasts"]
+    },
+    "strength": { "type": "number", "minimum": 0, "maximum": 1 }
+  }
+}

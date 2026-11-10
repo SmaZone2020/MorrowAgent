@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morrow.dev/schemas/mlps/cover.schema.json",
+  "title": "PackageCover",
+  "description": "学习包封面。制作者用它给用户一个可辨认的视觉标识，客户端在书架与详情页展示。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["accent"],
+  "properties": {
+    "file": {
+      "type": "string",
+      "pattern": "^media/covers/[A-Za-z0-9._-]+\\.(png|jpe?g|webp)$",
+      "description": "包内相对路径，必须位于 media/covers/，且已在 checksums.sha256 中登记。不接受 SVG：学习包是不可信输入，SVG 可以携带脚本。"
+    },
+    "accent": {
+      "type": "string",
+      "pattern": "^#[0-9a-fA-F]{6}$",
+      "description": "主色调。缺省封面的底色，也用于卡片边框与进度条，保证同一学习包在各处配色一致。"
+    },
+    "focus": {
+      "type": "array",
+      "description": "裁切焦点，取值 0–1。书架卡片是 3:4、详情页横幅是 16:9，焦点让同一张图在两个比例下都不切到主体。",
+      "items": { "type": "number", "minimum": 0, "maximum": 1 },
+      "minItems": 2,
+      "maxItems": 2,
+      "default": [0.5, 0.5]
+    },
+    "alt": {
+      "type": "string",
+      "maxLength": 120,
+      "description": "封面替代文本，供无图环境与无障碍朗读使用。"
+    }
+  }
+}

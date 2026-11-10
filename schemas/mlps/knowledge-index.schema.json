@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morrow.dev/schemas/mlps/knowledge-index.schema.json",
+  "title": "KnowledgeIndex",
+  "description": "knowledge/index.yaml。章节树与知识点挂载位置，客户端据此组装目录而不必扫描 concepts/。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["chapters"],
+  "properties": {
+    "chapters": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name", "order"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z][a-z0-9]*(\\.[a-z0-9-]+)+$" },
+          "name": { "type": "string", "minLength": 1, "maxLength": 60 },
+          "order": { "type": "integer", "minimum": 0 },
+          "parent": { "type": "string", "pattern": "^[a-z][a-z0-9]*(\\.[a-z0-9-]+)+$" },
+          "summary": { "type": "string", "maxLength": 200 },
+          "points": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "file"],
+              "properties": {
+                "id": { "type": "string", "pattern": "^[a-z][a-z0-9]*(\\.[a-z0-9-]+)+$" },
+                "file": {
+                  "type": "string",
+                  "pattern": "^knowledge/concepts/[A-Za-z0-9._-]+\\.md$",
+                  "description": "知识点 Markdown 文件的包内相对路径。"
+                },
+                "order": { "type": "integer", "minimum": 0 }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

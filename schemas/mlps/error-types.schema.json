@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morrow.dev/schemas/mlps/error-types.schema.json",
+  "title": "LearningPackageErrorTypes",
+  "description": "taxonomy/error-types.yaml。跨学科通用错误类型由 Morrow 基础规范维护，学习包只能追加学科专属项。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["error_types"],
+  "properties": {
+    "error_types": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$" },
+          "name": { "type": "string", "minLength": 1, "maxLength": 24 },
+          "description": { "type": "string", "maxLength": 120 }
+        }
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    }
+  }
+}
