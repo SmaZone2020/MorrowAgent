@@ -1,0 +1,44 @@
+format:
+  name: morrow-learning-package
+  version: "1.0"
+package:
+  id: cn.morrow.calculus.shaanxi-upgrade
+  name: 应用高等数学（陕西专升本专项）
+  version: 1.0.0
+  description: 面向陕西专升本考试的高等数学学习包，覆盖函数与极限、导数与微分。
+  subject: mathematics
+  sub_subject: calculus
+  language: zh-CN
+  targets:
+    - college-entrance-upgrade
+  region:
+    - CN-SN
+  tags:
+    - calculus
+    - shaanxi
+    - upgrade
+    - exam-prep
+  cover:
+    accent: "#2f6f5e"
+    focus: [0.5, 0.35]
+    alt: 应用高等数学封面
+author:
+  name: Morrow Community
+compatibility:
+  min_app_version: "0.1.0"
+contents:
+  knowledge:
+    index: knowledge/index.yaml
+  questions:
+    index: questions/index.yaml
+  relations:
+    index: knowledge/relations.yaml
+  taxonomy:
+    tags: taxonomy/tags.yaml
+    error_types: taxonomy/error-types.yaml
+  citations:
+    sources: citations/sources.yaml
+dependencies: []
+integrity:
+  algorithm: sha256
+  file: checksums.sha256

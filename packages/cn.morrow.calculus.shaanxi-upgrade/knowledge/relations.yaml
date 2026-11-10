@@ -1,0 +1,66 @@
+relations:
+  - id: relation.limit.function
+    from: calculus.limit
+    to: calculus.function
+    type: prerequisite
+    strength: 1.0
+
+  - id: relation.one-sided.limit
+    from: calculus.limit.one-sided
+    to: calculus.function
+    type: prerequisite
+    strength: 1.0
+
+  - id: relation.limit-existence.one-sided
+    from: calculus.limit
+    to: calculus.limit.one-sided
+    type: prerequisite
+    strength: 1.0
+
+  - id: relation.derivative.limit
+    from: calculus.derivative
+    to: calculus.limit
+    type: prerequisite
+    strength: 1.0
+
+  - id: relation.derivative-one-sided.derivative
+    from: calculus.derivative.one-sided
+    to: calculus.derivative
+    type: prerequisite
+    strength: 1.0
+
+  - id: relation.derivative-one-sided.limit
+    from: calculus.derivative.one-sided
+    to: calculus.limit.one-sided
+    type: prerequisite
+    strength: 0.9
+
+  - id: relation.rules.derivative
+    from: calculus.derivative.rules
+    to: calculus.derivative
+    type: prerequisite
+    strength: 1.0
+
+  - id: relation.differential.derivative
+    from: calculus.differential
+    to: calculus.derivative
+    type: prerequisite
+    strength: 1.0
+
+  - id: relation.high-order.rules
+    from: calculus.derivative.high-order
+    to: calculus.derivative.rules
+    type: prerequisite
+    strength: 1.0
+
+  - id: relation.differential.rules
+    from: calculus.differential
+    to: calculus.derivative.rules
+    type: related
+    strength: 0.7
+
+  - id: relation.one-sided-derivative.contrast
+    from: calculus.derivative.one-sided
+    to: calculus.derivative.rules
+    type: contrasts
+    strength: 0.6

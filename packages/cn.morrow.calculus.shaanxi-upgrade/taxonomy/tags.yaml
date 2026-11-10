@@ -1,0 +1,33 @@
+tags:
+  - id: calculus
+    name: 高等数学
+  - id: shaanxi
+    name: 陕西
+  - id: upgrade
+    name: 专升本
+  - id: exam-prep
+    name: 应试备考
+  - id: college-entrance-upgrade
+    name: 专升本考试
+  - id: function
+    name: 函数
+  - id: limit
+    name: 极限
+  - id: one-sided
+    name: 单侧
+  - id: squeeze
+    name: 夹逼
+  - id: derivative
+    name: 导数
+  - id: rules
+    name: 求导法则
+  - id: differential
+    name: 微分
+  - id: linearization
+    name: 线性化
+  - id: high-order
+    name: 高阶
+  - id: basic
+    name: 基础题
+  - id: advanced
+    name: 综合题

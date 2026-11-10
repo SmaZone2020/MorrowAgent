@@ -1,0 +1,5 @@
+files:
+  - path: questions/adapted/limits.json
+    chapter: calculus.chapter.function-and-limit
+    count: 15
+    schema_version: "1.0"

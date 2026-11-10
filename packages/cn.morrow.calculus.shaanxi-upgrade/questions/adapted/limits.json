@@ -1,0 +1,507 @@
+{
+  "schema_version": "1.0",
+  "questions": [
+    {
+      "id": "calculus.limit.q.000001",
+      "type": "single_choice",
+      "content": "设 $f(x)=\\begin{cases} x+1, & x<0 \\\\ x^2, & x \\ge 0 \\end{cases}$，则 $\\lim\\limits_{x \\to 0} f(x)$ 为",
+      "answer": {
+        "type": "single",
+        "value": [
+          "C"
+        ]
+      },
+      "knowledge_points": [
+        "calculus.limit.one-sided",
+        "calculus.limit"
+      ],
+      "tags": [
+        "limit",
+        "basic"
+      ],
+      "difficulty": 2,
+      "source": {
+        "type": "generated",
+        "source_id": null
+      },
+      "status": "reviewed",
+      "version": "1.0.0",
+      "options": [
+        {
+          "id": "A",
+          "content": "$0$"
+        },
+        {
+          "id": "B",
+          "content": "$1$"
+        },
+        {
+          "id": "C",
+          "content": "不存在"
+        },
+        {
+          "id": "D",
+          "content": "$+\\infty$"
+        }
+      ],
+      "estimated_minutes": 3
+    },
+    {
+      "id": "calculus.limit.q.000002",
+      "type": "fill_blank",
+      "content": "设 $f(x)=\\begin{cases} 2x+a, & x<1 \\\\ x^2, & x \\ge 1 \\end{cases}$，若 $\\lim\\limits_{x \\to 1} f(x)$ 存在，则 $a=$",
+      "answer": {
+        "type": "text",
+        "value": [
+          "$-1$"
+        ]
+      },
+      "knowledge_points": [
+        "calculus.limit.one-sided",
+        "calculus.limit"
+      ],
+      "tags": [
+        "limit",
+        "basic"
+      ],
+      "difficulty": 3,
+      "source": {
+        "type": "generated",
+        "source_id": null
+      },
+      "status": "reviewed",
+      "version": "1.0.0",
+      "estimated_minutes": 5
+    },
+    {
+      "id": "calculus.limit.q.000003",
+      "type": "single_choice",
+      "content": "设 $f(x)=\\begin{cases} x\\sin\\frac{1}{x}, & x \\ne 0 \\\\ a, & x=0 \\end{cases}$，若 $f(x)$ 在 $x=0$ 处连续，则 $a=$",
+      "answer": {
+        "type": "single",
+        "value": [
+          "A"
+        ]
+      },
+      "knowledge_points": [
+        "calculus.limit",
+        "calculus.function"
+      ],
+      "tags": [
+        "limit",
+        "advanced"
+      ],
+      "difficulty": 4,
+      "source": {
+        "type": "adapted",
+        "source_id": "source.exam.shaanxi-zsb.2021"
+      },
+      "status": "reviewed",
+      "version": "1.0.0",
+      "options": [
+        {
+          "id": "A",
+          "content": "$0$"
+        },
+        {
+          "id": "B",
+          "content": "$1$"
+        },
+        {
+          "id": "C",
+          "content": "$-1$"
+        },
+        {
+          "id": "D",
+          "content": "不存在这样的 $a$"
+        }
+      ],
+      "estimated_minutes": 5
+    },
+    {
+      "id": "calculus.limit.q.000004",
+      "type": "fill_blank",
+      "content": "函数 $f(x)=\\ln(x-1)+\\frac{1}{x-5}$ 的定义域是",
+      "answer": {
+        "type": "text",
+        "value": [
+          "$(1,5)\\cup(5,+\\infty)$"
+        ]
+      },
+      "knowledge_points": [
+        "calculus.function"
+      ],
+      "tags": [
+        "limit",
+        "basic"
+      ],
+      "difficulty": 2,
+      "source": {
+        "type": "adapted",
+        "source_id": "source.exam.shaanxi-zsb.2026"
+      },
+      "status": "reviewed",
+      "version": "1.0.0",
+      "estimated_minutes": 3
+    },
+    {
+      "id": "calculus.limit.q.000005",
+      "type": "single_choice",
+      "content": "极限 $\\lim\\limits_{x \\to 0}\\frac{|x|}{x}$ 为",
+      "answer": {
+        "type": "single",
+        "value": [
+          "C"
+        ]
+      },
+      "knowledge_points": [
+        "calculus.limit.one-sided",
+        "calculus.limit"
+      ],
+      "tags": [
+        "limit",
+        "basic"
+      ],
+      "difficulty": 3,
+      "source": {
+        "type": "adapted",
+        "source_id": "source.exam.shaanxi-zsb.2021"
+      },
+      "status": "reviewed",
+      "version": "1.0.0",
+      "options": [
+        {
+          "id": "A",
+          "content": "$1$"
+        },
+        {
+          "id": "B",
+          "content": "$-1$"
+        },
+        {
+          "id": "C",
+          "content": "不存在"
+        },
+        {
+          "id": "D",
+          "content": "$0$"
+        }
+      ],
+      "estimated_minutes": 3
+    },
+    {
+      "id": "calculus.limit.q.000006",
+      "type": "fill_blank",
+      "content": "设 $f(x)=\\begin{cases} x^2, & x<1 \\\\ ax+b, & x \\ge 1 \\end{cases}$，若 $f(x)$ 在 $x=1$ 处连续，且 $f(2)=3$，则 $a$、$b$ 的值为",
+      "answer": {
+        "type": "text",
+        "value": [
+          "$a=2$，$b=-1$"
+        ]
+      },
+      "knowledge_points": [
+        "calculus.limit.one-sided",
+        "calculus.limit",
+        "calculus.function"
+      ],
+      "tags": [
+        "limit",
+        "basic"
+      ],
+      "difficulty": 3,
+      "source": {
+        "type": "adapted",
+        "source_id": "source.exam.shaanxi-zsb.2022"
+      },
+      "status": "reviewed",
+      "version": "1.0.0",
+      "estimated_minutes": 6
+    },
+    {
+      "id": "calculus.limit.q.000007",
+      "type": "calculation",
+      "content": "计算 $\\lim\\limits_{x \\to \\infty}\\frac{3x^2-x+2}{2x^2+1}$。",
+      "answer": {
+        "type": "text",
+        "value": [
+          "$\\frac{3}{2}$"
+        ]
+      },
+      "knowledge_points": [
+        "calculus.limit",
+        "calculus.function"
+      ],
+      "tags": [
+        "limit",
+        "basic"
+      ],
+      "difficulty": 2,
+      "source": {
+        "type": "adapted",
+        "source_id": "source.exam.shaanxi-zsb.2026"
+      },
+      "status": "reviewed",
+      "version": "1.0.0",
+      "estimated_minutes": 4
+    },
+    {
+      "id": "calculus.limit.q.000008",
+      "type": "calculation",
+      "content": "计算 $\\lim\\limits_{x \\to 0}\\frac{\\sqrt[3]{1+x}-1}{x}$。",
+      "answer": {
+        "type": "text",
+        "value": [
+          "$\\frac{1}{3}$"
+        ]
+      },
+      "knowledge_points": [
+        "calculus.limit"
+      ],
+      "tags": [
+        "limit",
+        "advanced"
+      ],
+      "difficulty": 4,
+      "source": {
+        "type": "adapted",
+        "source_id": "source.exam.shaanxi-zsb.2026"
+      },
+      "status": "reviewed",
+      "version": "1.0.0",
+      "estimated_minutes": 6
+    },
+    {
+      "id": "calculus.limit.q.000009",
+      "type": "calculation",
+      "content": "计算 $\\lim\\limits_{x \\to 0}(1+3x)^{\\frac{1}{x}}$。",
+      "answer": {
+        "type": "text",
+        "value": [
+          "$e^3$"
+        ]
+      },
+      "knowledge_points": [
+        "calculus.limit"
+      ],
+      "tags": [
+        "limit",
+        "basic"
+      ],
+      "difficulty": 3,
+      "source": {
+        "type": "adapted",
+        "source_id": "source.exam.shaanxi-zsb.2023"
+      },
+      "status": "reviewed",
+      "version": "1.0.0",
+      "estimated_minutes": 5
+    },
+    {
+      "id": "calculus.limit.q.000010",
+      "type": "single_choice",
+      "content": "极限 $\\lim\\limits_{x \\to 0}\\frac{1-\\cos 2x}{x\\sin x}$ 为",
+      "answer": {
+        "type": "single",
+        "value": [
+          "B"
+        ]
+      },
+      "knowledge_points": [
+        "calculus.limit"
+      ],
+      "tags": [
+        "limit",
+        "basic"
+      ],
+      "difficulty": 3,
+      "source": {
+        "type": "adapted",
+        "source_id": "source.exam.shaanxi-zsb.2022"
+      },
+      "status": "reviewed",
+      "version": "1.0.0",
+      "options": [
+        {
+          "id": "A",
+          "content": "$1$"
+        },
+        {
+          "id": "B",
+          "content": "$2$"
+        },
+        {
+          "id": "C",
+          "content": "$4$"
+        },
+        {
+          "id": "D",
+          "content": "$\\frac{1}{2}$"
+        }
+      ],
+      "estimated_minutes": 4
+    },
+    {
+      "id": "calculus.limit.q.000011",
+      "type": "calculation",
+      "content": "计算 $\\lim\\limits_{x \\to 2}\\frac{x^2-4}{x^2-3x+2}$。",
+      "answer": {
+        "type": "text",
+        "value": [
+          "$4$"
+        ]
+      },
+      "knowledge_points": [
+        "calculus.limit"
+      ],
+      "tags": [
+        "limit",
+        "basic"
+      ],
+      "difficulty": 2,
+      "source": {
+        "type": "adapted",
+        "source_id": "source.exam.shaanxi-zsb.2024"
+      },
+      "status": "reviewed",
+      "version": "1.0.0",
+      "estimated_minutes": 4
+    },
+    {
+      "id": "calculus.limit.q.000012",
+      "type": "single_choice",
+      "content": "设 $f(x)=\\begin{cases} x+1, & x<0 \\\\ x^2+1, & x>0 \\\\ 3, & x=0 \\end{cases}$，则 $f(x)$ 在 $x=0$ 处",
+      "answer": {
+        "type": "single",
+        "value": [
+          "B"
+        ]
+      },
+      "knowledge_points": [
+        "calculus.limit.one-sided",
+        "calculus.limit",
+        "calculus.function"
+      ],
+      "tags": [
+        "limit",
+        "basic"
+      ],
+      "difficulty": 2,
+      "source": {
+        "type": "adapted",
+        "source_id": "source.exam.shaanxi-zsb.2024"
+      },
+      "status": "reviewed",
+      "version": "1.0.0",
+      "options": [
+        {
+          "id": "A",
+          "content": "连续"
+        },
+        {
+          "id": "B",
+          "content": "极限存在但不连续"
+        },
+        {
+          "id": "C",
+          "content": "极限不存在"
+        },
+        {
+          "id": "D",
+          "content": "极限存在且等于 $3$"
+        }
+      ],
+      "estimated_minutes": 3
+    },
+    {
+      "id": "calculus.limit.q.000013",
+      "type": "calculation",
+      "content": "计算 $\\lim\\limits_{n \\to \\infty}\\frac{1+2+3+\\cdots+n}{n^2}$。",
+      "answer": {
+        "type": "text",
+        "value": [
+          "$\\frac{1}{2}$"
+        ]
+      },
+      "knowledge_points": [
+        "calculus.limit",
+        "calculus.function"
+      ],
+      "tags": [
+        "limit",
+        "basic"
+      ],
+      "difficulty": 2,
+      "source": {
+        "type": "adapted",
+        "source_id": "source.exam.shaanxi-zsb.2021"
+      },
+      "status": "reviewed",
+      "version": "1.0.0",
+      "estimated_minutes": 4
+    },
+    {
+      "id": "calculus.limit.q.000014",
+      "type": "true_false",
+      "content": "判断：若 $\\lim\\limits_{x \\to a^-}f(x)$ 与 $\\lim\\limits_{x \\to a^+}f(x)$ 都存在，则 $\\lim\\limits_{x \\to a}f(x)$ 一定存在。",
+      "answer": {
+        "type": "single",
+        "value": [
+          "B"
+        ]
+      },
+      "knowledge_points": [
+        "calculus.limit",
+        "calculus.limit.one-sided"
+      ],
+      "tags": [
+        "limit",
+        "advanced"
+      ],
+      "difficulty": 5,
+      "source": {
+        "type": "adapted",
+        "source_id": "source.exam.shaanxi-zsb.2025"
+      },
+      "status": "reviewed",
+      "version": "1.0.0",
+      "options": [
+        {
+          "id": "A",
+          "content": "正确"
+        },
+        {
+          "id": "B",
+          "content": "错误"
+        }
+      ],
+      "estimated_minutes": 4
+    },
+    {
+      "id": "calculus.limit.q.000015",
+      "type": "calculation",
+      "content": "求 $\\lim\\limits_{n \\to \\infty}\\left(\\frac{1}{\\sqrt{n^2+1}}+\\frac{1}{\\sqrt{n^2+2}}+\\cdots+\\frac{1}{\\sqrt{n^2+n}}\\right)$。",
+      "answer": {
+        "type": "text",
+        "value": [
+          "$1$"
+        ]
+      },
+      "knowledge_points": [
+        "calculus.limit",
+        "calculus.function"
+      ],
+      "tags": [
+        "limit",
+        "advanced"
+      ],
+      "difficulty": 4,
+      "source": {
+        "type": "adapted",
+        "source_id": "source.exam.shaanxi-zsb.2021"
+      },
+      "status": "reviewed",
+      "version": "1.0.0",
+      "estimated_minutes": 6
+    }
+  ]
+}

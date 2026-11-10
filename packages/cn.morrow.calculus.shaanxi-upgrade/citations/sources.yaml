@@ -1,0 +1,50 @@
+sources:
+  - id: source.textbook.tongji-7
+    title: 同济大学《高等数学》第七版
+    type: textbook
+    author: 同济大学数学系
+    publisher: 高等教育出版社
+    license: unknown
+    attribution: 知识点正文由本项目自行撰写，仅参考该教材的章节划分与术语，未复制原文。
+
+  - id: source.exam.shaanxi-zsb.2021
+    title: 2021 年陕西省普通高等教育专升本招生考试 高等数学
+    type: exam
+    year: 2021
+    license: unknown
+    attribution: 仅登记元数据与题目出处，未收录试卷原文；授权状态未确认，不得公开分发。
+
+  - id: source.exam.shaanxi-zsb.2022
+    title: 2022 年陕西省普通高等教育专升本招生考试 高等数学
+    type: exam
+    year: 2022
+    license: unknown
+    attribution: 仅登记元数据与题目出处，未收录试卷原文；授权状态未确认，不得公开分发。
+
+  - id: source.exam.shaanxi-zsb.2023
+    title: 2023 年陕西省普通高等教育专升本招生考试 高等数学
+    type: exam
+    year: 2023
+    license: unknown
+    attribution: 仅登记元数据与题目出处，未收录试卷原文；授权状态未确认，不得公开分发。
+
+  - id: source.exam.shaanxi-zsb.2024
+    title: 2024 年陕西省普通高等教育专升本招生考试 高等数学
+    type: exam
+    year: 2024
+    license: unknown
+    attribution: 仅登记元数据与题目出处，未收录试卷原文；授权状态未确认，不得公开分发。
+
+  - id: source.exam.shaanxi-zsb.2025
+    title: 2025 年陕西省普通高等教育专升本招生考试 高等数学
+    type: exam
+    year: 2025
+    license: unknown
+    attribution: 仅登记元数据与题目出处，未收录试卷原文；授权状态未确认，不得公开分发。
+
+  - id: source.exam.shaanxi-zsb.2026
+    title: 2026 年陕西省普通高等教育专升本招生考试 高等数学
+    type: exam
+    year: 2026
+    license: unknown
+    attribution: 仅登记元数据与题目出处，未收录试卷原文；授权状态未确认，不得公开分发。

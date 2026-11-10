@@ -1,0 +1,36 @@
+chapters:
+  - id: calculus.chapter.function-and-limit
+    name: 函数与极限
+    order: 0
+    summary: 从函数概念出发，建立极限的直观与判定方法。
+    points:
+      - id: calculus.function
+        file: knowledge/concepts/function.md
+        order: 0
+      - id: calculus.limit.one-sided
+        file: knowledge/concepts/limit-one-sided.md
+        order: 1
+      - id: calculus.limit
+        file: knowledge/concepts/limit.md
+        order: 2
+
+  - id: calculus.chapter.derivative
+    name: 导数与微分
+    order: 1
+    summary: 从差商的极限定义出发，建立求导与微分的计算体系。
+    points:
+      - id: calculus.derivative
+        file: knowledge/concepts/derivative.md
+        order: 0
+      - id: calculus.derivative.one-sided
+        file: knowledge/concepts/derivative-one-sided.md
+        order: 1
+      - id: calculus.derivative.rules
+        file: knowledge/concepts/derivative-rules.md
+        order: 2
+      - id: calculus.differential
+        file: knowledge/concepts/differential.md
+        order: 3
+      - id: calculus.derivative.high-order
+        file: knowledge/concepts/derivative-high-order.md
+        order: 4
