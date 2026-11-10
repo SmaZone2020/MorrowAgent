@@ -13,11 +13,21 @@ const slugs = [
   "input",
   "animated-badge",
   "tooltip",
+  // The agents family ships as one graph: message pulls in the bubble, the
+  // scroller and the composer, so listing the entry points that the app
+  // actually renders is enough to resolve the whole set.
+  "loading-states",
+  "message",
+  "message-bubble",
+  "message-scroller",
+  "prompt-input",
+  "streaming-response",
 ];
 
 function rewriteSpecifiers(source) {
   return source
     .replaceAll('"@/components/motion/', '"@/vendor/beui/components/motion/')
+    .replaceAll('"@/components/agents/', '"@/vendor/beui/components/agents/')
     .replaceAll('"@/lib/', '"@/vendor/beui/lib/');
 }
 
@@ -48,6 +58,7 @@ async function main() {
     const entry = await fetchEntry(slug);
     for (const file of entry.files ?? []) {
       if (file.type === "preview") continue;
+      if (file.path.includes("/previews/")) continue;
       if (!file.path || typeof file.content !== "string") continue;
       if (written.has(file.path)) continue;
       const rewritten = rewriteSpecifiers(file.content);
