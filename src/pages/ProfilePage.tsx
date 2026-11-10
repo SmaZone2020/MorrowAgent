@@ -6,6 +6,7 @@ import { Panel } from "@/components/Panel";
 import { EmptyState } from "@/components/EmptyState";
 import { isTauriRuntime } from "@/app/shell/windowControls";
 import { findPoint } from "@/features/knowledge";
+import { useScrollMemory } from "@/features/uiState";
 import { loadPointStats, type PointStats } from "@/features/training/attempts";
 
 /**
@@ -17,6 +18,7 @@ export function ProfilePage() {
   const navigate = useNavigate();
   const [stats, setStats] = useState<PointStats[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const scrollRef = useScrollMemory<HTMLDivElement>("profile.scrollTop");
 
   useEffect(() => {
     void loadPointStats().then((rows) => {
@@ -26,7 +28,10 @@ export function ProfilePage() {
   }, []);
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 p-5 sm:p-7">
+    <div
+      ref={scrollRef}
+      className="mx-auto flex w-full max-w-4xl flex-col gap-4 p-5 sm:p-7"
+    >
       <Panel
         title="知识点作答"
         action={

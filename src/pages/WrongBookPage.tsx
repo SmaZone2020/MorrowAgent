@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { MathText } from "@/components/MathText";
 import { isTauriRuntime } from "@/app/shell/windowControls";
 import { findPoint, questions } from "@/features/knowledge";
+import { useScrollMemory } from "@/features/uiState";
 import {
   forgetAttempt,
   loadWrongAttempts,
@@ -21,6 +22,7 @@ export function WrongBookPage() {
   const navigate = useNavigate();
   const [attempts, setAttempts] = useState<WrongAttempt[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const scrollRef = useScrollMemory<HTMLDivElement>("wrongBook.scrollTop");
 
   const questionById = useMemo(
     () => new Map(questions.map((question) => [question.id, question])),
@@ -46,7 +48,10 @@ export function WrongBookPage() {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 p-5 sm:p-7">
+    <div
+      ref={scrollRef}
+      className="mx-auto flex w-full max-w-4xl flex-col gap-4 p-5 sm:p-7"
+    >
       <Panel
         title="错题本"
         action={

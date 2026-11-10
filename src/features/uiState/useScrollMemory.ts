@@ -18,6 +18,11 @@ function findScrollParent(element: HTMLElement): HTMLElement | null {
  * The offset lives outside React state on purpose: scrolling is a per-frame
  * event, and routing it through a component state update would re-render the
  * whole page while the user is dragging. Only the scroll container listens.
+ *
+ * Restoration is deliberately lazy. Most pages fill their list from the
+ * database or a file after the first paint, so at mount there is not enough
+ * height to scroll anywhere; the offset is reapplied as the content grows until
+ * it sticks once.
  */
 export function useScrollMemory<T extends HTMLElement>(scope: string) {
   const ref = useRef<T>(null);
@@ -29,20 +34,29 @@ export function useScrollMemory<T extends HTMLElement>(scope: string) {
     if (!container) return;
 
     const saved = readScope<number>(scope, 0);
-    if (saved > 0) {
-      // The page has to be laid out before its height is known, and a font
-      // swap can change that height a frame later, so restore twice.
-      requestAnimationFrame(() => {
-        container.scrollTop = saved;
-        requestAnimationFrame(() => {
-          container.scrollTop = saved;
-        });
-      });
-    }
-
+    let restoring = saved > 0;
     let frame = 0;
     let last = saved;
+
+    const applyRestore = () => {
+      if (!restoring) return;
+      container.scrollTop = saved;
+      // Once the browser accepts the offset the content is tall enough, and a
+      // later layout shift must not drag the reader back to it.
+      if (Math.abs(container.scrollTop - saved) <= 1) restoring = false;
+    };
+
+    const observer = new ResizeObserver(() => {
+      if (!restoring) return;
+      requestAnimationFrame(applyRestore);
+    });
+    observer.observe(element);
+    requestAnimationFrame(applyRestore);
+
     const onScroll = () => {
+      // A scroll event fired by the restore itself must not be recorded as a
+      // user scroll, or a half-restored offset would overwrite the real one.
+      if (restoring) return;
       last = container.scrollTop;
       if (frame) return;
       frame = requestAnimationFrame(() => {
@@ -53,11 +67,12 @@ export function useScrollMemory<T extends HTMLElement>(scope: string) {
 
     container.addEventListener("scroll", onScroll, { passive: true });
     return () => {
+      observer.disconnect();
       if (frame) cancelAnimationFrame(frame);
       container.removeEventListener("scroll", onScroll);
       // The last scroll may still be waiting on a frame; record it now rather
       // than losing the reader's position to a page change.
-      writeScope(scope, last);
+      if (!restoring) writeScope(scope, last);
     };
   }, [scope]);
 
