@@ -142,6 +142,12 @@ fn chat_reset(state: State<'_, Store>, workspace_id: String) -> Result<(), Strin
     state.reset(&workspace_id)
 }
 
+/// Settings-level wipe: every package's study data at once.
+#[tauri::command]
+fn data_reset(state: State<'_, Store>) -> Result<(), String> {
+    state.reset_all()
+}
+
 #[tauri::command]
 fn data_stats(state: State<'_, Store>) -> Result<StoreStats, String> {
     state.stats()
@@ -420,6 +426,7 @@ pub fn run() {
             chat_delete_message,
             chat_truncate,
             chat_reset,
+            data_reset,
             data_stats,
             attempt_record,
             attempt_wrong_list,

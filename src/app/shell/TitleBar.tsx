@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { AnimatedSidebarTrigger } from "@/vendor/beui/components/motion/animated-sidebar";
 import { LayoutSideContentLeft } from "@gravity-ui/icons";
-import { isSettingsPath } from "@/app/shell/navHelpers";
+import { resolveShellLayer } from "@/app/shell/navHelpers";
 import {
   closeWindow,
   isTauriRuntime,
@@ -21,7 +21,7 @@ const CONTROL_SIZE = "size-9";
 // keeps its shape and the button returns the moment you leave settings.
 export function TitleBar() {
   const { pathname } = useLocation();
-  const sidebarToggleDisabled = isSettingsPath(pathname);
+  const sidebarToggleDisabled = resolveShellLayer(pathname).kind === "settings";
   const [maximized, setMaximized] = useState(false);
 
   useEffect(() => {

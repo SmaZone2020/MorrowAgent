@@ -26,15 +26,18 @@ export interface PointStats {
  *
  * A question can carry several knowledge tags, but the row keeps one point id
  * so tallies stay one-per-attempt; the first tag is the point the question is
- * primarily filed under.
+ * primarily filed under. Every call is scoped to a package: attempts in two
+ * workspaces are separate histories, not two rows in one list (MLPS §1.2).
  */
 export async function recordAttempt(
+  workspaceId: string,
   question: Question,
   answer: string,
   isCorrect: boolean,
 ): Promise<void> {
   if (!isTauriRuntime) return;
   await invoke("attempt_record", {
+    workspaceId,
     attempt: {
       id: crypto.randomUUID(),
       questionId: question.id,
@@ -47,17 +50,25 @@ export async function recordAttempt(
   });
 }
 
-export async function loadWrongAttempts(limit = 50): Promise<WrongAttempt[]> {
+export async function loadWrongAttempts(
+  workspaceId: string,
+  limit = 50,
+): Promise<WrongAttempt[]> {
   if (!isTauriRuntime) return [];
-  return invoke<WrongAttempt[]>("attempt_wrong_list", { limit });
+  return invoke<WrongAttempt[]>("attempt_wrong_list", { workspaceId, limit });
 }
 
-export async function forgetAttempt(questionId: string): Promise<void> {
+export async function forgetAttempt(
+  workspaceId: string,
+  questionId: string,
+): Promise<void> {
   if (!isTauriRuntime) return;
-  await invoke("attempt_forget", { questionId });
+  await invoke("attempt_forget", { workspaceId, questionId });
 }
 
-export async function loadPointStats(): Promise<PointStats[]> {
+export async function loadPointStats(
+  workspaceId: string,
+): Promise<PointStats[]> {
   if (!isTauriRuntime) return [];
-  return invoke<PointStats[]>("attempt_point_stats");
+  return invoke<PointStats[]>("attempt_point_stats", { workspaceId });
 }

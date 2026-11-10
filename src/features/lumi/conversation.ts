@@ -6,7 +6,7 @@ export type {
   ConversationTurn,
 } from "@/features/lumi/conversationCore";
 
-/** The Lumi page's transcript, remembered under its own scope (D-068). */
+/** The Lumi page's transcript, remembered per package (D-068). */
 export const useConversation = createConversationStore({
   scope: "lumi",
   systemPrompt: SYSTEM_PROMPT,

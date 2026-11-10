@@ -12,6 +12,8 @@ import {
 import { ScratchpadPanel } from "@/features/scratchpad/Scratchpad";
 import { usePreferences } from "@/features/settings/preferencesStore";
 import { usePersistedState } from "@/features/uiState";
+import { workspaceScope } from "@/features/uiState/scope";
+import { useWorkspaceId } from "@/features/workspace/WorkspaceContext";
 import { LumiMark } from "@/features/lumi/LumiMark";
 import { DrillLumiPanel } from "@/features/training/DrillLumiPanel";
 import type { Question } from "@/features/knowledge";
@@ -36,10 +38,11 @@ export function DrillToolbar({
   /** The card on screen; the Lumi rail opens preloaded with it. */
   question?: Question;
 }) {
+  const workspaceId = useWorkspaceId();
   // Which panel is open is part of the drill layout, so it comes back after a
   // reload instead of collapsing to the bare rail.
   const [active, setActive] = usePersistedState<ToolKey | null>(
-    "drill.tool",
+    workspaceScope(workspaceId, "drill.tool"),
     null,
   );
 
@@ -48,7 +51,7 @@ export function DrillToolbar({
       {active === "lumi" ? <DrillLumiPanel question={question} /> : null}
       {active === "scratchpad" ? (
         <div className="w-[min(22rem,42vw)]">
-          <ScratchpadPanel />
+          <ScratchpadPanel persistKey={workspaceScope(workspaceId, "drill.ink.board")} />
         </div>
       ) : null}
       {active === "font" ? (

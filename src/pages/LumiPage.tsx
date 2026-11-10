@@ -7,22 +7,34 @@ import { LumiCharacter } from "@/features/lumi/LumiCharacter";
 import { MessageList } from "@/features/lumi/MessageList";
 import { ConversationList } from "@/features/lumi/ConversationList";
 import { useConversation } from "@/features/lumi/conversation";
+import { useBoundConversation } from "@/features/lumi/useBoundConversation";
 import { greetingFor } from "@/features/lumi/greetings";
 import { useProviderStatus } from "@/features/settings/providerStatus";
 import { usePersistedState } from "@/features/uiState/usePersistedState";
+import { useWorkspaceId } from "@/features/workspace/WorkspaceContext";
+import { workspaceScope } from "@/features/uiState/scope";
 
 export function LumiPage() {
+  // Binds the shared store to this package before anything is read, so a
+  // transcript from another workspace never flashes on the way in.
+  useBoundConversation(useConversation);
+
+  const workspaceId = useWorkspaceId();
   const [greeting, setGreeting] = useState(() => greetingFor());
-  const [draft, setDraft] = usePersistedState("lumi.draft", "");
-  const [listOpen, setListOpen] = usePersistedState("lumi.listOpen", true);
+  const [draft, setDraft] = usePersistedState(
+    workspaceScope(workspaceId, "lumi.draft"),
+    "",
+  );
+  const [listOpen, setListOpen] = usePersistedState(
+    workspaceScope(workspaceId, "lumi.listOpen"),
+    true,
+  );
   const configured = useProviderStatus((state) => state.configured);
 
   const conversationId = useConversation((state) => state.conversationId);
   const turns = useConversation((state) => state.turns);
   const sending = useConversation((state) => state.sending);
   const list = useConversation((state) => state.list);
-  const listLoaded = useConversation((state) => state.listLoaded);
-  const hydrate = useConversation((state) => state.hydrate);
   const openConversation = useConversation((state) => state.openConversation);
   const startNew = useConversation((state) => state.startNew);
   const rename = useConversation((state) => state.rename);
@@ -36,12 +48,6 @@ export function LumiPage() {
   const editingTurnId = useConversation((state) => state.editingTurnId);
 
   const empty = turns.length === 0;
-
-  // Resume where the reader left off: the remembered conversation wins, then
-  // the most recently updated one (D-068).
-  useEffect(() => {
-    if (!listLoaded) void hydrate();
-  }, [listLoaded, hydrate]);
 
   // The greeting names a slice of the day, so it only has to change when that
   // slice does; a minute tick is the cheapest way to catch the boundary.
@@ -89,7 +95,8 @@ export function LumiPage() {
       />
 
       <div className="mx-auto flex min-h-0 min-w-0 flex-1 flex-col gap-4 p-5 sm:p-7">
-        {empty ? (          <div className="-mt-18 flex min-h-0 flex-1 flex-col items-center justify-center gap-4">
+        {empty ? (
+          <div className="-mt-18 flex min-h-0 flex-1 flex-col items-center justify-center gap-4">
             <LumiCharacter className="size-28 sm:size-32" />
             <p className="max-w-md text-center text-lg text-muted-foreground">
               {greeting}
@@ -130,9 +137,9 @@ export function LumiPage() {
                 value={draft}
                 onValueChange={setDraft}
                 placeholder={
-                  editingTurnId ? "修改后发送，将替换后续对话" : "和 Lumi 说点什么"
+                  editingTurnId ? "修改后发送，将替换后续对话" : "跟 Lumi 说点什么"
                 }
-                aria-label="和 Lumi 说点什么"
+                aria-label="跟 Lumi 说点什么"
                 minRows={2}
                 maxRows={8}
                 loading={sending}

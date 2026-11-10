@@ -286,6 +286,22 @@ impl Store {
             .map(|_| ())
             .map_err(|error| format!("清空作答失败：{}", error))
     }
+
+    /// Wipes every workspace's history at once. The shelf rows survive: this
+    /// clears study data, not installed packages.
+    pub fn reset_all(&self) -> Result<(), String> {
+        let connection = self.lock()?;
+        connection
+            .execute("DELETE FROM messages", [])
+            .map_err(|error| format!("清空消息失败：{}", error))?;
+        connection
+            .execute("DELETE FROM conversations", [])
+            .map_err(|error| format!("清空会话失败：{}", error))?;
+        connection
+            .execute("DELETE FROM answer_attempts", [])
+            .map(|_| ())
+            .map_err(|error| format!("清空作答失败：{}", error))
+    }
 }
 
 #[cfg(test)]

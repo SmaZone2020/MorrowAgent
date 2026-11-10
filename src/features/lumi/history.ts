@@ -16,13 +16,15 @@ export interface ConversationSummary {
 }
 
 // History is optional by design: the browser preview has no database, and a
-// failed read should cost a reload, not the app.
+// failed read should cost a reload, not the app. Every call is scoped to one
+// workspace, because two packages must not share a transcript (MLPS §1.2).
 export async function appendMessage(
+  workspaceId: string,
   conversationId: string,
   message: { id: string; role: string; content: string },
 ): Promise<void> {
   if (!isTauriRuntime) return;
-  await invoke("chat_append", { conversationId, message });
+  await invoke("chat_append", { workspaceId, conversationId, message });
 }
 
 export async function loadMessages(
@@ -33,10 +35,14 @@ export async function loadMessages(
 }
 
 export async function loadConversations(
+  workspaceId: string,
   limit = 50,
 ): Promise<ConversationSummary[]> {
   if (!isTauriRuntime) return [];
-  return invoke<ConversationSummary[]>("chat_conversations", { limit });
+  return invoke<ConversationSummary[]>("chat_conversations", {
+    workspaceId,
+    limit,
+  });
 }
 
 export async function renameConversation(

@@ -47,7 +47,7 @@ export async function loadStats(): Promise<StoreStats | null> {
 
 export async function resetAllData(): Promise<void> {
   if (!isTauriRuntime) return;
-  await invoke("chat_reset");
+  await invoke("data_reset");
 }
 
 /** Bytes to "12.4 MB", which is the only precision worth showing here. */

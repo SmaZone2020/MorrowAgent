@@ -13,21 +13,19 @@ import {
   AnimatedSidebarMenu,
   AnimatedSidebarMenuButton,
   AnimatedSidebarMenuItem,
-  AnimatedSidebarMenuSub,
-  AnimatedSidebarMenuSubButton,
-  AnimatedSidebarMenuSubItem,
   AnimatedSidebarRail,
   useAnimatedSidebar,
 } from "@/vendor/beui/components/motion/animated-sidebar";
-import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
 import { Xmark } from "@gravity-ui/icons";
-import { navigationGroups, type NavigationItem } from "@/app/navigation";
+import type { NavigationItem } from "@/app/navigation";
 import {
   describeLocation,
   flattenNavigation,
-  isSettingsPath,
+  navigationFor,
   resolveActiveEntry,
+  resolveShellLayer,
 } from "@/app/shell/navHelpers";
+import { Breadcrumb } from "@/app/shell/Breadcrumb";
 import { AppStatusFooter } from "@/app/shell/AppStatusFooter";
 import { RailFlyout } from "@/app/shell/RailFlyout";
 import { usePersistedState } from "@/features/uiState/usePersistedState";
@@ -41,15 +39,22 @@ const groupClass =
 export function AppShell() {
   const location = useLocation();
   const navigate = useNavigate();
-  const settings = isSettingsPath(location.pathname);
+  const layer = useMemo(
+    () => resolveShellLayer(location.pathname),
+    [location.pathname],
+  );
+  const settings = layer.kind === "settings";
   const { state } = useAnimatedSidebar();
   const collapsed = state === "collapsed";
-  const entries = useMemo(() => flattenNavigation(navigationGroups), []);
+  // The rail changes with the layer: the shelf has one destination, a
+  // workspace has five, and neither list is meaningful in the other shell.
+  const groups = useMemo(() => navigationFor(layer), [layer]);
+  const entries = useMemo(() => flattenNavigation(groups), [groups]);
   const activeEntry = useMemo(
     () => resolveActiveEntry(entries, location.pathname),
     [entries, location.pathname],
   );
-  const locationInfo = describeLocation(activeEntry, location.pathname);
+  const description = describeLocation(activeEntry);
   const [expanded, setExpanded] = usePersistedState<string | null>(
     "sidebar.expanded",
     activeEntry?.item.children ? activeEntry.item.key : null,
@@ -61,9 +66,7 @@ export function AppShell() {
   const itemRefs = useRef(new Map<string, HTMLLIElement | null>());
 
   const flyoutItem: NavigationItem | undefined = flyoutKey
-    ? navigationGroups
-        .flatMap((group) => group.items)
-        .find((item) => item.key === flyoutKey)
+    ? groups.flatMap((group) => group.items).find((item) => item.key === flyoutKey)
     : undefined;
 
   // Going back to the wide sidebar puts the children inline again, so a rail
@@ -97,7 +100,7 @@ export function AppShell() {
             </AnimatedSidebarHeader>
 
             <AnimatedSidebarContent className="scrollbar-thin px-2 group-data-[state=collapsed]/sidebar:gap-[4px]">
-              {navigationGroups.map((group) => (
+              {groups.map((group) => (
                 <AnimatedSidebarGroup key={group.key} className={groupClass}>
                   <AnimatedSidebarGroupLabel className="group-data-[state=collapsed]/sidebar:hidden text-sm">
                     {group.label}
@@ -149,26 +152,6 @@ export function AppShell() {
                             >
                               {item.label}
                             </AnimatedSidebarMenuButton>
-                            {item.children ? (
-                              <AnimatedSidebarMenuSub open={expanded === item.key}>
-                                {item.children.map((child) => (
-                                  <AnimatedSidebarMenuSubItem key={child.key}>
-                                    <AnimatedSidebarMenuSubButton
-                                      icon={
-                                        child.icon ? (
-                                          <child.icon className="size-4.5" />
-                                        ) : undefined
-                                      }
-                                      isActive={location.pathname === child.path}
-                                      onSelect={() => navigate(child.path)}
-                                      className="text-sm"
-                                    >
-                                      {child.label}
-                                    </AnimatedSidebarMenuSubButton>
-                                  </AnimatedSidebarMenuSubItem>
-                                ))}
-                              </AnimatedSidebarMenuSub>
-                            ) : null}
                           </AnimatedSidebarMenuItem>
                         );
                       })}
@@ -198,23 +181,11 @@ export function AppShell() {
           ) : null}
 
           <AnimatedSidebarInset className="min-h-0">
-            <header className="flex h-11 shrink-0 items-center gap-2 border-b border-border px-4">
-              <span className="truncate text-sm text-muted-foreground">
-                {locationInfo.section}
-              </span>
-              <span className="text-sm text-muted-foreground">/</span>
-              <span className="truncate text-sm font-medium text-foreground">
-                {locationInfo.title}
-              </span>
-              <AnimatedBadge
-                status="neutral"
-                size="sm"
-                contentKey="skeleton"
-                className="ml-auto"
-              >
-                阶段 0
-              </AnimatedBadge>
-            </header>
+            <Breadcrumb
+              layer={layer}
+              section={description.section}
+              title={description.title}
+            />
 
             <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto">
               <Outlet />

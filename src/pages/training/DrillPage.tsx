@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+﻿import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button } from "@/vendor/beui/components/motion/button";
 import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
@@ -7,7 +7,14 @@ import { QuestionCard } from "@/features/training/QuestionCard";
 import { DrillToolbar } from "@/features/training/DrillToolbar";
 import { recordAttempt } from "@/features/training/attempts";
 import { usePersistedState } from "@/features/uiState";
-import { knowledgePoints, questions, questionsFor } from "@/features/knowledge";
+import { workspaceScope } from "@/features/uiState/scope";
+import { findPoint, questionsFor } from "@/features/knowledge";
+import type { KnowledgeIndex, Question } from "@/features/knowledge";
+import {
+  useKnowledge,
+  useWorkspaceId,
+} from "@/features/workspace/WorkspaceContext";
+import { workspacePath } from "@/app/navigation";
 
 type DrillResult = "correct" | "wrong" | "revealed";
 
@@ -28,7 +35,18 @@ interface DrillRun {
   run: number;
 }
 
-const EMPTY_RUN: DrillRun = { key: "", index: 0, results: {}, answers: {}, run: 0 };
+const EMPTY_RUN: DrillRun = {
+  key: "",
+  index: 0,
+  results: {},
+  answers: {},
+  run: 0,
+};
+
+/** Every question in the package, in the order the package lists them. */
+function allQuestions(index: KnowledgeIndex): Question[] {
+  return index.view.questions;
+}
 
 /**
  * Drill picks a point first, then walks its questions one at a time. Point
@@ -36,11 +54,14 @@ const EMPTY_RUN: DrillRun = { key: "", index: 0, results: {}, answers: {}, run: 
  * jump straight into a specific point.
  */
 export function DrillPage() {
+  const workspaceId = useWorkspaceId();
+  const index = useKnowledge();
   const [params, setParams] = useSearchParams();
   const pointId = params.get("point");
   const questionId = params.get("question");
+
   const [stored, setStored] = usePersistedState<DrillRun>(
-    "drill.run",
+    workspaceScope(workspaceId, "drill.run"),
     EMPTY_RUN,
   );
 
@@ -49,17 +70,25 @@ export function DrillPage() {
     // user to the exact question they missed, not to its whole point. It does
     // not fall back, because showing the whole set under a "single question"
     // header would misrepresent what is on screen.
-    if (questionId) return questions.filter((entry) => entry.id === questionId);
-    return pointId ? questionsFor(pointId) : questions;
-  }, [pointId, questionId]);
+    if (questionId) {
+      const one = index.questionsById.get(questionId);
+      return one ? [one] : [];
+    }
+    if (pointId) return questionsFor(index, pointId);
+    return allQuestions(index);
+  }, [index, pointId, questionId]);
 
-  const runKey = questionId ? `q:${questionId}` : pointId ? `p:${pointId}` : "all";
+  const runKey = questionId
+    ? `q:${questionId}`
+    : pointId
+      ? `p:${pointId}`
+      : "all";
   // Deriving instead of resetting in an effect keeps the first frame correct:
   // a stored run for another set must never render its question number here.
   const session = stored.key === runKey ? stored : { ...EMPTY_RUN, key: runKey };
   // The content pack can shrink between launches, so a stored index is only
   // trusted while it still points at a question.
-  const index =
+  const position =
     session.index >= 0 && session.index < openQuestions.length
       ? session.index
       : 0;
@@ -72,18 +101,18 @@ export function DrillPage() {
   // second write undo the first with the values captured at render time.
   const patch = (next: (current: DrillRun) => Partial<DrillRun>) =>
     setStored((current) => {
-      const base = current.key === runKey ? current : { ...EMPTY_RUN, key: runKey };
+      const base =
+        current.key === runKey ? current : { ...EMPTY_RUN, key: runKey };
       return { ...base, ...next(base) };
     });
 
-  const point = pointId
-    ? knowledgePoints.find((entry) => entry.id === pointId)
-    : undefined;
-  const current = openQuestions[index];
+  const point = pointId ? findPoint(index, pointId) : undefined;
+  const current = openQuestions[position];
 
   const answered = openQuestions.filter((entry) => entry.id in results).length;
   const scored = openQuestions.filter(
-    (entry) => results[entry.id] === "correct" || results[entry.id] === "wrong",
+    (entry) =>
+      results[entry.id] === "correct" || results[entry.id] === "wrong",
   ).length;
   const correct = openQuestions.filter(
     (entry) => results[entry.id] === "correct",
@@ -108,38 +137,47 @@ export function DrillPage() {
               <Button
                 size="sm"
                 variant={pointId ? "ghost" : "primary"}
+                className="text-sm"
                 onClick={() => selectPoint(null)}
               >
                 全部题目
               </Button>
-              {knowledgePoints.map((entry) => (
-                <Button
-                  key={entry.id}
-                  size="sm"
-                  variant={entry.id === pointId ? "primary" : "ghost"}
-                  onClick={() => selectPoint(entry.id)}
-                >
-                  {entry.name}
-                </Button>
-              ))}
+              {index.view.chapters.flatMap((chapter) =>
+                chapter.pointIds.map((id) => {
+                  const entry = findPoint(index, id);
+                  if (!entry) return null;
+                  return (
+                    <Button
+                      key={entry.id}
+                      size="sm"
+                      variant={entry.id === pointId ? "primary" : "ghost"}
+                      className="text-sm"
+                      onClick={() => selectPoint(entry.id)}
+                    >
+                      {entry.name}
+                    </Button>
+                  );
+                }),
+              )}
             </div>
           ) : (
             <div className="flex flex-wrap items-center gap-2">
               <AnimatedBadge status="info" size="sm" contentKey="single">
                 错题重做
               </AnimatedBadge>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => selectPoint(pointId)}
-              >
-                {pointId ? "返回本知识点" : "全部题目"}
-              </Button>
+              {pointId ? (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-sm"
+                  onClick={() => selectPoint(pointId)}
+                >
+                  返回本知识点
+                </Button>
+              ) : null}
             </div>
           )}
         </div>
-
-        <DrillToolbar />
       </div>
 
       {current ? (
@@ -147,14 +185,14 @@ export function DrillPage() {
           <QuestionCard
             key={`${current.id}-${session.run}`}
             question={current}
-            index={index + 1}
+            index={position + 1}
             total={openQuestions.length}
             initialAnswer={answers[current.id] ?? null}
             initialRevealed={results[current.id] === "revealed"}
             onAnswered={(answer, isCorrect) => {
               // Record the answer and, on a correct one, advance in a single
               // update: two writes from the same render would race.
-              const last = index + 1 >= openQuestions.length;
+              const last = position + 1 >= openQuestions.length;
               patch((base) => ({
                 results: {
                   ...base.results,
@@ -163,9 +201,14 @@ export function DrillPage() {
                 answers: { ...(base.answers ?? {}), [current.id]: answer },
                 // Answering correctly flows straight to the next question; a
                 // wrong answer stays put so the explanation is read.
-                index: isCorrect && !last ? index + 1 : base.index,
+                index: isCorrect && !last ? position + 1 : base.index,
               }));
-              void recordAttempt(current, answer, isCorrect).catch(() => {
+              void recordAttempt(
+                workspaceId,
+                current,
+                answer,
+                isCorrect,
+              ).catch(() => {
                 // A failed write must not block the drill; the answer stays on
                 // screen and the next submit simply tries again.
               });
@@ -176,13 +219,13 @@ export function DrillPage() {
               }));
             }}
             onNext={
-              index + 1 < openQuestions.length
-                ? () => patch(() => ({ index: index + 1 }))
+              position + 1 < openQuestions.length
+                ? () => patch(() => ({ index: position + 1 }))
                 : undefined
             }
           />
           {!questionId &&
-          index + 1 >= openQuestions.length &&
+          position + 1 >= openQuestions.length &&
           current.id in results ? (
             <Panel title="本轮完成">
               <div className="flex flex-wrap items-center gap-3">
@@ -204,7 +247,7 @@ export function DrillPage() {
                 <Button
                   size="sm"
                   variant="secondary"
-                  className="ml-auto"
+                  className="ml-auto text-sm"
                   onClick={() =>
                     patch((base) => ({
                       results: {},
@@ -224,7 +267,11 @@ export function DrillPage() {
         <Panel title={point ? point.name : "专项训练"}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <span className="text-sm text-muted-foreground">
-              {questionId ? "这道题已不在当前知识包中" : "该知识点暂无题目"}
+              {questionId
+                ? "这道题已不在当前知识包中"
+                : pointId
+                  ? "该知识点暂无题目"
+                  : "这个学习包暂无题目"}
             </span>
             <AnimatedBadge status="neutral" size="sm" contentKey="empty">
               {questionId ? "已下线" : "待补充"}
@@ -232,6 +279,13 @@ export function DrillPage() {
           </div>
         </Panel>
       )}
+
+      <DrillToolbar className="absolute top-32 right-10" question={current} />
     </div>
   );
+}
+
+/** Kept for the wrong book, which links back into the drill by question id. */
+export function drillQuestionPath(workspaceId: string, questionId: string) {
+  return `${workspacePath(workspaceId, "/drill")}?question=${questionId}`;
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/vendor/beui/components/motion/button";
 import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
@@ -6,44 +6,54 @@ import { Panel } from "@/components/Panel";
 import { EmptyState } from "@/components/EmptyState";
 import { MathText } from "@/components/MathText";
 import { isTauriRuntime } from "@/app/shell/windowControls";
-import { findPoint, questions } from "@/features/knowledge";
+import { findPoint } from "@/features/knowledge";
 import { useScrollMemory } from "@/features/uiState";
+import { workspaceScope } from "@/features/uiState/scope";
+import { workspacePath } from "@/app/navigation";
+import {
+  useKnowledge,
+  useWorkspaceId,
+} from "@/features/workspace/WorkspaceContext";
 import {
   forgetAttempt,
   loadWrongAttempts,
   type WrongAttempt,
 } from "@/features/training/attempts";
+import { drillQuestionPath } from "@/pages/training/DrillPage";
 
 /**
  * The wrong book is a view over answer attempts, not a separate collection:
  * a question leaves the list as soon as a later attempt on it is correct.
+ *
+ * Attempts are scoped to this package, so a question answered in another
+ * workspace never appears here (MLPS §1.2).
  */
 export function WrongBookPage() {
   const navigate = useNavigate();
+  const workspaceId = useWorkspaceId();
+  const index = useKnowledge();
   const [attempts, setAttempts] = useState<WrongAttempt[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const scrollRef = useScrollMemory<HTMLDivElement>("wrongBook.scrollTop");
-
-  const questionById = useMemo(
-    () => new Map(questions.map((question) => [question.id, question])),
-    [],
+  const scrollRef = useScrollMemory<HTMLDivElement>(
+    workspaceScope(workspaceId, "wrongBook.scrollTop"),
   );
 
   useEffect(() => {
-    void loadWrongAttempts().then((rows) => {
+    setLoaded(false);
+    void loadWrongAttempts(workspaceId).then((rows) => {
       setAttempts(rows);
       setLoaded(true);
     });
-  }, []);
+  }, [workspaceId]);
 
   const drop = async (questionId: string) => {
     setAttempts((rows) => rows.filter((row) => row.questionId !== questionId));
     try {
-      await forgetAttempt(questionId);
+      await forgetAttempt(workspaceId, questionId);
     } catch {
       // Put the row back from the database instead of leaving the list out of
       // step with what is actually stored.
-      void loadWrongAttempts().then(setAttempts);
+      void loadWrongAttempts(workspaceId).then(setAttempts);
     }
   };
 
@@ -71,59 +81,67 @@ export function WrongBookPage() {
         ) : !loaded ? (
           <p className="py-4 text-sm text-muted-foreground">读取中</p>
         ) : attempts.length === 0 ? (
-          <EmptyState title="还没有做错的题" />
+          <EmptyState
+            title="没有错题"
+            action={
+              <Button
+                size="sm"
+                variant="secondary"
+                className="text-sm"
+                onClick={() => navigate(workspacePath(workspaceId, "/drill"))}
+              >
+                去专项训练
+              </Button>
+            }
+          />
         ) : (
           <ul className="flex flex-col">
             {attempts.map((attempt) => {
-              const question = questionById.get(attempt.questionId);
-              const point = findPoint(attempt.knowledgePointId);
+              // The snapshot is what the user answered, so it survives a
+              // package update; the live question only supplies the point name.
+              const point = attempt.knowledgePointId
+                ? findPoint(index, attempt.knowledgePointId)
+                : undefined;
               return (
                 <li
                   key={attempt.id}
                   className="flex flex-col gap-2 border-b border-border/60 py-3 first:pt-0 last:border-0 last:pb-0"
                 >
-                  <MathText className="block text-sm leading-6 text-foreground">
-                    {attempt.questionSnapshot}
-                  </MathText>
-
-                  {question ? (
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                      <span>
-                        你的答案{" "}
-                        <MathText className="font-medium text-foreground">
-                          {attempt.answer}
-                        </MathText>
-                      </span>
-                      <span>
-                        正确答案{" "}
-                        <MathText className="font-medium text-foreground">
-                          {question.answer}
-                        </MathText>
-                      </span>
-                      {point ? <span>{point.name}</span> : null}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">
-                      该题已不在当前知识包中，仅保留作答快照。
-                    </p>
-                  )}
-
                   <div className="flex flex-wrap items-center gap-2">
+                    <span className="min-w-0 flex-1 text-sm text-foreground">
+                      <MathText>{attempt.questionSnapshot}</MathText>
+                    </span>
+                    <AnimatedBadge
+                      status="warning"
+                      size="sm"
+                      contentKey={attempt.id}
+                    >
+                      最近一次答错
+                    </AnimatedBadge>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {point ? (
+                      <span className="text-sm text-muted-foreground">
+                        {point.name}
+                      </span>
+                    ) : null}
                     <Button
                       size="sm"
                       variant="secondary"
+                      className="text-sm"
                       onClick={() =>
-                        navigate(`/training/drill?question=${attempt.questionId}`)
+                        navigate(drillQuestionPath(workspaceId, attempt.questionId))
                       }
                     >
-                      去重做
+                      重做
                     </Button>
                     <Button
                       size="sm"
                       variant="ghost"
+                      className="text-sm"
                       onClick={() => void drop(attempt.questionId)}
                     >
-                      移出错题本
+                      移出
                     </Button>
                   </div>
                 </li>

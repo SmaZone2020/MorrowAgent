@@ -1,13 +1,10 @@
 import type { ComponentType, SVGProps } from "react";
 import {
+  ArrowLeft,
   BookOpen,
   ChartLine,
-  FileText,
   GraduationCap,
-  House,
   Persons,
-  Target,
-  TargetDart,
 } from "@gravity-ui/icons";
 import { LumiMark } from "@/features/lumi/LumiMark";
 
@@ -34,52 +31,49 @@ export interface NavigationGroup {
   items: NavigationItem[];
 }
 
-// Group labels are reserved for the two axis-level destinations. Secondary
-// modules (training, mistake book, knowledge base) sit inline so the rail
-// collapses without leftover group headings.
-export const navigationGroups: NavigationGroup[] = [
+/**
+ * The shelf is its own layer: a package has to be chosen before Lumi, the
+ * knowledge base or any record has meaning, so the rail there holds one
+ * destination and the shelf itself is the content.
+ */
+export const shelfNavigation: NavigationGroup[] = [
   {
-    key: "core",
-    label: "学习主线",
-    items: [
-      { key: "dashboard", label: "仪表盘", path: "/", icon: House },
-      { key: "lumi", label: "Lumi AI", path: "/lumi", icon: LumiMark },
-    ],
+    key: "shelf",
+    label: "书架",
+    items: [{ key: "library", label: "书架", path: "/", icon: BookOpen }],
   },
+];
+
+/**
+ * Inside a package. Every entry is scoped to `/:workspaceId`, so two packages
+ * never share a transcript, a wrong-book or a profile (MLPS §1.2).
+ */
+export const workspaceNavigation: NavigationGroup[] = [
   {
-    key: "learning",
-    // The group used to repeat its own first item's label, which read as a
-    // heading plus a same-named row. This label covers everything it holds.
-    label: "学习与记录",
+    key: "workspace",
+    label: "学习区",
     items: [
-      {
-        key: "myLearning",
-        label: "我的学习",
-        path: "/learning",
-        icon: Target,
-        children: [
-          { key: "goal", label: "学习目标", path: "/learning/goal", icon: Target },
-          { key: "plan", label: "学习计划", path: "/learning/plan", icon: TargetDart },
-          { key: "profile", label: "知识画像", path: "/learning/profile", icon: ChartLine },
-          { key: "report", label: "学习报告", path: "/learning/report", icon: FileText },
-        ],
-      },
-      {
-        key: "trainingCenter",
-        label: "训练中心",
-        path: "/training",
-        icon: GraduationCap,
-        children: [
-          { key: "shelf", label: "科目书架", path: "/training" },
-          { key: "assessment", label: "智能测评", path: "/training/assessment" },
-          { key: "drill", label: "专项训练", path: "/training/drill" },
-          { key: "mock", label: "模拟考试", path: "/training/mock" },
-        ],
-      },
-      { key: "wrongBook", label: "错题本", path: "/wrong-book", icon: Persons },
+      { key: "lumi", label: "Lumi AI", path: "/lumi", icon: LumiMark },
       { key: "knowledge", label: "知识库", path: "/knowledge", icon: BookOpen },
+      { key: "drill", label: "专项训练", path: "/drill", icon: GraduationCap },
+      { key: "wrongBook", label: "错题本", path: "/wrong-book", icon: Persons },
+      { key: "profile", label: "知识画像", path: "/profile", icon: ChartLine },
     ],
   },
 ];
 
+export const shelfPath = "/";
+
+export function workspaceBase(workspaceId: string): string {
+  return `/w/${workspaceId}`;
+}
+
+/** Resolves a workspace-relative path to the real one. */
+export function workspacePath(workspaceId: string, relative: string): string {
+  return `${workspaceBase(workspaceId)}${relative}`;
+}
+
 export const settingsPath = "/settings/general";
+
+// Kept for the dashboard-era footer entry, which is still a shelf shortcut.
+export const backToShelfIcon = ArrowLeft;

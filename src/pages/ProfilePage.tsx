@@ -7,7 +7,13 @@ import { EmptyState } from "@/components/EmptyState";
 import { isTauriRuntime } from "@/app/shell/windowControls";
 import { findPoint } from "@/features/knowledge";
 import { useScrollMemory } from "@/features/uiState";
+import { workspaceScope } from "@/features/uiState/scope";
+import {
+  useKnowledge,
+  useWorkspaceId,
+} from "@/features/workspace/WorkspaceContext";
 import { loadPointStats, type PointStats } from "@/features/training/attempts";
+import { workspacePath } from "@/app/navigation";
 
 /**
  * The profile shows evidence, not a verdict. Mastery scoring is still an open
@@ -16,16 +22,21 @@ import { loadPointStats, type PointStats } from "@/features/training/attempts";
  */
 export function ProfilePage() {
   const navigate = useNavigate();
+  const workspaceId = useWorkspaceId();
+  const index = useKnowledge();
   const [stats, setStats] = useState<PointStats[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const scrollRef = useScrollMemory<HTMLDivElement>("profile.scrollTop");
+  const scrollRef = useScrollMemory<HTMLDivElement>(
+    workspaceScope(workspaceId, "profile.scrollTop"),
+  );
 
   useEffect(() => {
-    void loadPointStats().then((rows) => {
+    setLoaded(false);
+    void loadPointStats(workspaceId).then((rows) => {
       setStats(rows);
       setLoaded(true);
     });
-  }, []);
+  }, [workspaceId]);
 
   return (
     <div
@@ -57,7 +68,8 @@ export function ProfilePage() {
               <Button
                 size="sm"
                 variant="secondary"
-                onClick={() => navigate("/training/drill")}
+                className="text-sm"
+                onClick={() => navigate(workspacePath(workspaceId, "/drill"))}
               >
                 去专项训练
               </Button>
@@ -66,8 +78,10 @@ export function ProfilePage() {
         ) : (
           <ul className="flex flex-col">
             {stats.map((entry) => {
-              const point = findPoint(entry.knowledgePointId);
-              const accuracy = Math.round((entry.correct / entry.attempts) * 100);
+              const point = findPoint(index, entry.knowledgePointId);
+              const accuracy = Math.round(
+                (entry.correct / entry.attempts) * 100,
+              );
               return (
                 <li
                   key={entry.knowledgePointId}
@@ -76,7 +90,7 @@ export function ProfilePage() {
                   <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
                     {point?.name ?? entry.knowledgePointId}
                   </span>
-                  <span className="text-xs tabular-nums text-muted-foreground">
+                  <span className="text-sm tabular-nums text-muted-foreground">
                     作答 {entry.attempts} · 正确 {entry.correct}
                   </span>
                   <AnimatedBadge
@@ -96,9 +110,10 @@ export function ProfilePage() {
                   <Button
                     size="sm"
                     variant="ghost"
+                    className="text-sm"
                     onClick={() =>
                       navigate(
-                        `/training/drill?point=${entry.knowledgePointId}`,
+                        `${workspacePath(workspaceId, "/drill")}?point=${entry.knowledgePointId}`,
                       )
                     }
                   >

@@ -1,8 +1,8 @@
 import { createHashRouter, Navigate } from "react-router-dom";
 import { RootLayout } from "@/app/shell/RootLayout";
-import { DashboardPage } from "@/pages/DashboardPage";
+import { WorkspaceRoute } from "@/app/shell/WorkspaceRoute";
+import { LibraryPage } from "@/pages/LibraryPage";
 import { LumiPage } from "@/pages/LumiPage";
-import { PlaceholderPage } from "@/pages/PlaceholderPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 import { SettingsLayout } from "@/pages/settings/SettingsLayout";
 import { SettingsOverviewPage } from "@/pages/settings/SettingsOverviewPage";
@@ -15,26 +15,36 @@ import { KnowledgePage } from "@/pages/KnowledgePage";
 import { WrongBookPage } from "@/pages/WrongBookPage";
 import { ProfilePage } from "@/pages/ProfilePage";
 import { DrillPage } from "@/pages/training/DrillPage";
-import { TrainingShelfPage } from "@/pages/training/TrainingShelfPage";
 
+/**
+ * Three layers, nested by URL rather than by state:
+ *
+ *   /                    shelf      — pick a package
+ *   /w/:workspaceId/*    workspace  — Lumi, knowledge, drill, records
+ *   /settings/*          settings   — owns the whole window
+ *
+ * A workspace is addressed by id in the path because everything inside it is
+ * scoped to that package: two routes on two packages must not share state
+ * (MLPS §1.2).
+ */
 export const router = createHashRouter([
   {
     path: "/",
     element: <RootLayout />,
     children: [
-      { index: true, element: <DashboardPage /> },
-      { path: "lumi", element: <LumiPage /> },
-      { path: "learning", element: <Navigate to="/learning/goal" replace /> },
-      { path: "learning/goal", element: <PlaceholderPage /> },
-      { path: "learning/plan", element: <PlaceholderPage /> },
-      { path: "learning/profile", element: <ProfilePage /> },
-      { path: "learning/report", element: <PlaceholderPage /> },
-      { path: "training", element: <TrainingShelfPage /> },
-      { path: "training/assessment", element: <PlaceholderPage /> },
-      { path: "training/drill", element: <DrillPage /> },
-      { path: "training/mock", element: <PlaceholderPage /> },
-      { path: "wrong-book", element: <WrongBookPage /> },
-      { path: "knowledge", element: <KnowledgePage /> },
+      { index: true, element: <LibraryPage /> },
+      {
+        path: "w/:workspaceId",
+        element: <WorkspaceRoute />,
+        children: [
+          { index: true, element: <Navigate to="lumi" replace /> },
+          { path: "lumi", element: <LumiPage /> },
+          { path: "knowledge", element: <KnowledgePage /> },
+          { path: "drill", element: <DrillPage /> },
+          { path: "wrong-book", element: <WrongBookPage /> },
+          { path: "profile", element: <ProfilePage /> },
+        ],
+      },
       {
         path: "settings",
         element: <SettingsLayout />,
@@ -42,7 +52,10 @@ export const router = createHashRouter([
           { index: true, element: <SettingsOverviewPage /> },
           { path: "general", element: <GeneralSettingsPage /> },
           // Appearance folded into preferences; keep old links working.
-          { path: "appearance", element: <Navigate to="/settings/general" replace /> },
+          {
+            path: "appearance",
+            element: <Navigate to="/settings/general" replace />,
+          },
           { path: "provider", element: <ProviderSettingsPage /> },
           { path: "model", element: <ModelSettingsPage /> },
           { path: "data", element: <DataSettingsPage /> },

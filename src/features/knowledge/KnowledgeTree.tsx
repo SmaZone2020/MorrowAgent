@@ -1,7 +1,14 @@
 import { useMemo } from "react";
 import { ChevronRight, Magnifier } from "@gravity-ui/icons";
 import { Input } from "@/vendor/beui/components/motion/input";
-import { chapters, questionsFor } from "@/features/knowledge";
+import { pointsOfChapter, questionsFor } from "@/features/knowledge";
+import type { KnowledgeIndex, KnowledgePoint } from "@/features/knowledge";
+
+interface VisibleChapter {
+  id: string;
+  name: string;
+  points: KnowledgePoint[];
+}
 
 /**
  * The knowledge base reads like a book: a chapter tree on the left, one point's
@@ -9,6 +16,7 @@ import { chapters, questionsFor } from "@/features/knowledge";
  * the tree only shows what the search leaves.
  */
 export function KnowledgeTree({
+  index,
   query,
   onQueryChange,
   selectedId,
@@ -16,6 +24,7 @@ export function KnowledgeTree({
   openChapters,
   onToggleChapter,
 }: {
+  index: KnowledgeIndex;
   query: string;
   onQueryChange: (next: string) => void;
   selectedId: string | null;
@@ -23,8 +32,13 @@ export function KnowledgeTree({
   openChapters: string[];
   onToggleChapter: (chapterId: string) => void;
 }) {
-  const filtered = useMemo(() => {
+  const filtered = useMemo<VisibleChapter[]>(() => {
     const needle = query.trim().toLowerCase();
+    const chapters = index.view.chapters.map((chapter) => ({
+      id: chapter.id,
+      name: chapter.name,
+      points: pointsOfChapter(index, chapter.id),
+    }));
     if (!needle) return chapters;
     return chapters
       .map((chapter) => ({
@@ -32,11 +46,11 @@ export function KnowledgeTree({
         points: chapter.points.filter(
           (point) =>
             point.name.toLowerCase().includes(needle) ||
-            point.description.toLowerCase().includes(needle),
+            point.summary.toLowerCase().includes(needle),
         ),
       }))
       .filter((chapter) => chapter.points.length > 0);
-  }, [query]);
+  }, [index, query]);
 
   // A search result buried in a folded chapter would be invisible, so every
   // chapter opens while a query is active.
@@ -108,7 +122,7 @@ export function KnowledgeTree({
                                 {point.name}
                               </span>
                               <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
-                                {questionsFor(point.id).length}
+                                {questionsFor(index, point.id).length}
                               </span>
                             </button>
                           </li>

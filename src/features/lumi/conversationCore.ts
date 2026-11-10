@@ -15,6 +15,7 @@ import {
   type ConversationSummary,
 } from "@/features/lumi/history";
 import { readScope, writeScope } from "@/features/uiState/store";
+import { workspaceScope } from "@/features/uiState/scope";
 
 export interface ConversationTurn {
   id: string;
@@ -26,6 +27,8 @@ export interface ConversationTurn {
 }
 
 export interface ConversationState {
+  /** The package this transcript belongs to; null until the page binds one. */
+  workspaceId: string | null;
   /** Current conversation id; null means the draft the user has not sent yet. */
   conversationId: string | null;
   turns: ConversationTurn[];
@@ -33,6 +36,8 @@ export interface ConversationState {
   /** History list, newest first. */
   list: ConversationSummary[];
   listLoaded: boolean;
+  /** Points the store at one package, discarding the previous one's screen state. */
+  bindWorkspace: (workspaceId: string) => void;
   /** Pull the conversation the user last had open, else the newest one. */
   hydrate: () => Promise<void>;
   refreshList: () => Promise<void>;
@@ -84,14 +89,16 @@ function toHistory(turns: ConversationTurn[], skipId: string): ChatMessage[] {
  * controller, the request counter and the in-flight hydrate all have to live in
  * this closure rather than at module scope — otherwise stopping one surface
  * would abort the other's reply.
+ *
+ * A store is shared across packages, so the package id is bound at runtime by
+ * the page. Every read and write is scoped by it: the remembered conversation
+ * lives under `ws:<id>:…`, and the database rows carry the same id (MLPS §1.2).
  */
 export function createConversationStore({
   scope,
   systemPrompt,
   idPrefix = "conv",
 }: ConversationStoreOptions) {
-  const lastKey = `${scope}.conversationId`;
-
   let controller: AbortController | null = null;
   // Identifies the request that currently owns `sending`. Stopping and sending
   // again in the same conversation leaves the old promise alive for a moment, and
@@ -101,19 +108,22 @@ export function createConversationStore({
   // development; sharing the promise keeps that from loading the history twice.
   let hydrating: Promise<void> | null = null;
 
+  const lastKey = (workspaceId: string) =>
+    workspaceScope(workspaceId, `${scope}.conversationId`);
+
   // Persisting is fire-and-forget: a local write must never block the stream, and
   // a failed write is not worth interrupting a reply over.
-  const persist = (conversationId: string, turn: ConversationTurn) => {
+  const persist = (
+    workspaceId: string,
+    conversationId: string,
+    turn: ConversationTurn,
+  ) => {
     if (turn.error || !turn.content) return;
-    void appendMessage(conversationId, {
+    void appendMessage(workspaceId, conversationId, {
       id: turn.id,
       role: turn.role,
       content: turn.content,
     }).catch(() => undefined);
-  };
-
-  const remember = (conversationId: string | null) => {
-    writeScope(lastKey, conversationId);
   };
 
   const decode = (messages: Awaited<ReturnType<typeof loadMessages>>) =>
@@ -125,10 +135,10 @@ export function createConversationStore({
 
   return create<ConversationState>((set, get) => {
     /** Streams one reply into an already-inserted pending turn. */
-    const requestReply = async (
-      conversationId: string,
-      replyTurn: ConversationTurn,
-    ) => {
+    const requestReply = async (replyTurn: ConversationTurn) => {
+      const { workspaceId, conversationId } = get();
+      if (!workspaceId || !conversationId) return;
+
       const patchReply = (patch: Partial<ConversationTurn>) =>
         set((state) => ({
           turns: state.turns.map((turn) =>
@@ -168,7 +178,7 @@ export function createConversationStore({
         const final = answer || "（已停止）";
         patchReply({ pending: false, content: final });
         if (answer) {
-          persist(conversationId, { ...replyTurn, content: answer });
+          persist(workspaceId, conversationId, { ...replyTurn, content: answer });
           void get().refreshList();
         }
       } catch (error) {
@@ -187,6 +197,7 @@ export function createConversationStore({
     };
 
     return {
+      workspaceId: null,
       conversationId: null,
       turns: [],
       sending: false,
@@ -194,12 +205,34 @@ export function createConversationStore({
       list: [],
       listLoaded: false,
 
+      bindWorkspace: (workspaceId) => {
+        if (get().workspaceId === workspaceId) return;
+        // Another package's transcript must not survive the switch, and a
+        // reply still streaming belongs to the package being left behind.
+        get().stop();
+        hydrating = null;
+        set({
+          workspaceId,
+          conversationId: null,
+          turns: [],
+          editingTurnId: null,
+          list: [],
+          listLoaded: false,
+        });
+      },
+
       hydrate: async () => {
         if (hydrating) return hydrating;
+        const workspaceId = get().workspaceId;
+        if (!workspaceId) return;
+
         hydrating = (async () => {
           try {
-            const list = await loadConversations();
-            const remembered = readScope<string | null>(lastKey, null);
+            const list = await loadConversations(workspaceId);
+            const remembered = readScope<string | null>(
+              lastKey(workspaceId),
+              null,
+            );
             // A remembered id can point at a conversation the user deleted on
             // another launch, so fall back to the newest one instead of an empty page.
             const target =
@@ -209,7 +242,7 @@ export function createConversationStore({
               set({ list, listLoaded: true });
               // The remembered id pointed at nothing; drop it so the fallback is not
               // repeated on every launch.
-              if (remembered !== null) remember(null);
+              if (remembered !== null) writeScope(lastKey(workspaceId), null);
               return;
             }
 
@@ -220,7 +253,7 @@ export function createConversationStore({
               turns: decode(await loadMessages(target.id)),
             });
             // Keep the pointer honest so the next launch does not repeat the fallback.
-            remember(target.id);
+            writeScope(lastKey(workspaceId), target.id);
           } catch {
             // No database (browser preview) or a broken file: start empty.
             set({ listLoaded: true });
@@ -232,8 +265,10 @@ export function createConversationStore({
       },
 
       refreshList: async () => {
+        const workspaceId = get().workspaceId;
+        if (!workspaceId) return;
         try {
-          set({ list: await loadConversations(), listLoaded: true });
+          set({ list: await loadConversations(workspaceId), listLoaded: true });
         } catch {
           // Keep whatever list is on screen; a stale list beats an empty one.
         }
@@ -244,12 +279,13 @@ export function createConversationStore({
         // A stream belongs to the conversation it was started from (D-069).
         get().stop();
 
+        const workspaceId = get().workspaceId;
         set({
           conversationId,
           editingTurnId: null,
           turns: decode(await loadMessages(conversationId).catch(() => [])),
         });
-        remember(conversationId);
+        if (workspaceId) writeScope(lastKey(workspaceId), conversationId);
       },
 
       startNew: async () => {
@@ -261,8 +297,9 @@ export function createConversationStore({
           await discardEmptyConversation(previous).catch(() => undefined);
           void get().refreshList();
         }
+        const workspaceId = get().workspaceId;
         set({ conversationId: null, turns: [], editingTurnId: null });
-        remember(null);
+        if (workspaceId) writeScope(lastKey(workspaceId), null);
       },
 
       rename: async (conversationId, title) => {
@@ -301,14 +338,16 @@ export function createConversationStore({
         const next = get().list[0];
         if (next) await get().openConversation(next.id);
         else {
+          const workspaceId = get().workspaceId;
           set({ conversationId: null, turns: [], editingTurnId: null });
-          remember(null);
+          if (workspaceId) writeScope(lastKey(workspaceId), null);
         }
       },
 
       send: async (message) => {
         const text = message.trim();
-        if (!text || get().sending) return;
+        const workspaceId = get().workspaceId;
+        if (!text || get().sending || !workspaceId) return;
 
         const conversationId = get().conversationId ?? nextId(idPrefix);
         const editingTurnId = get().editingTurnId;
@@ -341,12 +380,12 @@ export function createConversationStore({
           turns: [...base, userTurn, replyTurn],
           sending: true,
         });
-        remember(conversationId);
-        persist(conversationId, userTurn);
+        writeScope(lastKey(workspaceId), conversationId);
+        persist(workspaceId, conversationId, userTurn);
         // The first user turn becomes the title, so the list has to catch up.
         void get().refreshList();
 
-        await requestReply(conversationId, replyTurn);
+        await requestReply(replyTurn);
       },
 
       regenerate: async () => {
@@ -373,7 +412,7 @@ export function createConversationStore({
         };
 
         set({ turns: [...trimmed, replyTurn], sending: true });
-        await requestReply(conversationId, replyTurn);
+        await requestReply(replyTurn);
       },
 
       deleteTurn: (turnId) => {
@@ -392,8 +431,9 @@ export function createConversationStore({
 
         if (remaining.length === 0) {
           // An empty transcript is just an empty row in the history list.
+          const workspaceId = get().workspaceId;
           set({ conversationId: null, turns: [], editingTurnId: null });
-          remember(null);
+          if (workspaceId) writeScope(lastKey(workspaceId), null);
           void discardEmptyConversation(conversationId).catch(() => undefined);
           void get().refreshList();
           return;

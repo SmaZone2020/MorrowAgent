@@ -1,96 +1,58 @@
-import bundle from "@data/json/knowledge.json";
+export type {
+  ContentImage,
+  ImageKind,
+  ImagePosition,
+  KnowledgeChapter,
+  KnowledgePoint,
+  KnowledgeRelation,
+  Question,
+  QuestionOption,
+} from "@/features/knowledge/types";
 
-export interface KnowledgePoint {
-  id: string;
-  name: string;
-  chapterId: string;
-  description: string;
-  objectives: string[];
-  prerequisites: string[];
-  related: string[];
-  difficulty: string;
-  difficultyBasis: string;
-  examImportance: string;
-  examLevels: string[];
-  commonErrors: string[];
-  images: ContentImage[];
+export type { KnowledgeIndex, KnowledgeView } from "@/features/knowledge/view";
+
+export { indexKnowledge, toKnowledgeView } from "@/features/knowledge/view";
+
+import type { KnowledgeIndex } from "@/features/knowledge/view";
+import type {
+  ContentImage,
+  ImagePosition,
+  KnowledgePoint,
+  Question,
+} from "@/features/knowledge/types";
+
+/**
+ * Pages never hold their own copy of the package, so every lookup goes through
+ * the index the workspace context built once. These are plain functions rather
+ * than hooks: a component that already has the index should not subscribe again.
+ */
+export function findPoint(
+  index: KnowledgeIndex,
+  pointId: string,
+): KnowledgePoint | undefined {
+  return index.pointsById.get(pointId);
 }
 
-export interface KnowledgeChapter {
-  id: string;
-  name: string;
-  subjectId: string;
-  version: string;
-  points: KnowledgePoint[];
+export function findQuestion(
+  index: KnowledgeIndex,
+  questionId: string,
+): Question | undefined {
+  return index.questionsById.get(questionId);
 }
 
-export interface QuestionOption {
-  key: string;
-  content: string;
+export function questionsFor(
+  index: KnowledgeIndex,
+  pointId: string,
+): Question[] {
+  return index.questionsOfPoint.get(pointId) ?? [];
 }
 
-export type ImageKind = "latex" | "svg" | "data_uri" | "url" | "path";
-
-/** Where an image sits: the stem, the explanation, or one specific option. */
-export type ImagePosition = "stem" | "explanation" | `option:${string}`;
-
-export interface ContentImage {
-  type: "formula" | "figure" | "screenshot" | "other";
-  kind: ImageKind;
-  content: string;
-  position: ImagePosition;
-  caption?: string;
-  alt?: string;
-  width?: number;
-}
-
-export interface Question {
-  id: string;
-  content: string;
-  questionType: string;
-  difficulty: string;
-  difficultyBasis: string;
-  examLevel?: string;
-  options: QuestionOption[];
-  answer: string;
-  explanation: string;
-  images: ContentImage[];
-  knowledgeTags: string[];
-  solutionMethods: string[];
-  commonErrors: { errorType: string; description: string }[];
-  estimatedMinutes?: number;
-  sourceType: string;
-  sourceReference?: string;
-  version: string;
-}
-
-export interface KnowledgeBundle {
-  chapters: KnowledgeChapter[];
-  questions: Question[];
-}
-
-// The bundle is generated at build time by scripts/buildKnowledge.mjs and is
-// typed at this boundary, so a hand-edited YAML field cannot silently reach the
-// UI under a name it never had.
-const data = bundle as unknown as KnowledgeBundle;
-
-export const chapters = data.chapters;
-export const questions = data.questions;
-
-export const knowledgePoints: KnowledgePoint[] = chapters.flatMap(
-  (chapter) => chapter.points,
-);
-
-const pointsById = new Map(knowledgePoints.map((point) => [point.id, point]));
-
-export function findPoint(id: string): KnowledgePoint | undefined {
-  return pointsById.get(id);
-}
-
-export function questionsFor(pointId: string): Question[] {
-  return questions.filter((question) =>
-    question.knowledgeTags.includes(pointId),
-  );
+/** Every point in a chapter, in the order the package declared. */
+export function pointsOfChapter(
+  index: KnowledgeIndex,
+  chapterId: string,
+): KnowledgePoint[] {
+  return index.pointsOfChapter.get(chapterId) ?? [];
 }
 
 /** Images attached to one anchor. Missing anchors return an empty list. */
@@ -103,15 +65,15 @@ export function imagesAt(
   );
 }
 
-/** Points grouped by exam importance, which is how the dashboard ranks them. */
-export function weakPointCandidates(): KnowledgePoint[] {
+/** Points ranked by exam importance, which is how the profile sorts them. */
+export function rankByImportance(points: KnowledgePoint[]): KnowledgePoint[] {
   const rank: Record<string, number> = {
     critical: 0,
     high: 1,
     medium: 2,
     low: 3,
   };
-  return [...knowledgePoints].sort(
+  return [...points].sort(
     (a, b) => (rank[a.examImportance] ?? 9) - (rank[b.examImportance] ?? 9),
   );
 }

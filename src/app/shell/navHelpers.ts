@@ -1,10 +1,55 @@
 import type { NavigationGroup, NavigationItem, NavigationSubItem } from "@/app/navigation";
-import { findPageMeta } from "@/app/pageMeta";
+import {
+  shelfNavigation,
+  workspaceBase,
+  workspaceNavigation,
+  workspacePath,
+} from "@/app/navigation";
 
 export interface FlatNavigationEntry {
   group: NavigationGroup;
   item: NavigationItem;
   child?: NavigationSubItem;
+}
+
+/**
+ * Which of the three layers a URL belongs to. The shelf and a workspace are
+ * separate shells, not two states of one page: the shelf has no sidebar to
+ * navigate with, and a workspace cannot be described without knowing which
+ * package it belongs to.
+ */
+export type ShellLayer =
+  | { kind: "shelf" }
+  | { kind: "workspace"; workspaceId: string }
+  | { kind: "settings" };
+
+const WORKSPACE_PREFIX = /^\/w\/([a-z0-9][a-z0-9._-]*)(\/|$)/i;
+
+export function resolveShellLayer(pathname: string): ShellLayer {
+  if (pathname === "/settings" || pathname.startsWith("/settings/")) {
+    return { kind: "settings" };
+  }
+  const matched = WORKSPACE_PREFIX.exec(pathname);
+  if (matched) return { kind: "workspace", workspaceId: matched[1]! };
+  return { kind: "shelf" };
+}
+
+/** The navigation groups for a layer, with workspace paths already prefixed. */
+export function navigationFor(layer: ShellLayer): NavigationGroup[] {
+  if (layer.kind === "workspace") {
+    return workspaceNavigation.map((group) => ({
+      ...group,
+      items: group.items.map((item) => ({
+        ...item,
+        path: workspacePath(layer.workspaceId, item.path),
+        children: item.children?.map((child) => ({
+          ...child,
+          path: workspacePath(layer.workspaceId, child.path),
+        })),
+      })),
+    }));
+  }
+  return shelfNavigation;
 }
 
 export function flattenNavigation(groups: NavigationGroup[]): FlatNavigationEntry[] {
@@ -24,12 +69,8 @@ export function entryPath(entry: FlatNavigationEntry): string {
   return entry.child?.path ?? entry.item.path;
 }
 
-/**
- * Settings replaces the app shell: it brings its own left rail, so the main
- * sidebar and breadcrumb would be two navigations side by side.
- */
 export function isSettingsPath(pathname: string): boolean {
-  return pathname === "/settings" || pathname.startsWith("/settings/");
+  return resolveShellLayer(pathname).kind === "settings";
 }
 
 export function matchesPath(entry: FlatNavigationEntry, pathname: string): boolean {
@@ -49,16 +90,21 @@ export function resolveActiveEntry(
   );
 }
 
-export function describeLocation(entry: FlatNavigationEntry | undefined, pathname: string) {
+export function describeLocation(
+  entry: FlatNavigationEntry | undefined,
+): { section: string; title: string } {
   if (!entry) {
-    // Settings is reached from the footer status bar instead of the menu, so
-    // it has no navigation entry to describe itself.
-    const meta = findPageMeta(pathname);
-    if (meta) return { section: meta.section, title: meta.title };
     return { section: "Morrow Agent", title: "未找到页面" };
   }
   if (entry.child) {
     return { section: entry.item.label, title: entry.child.label };
   }
   return { section: entry.group.label, title: entry.item.label };
+}
+
+/** The leaf of a workspace URL: `/w/x/knowledge` → `/knowledge`. */
+export function workspaceRelative(pathname: string, workspaceId: string): string {
+  const base = workspaceBase(workspaceId);
+  if (pathname === base || pathname === `${base}/`) return "/";
+  return pathname.startsWith(base) ? pathname.slice(base.length) : pathname;
 }

@@ -5,8 +5,11 @@ import { PromptInput } from "@/vendor/beui/components/agents/prompt-input";
 import { ArrowRotateLeft } from "@gravity-ui/icons";
 import { MessageList } from "@/features/lumi/MessageList";
 import { LumiMark } from "@/features/lumi/LumiMark";
+import { useBoundConversation } from "@/features/lumi/useBoundConversation";
 import { useDrillConversation } from "@/features/training/drillConversation";
 import { usePersistedState } from "@/features/uiState";
+import { useWorkspaceId } from "@/features/workspace/WorkspaceContext";
+import { workspaceScope } from "@/features/uiState/scope";
 import type { Question } from "@/features/knowledge";
 
 /**
@@ -35,10 +38,12 @@ function questionSeed(question: Question): string {
  * conversation it last held is restored on open like the main Lumi page.
  */
 export function DrillLumiPanel({ question }: { question?: Question }) {
+  useBoundConversation(useDrillConversation);
+
+  const workspaceId = useWorkspaceId();
   const turns = useDrillConversation((state) => state.turns);
   const sending = useDrillConversation((state) => state.sending);
   const listLoaded = useDrillConversation((state) => state.listLoaded);
-  const hydrate = useDrillConversation((state) => state.hydrate);
   const send = useDrillConversation((state) => state.send);
   const stop = useDrillConversation((state) => state.stop);
   const regenerate = useDrillConversation((state) => state.regenerate);
@@ -48,11 +53,10 @@ export function DrillLumiPanel({ question }: { question?: Question }) {
   const cancelEdit = useDrillConversation((state) => state.cancelEdit);
   const editingTurnId = useDrillConversation((state) => state.editingTurnId);
 
-  const [draft, setDraft] = usePersistedState("drill.lumi.draft", "");
-
-  useEffect(() => {
-    if (!listLoaded) void hydrate();
-  }, [listLoaded, hydrate]);
+  const [draft, setDraft] = usePersistedState(
+    workspaceScope(workspaceId, "drill.lumi.draft"),
+    "",
+  );
 
   const seed = useMemo(
     () => (question ? questionSeed(question) : ""),

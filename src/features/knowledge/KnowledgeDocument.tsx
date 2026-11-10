@@ -1,15 +1,11 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/vendor/beui/components/motion/button";
 import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
-import { InfoHint } from "@/components/InfoHint";
-import { MathText } from "@/components/MathText";
-import { ContentFigures } from "@/components/ContentFigure";
-import {
-  findPoint,
-  imagesAt,
-  questionsFor,
-  type KnowledgePoint,
-} from "@/features/knowledge";
+import { Markdown } from "@/features/rich/Markdown";
+import { findPoint, questionsFor } from "@/features/knowledge";
+import type { KnowledgeIndex, KnowledgePoint } from "@/features/knowledge";
+import { workspacePath } from "@/app/navigation";
+import { useWorkspaceId } from "@/features/workspace/WorkspaceContext";
 
 const IMPORTANCE: Record<
   string,
@@ -21,11 +17,13 @@ const IMPORTANCE: Record<
   low: { label: "了解", status: "neutral" },
 };
 
-const DIFFICULTY: Record<string, string> = {
-  basic: "基础",
-  medium: "中等",
-  harder: "较难",
-  advanced: "综合",
+/** The package stores 1–5; the label is a reading aid, not a score. */
+const DIFFICULTY: Record<number, string> = {
+  1: "入门",
+  2: "基础",
+  3: "中等",
+  4: "较难",
+  5: "综合",
 };
 
 function Section({
@@ -47,15 +45,18 @@ function Section({
 
 /** The reading pane: one knowledge point rendered as a short document. */
 export function KnowledgeDocument({
+  index,
   pointId,
   onOpenPoint,
 }: {
+  index: KnowledgeIndex;
   pointId: string | null;
   onOpenPoint: (id: string) => void;
 }) {
   const navigate = useNavigate();
+  const workspaceId = useWorkspaceId();
   const point: KnowledgePoint | undefined = pointId
-    ? findPoint(pointId)
+    ? findPoint(index, pointId)
     : undefined;
 
   if (!point) {
@@ -72,9 +73,9 @@ export function KnowledgeDocument({
     label: "了解",
     status: "neutral" as const,
   };
-  const related = questionsFor(point.id);
+  const related = questionsFor(index, point.id);
   const relatedPoints = point.related
-    .map((id) => findPoint(id))
+    .map((id) => findPoint(index, id))
     .filter((entry): entry is KnowledgePoint => Boolean(entry));
 
   return (
@@ -91,8 +92,12 @@ export function KnowledgeDocument({
           >
             {badge.label}
           </AnimatedBadge>
-          <AnimatedBadge status="neutral" size="sm" contentKey={point.difficulty}>
-            {DIFFICULTY[point.difficulty] ?? point.difficulty}
+          <AnimatedBadge
+            status="neutral"
+            size="sm"
+            contentKey={`${point.id}-d${point.difficulty}`}
+          >
+            {DIFFICULTY[point.difficulty] ?? `难度 ${point.difficulty}`}
           </AnimatedBadge>
         </div>
         {related.length > 0 ? (
@@ -101,7 +106,11 @@ export function KnowledgeDocument({
               size="sm"
               variant="secondary"
               className="text-sm"
-              onClick={() => navigate(`/training/drill?point=${point.id}`)}
+              onClick={() =>
+                navigate(
+                  `${workspacePath(workspaceId, "/drill")}?point=${point.id}`,
+                )
+              }
             >
               练这个知识点
             </Button>
@@ -109,12 +118,19 @@ export function KnowledgeDocument({
         ) : null}
       </header>
 
-      <Section title="概述">
-        <MathText className="text-sm leading-7 text-foreground">
-          {point.description}
-        </MathText>
-        <ContentFigures images={imagesAt(point.images, "stem")} />
-      </Section>
+      {point.summary ? (
+        <Section title="概述">
+          <p className="text-sm leading-7 text-foreground">{point.summary}</p>
+        </Section>
+      ) : null}
+
+      {point.body ? (
+        // The package ships the body as Markdown with inline LaTeX, so the
+        // same renderer the replies use is the right one here too.
+        <div className="text-sm leading-7">
+          <Markdown source={point.body} />
+        </div>
+      ) : null}
 
       {point.objectives.length > 0 ? (
         <Section title="学习目标">
@@ -125,35 +141,10 @@ export function KnowledgeDocument({
                 className="flex items-start gap-2 text-sm leading-6 text-muted-foreground"
               >
                 <span className="mt-2 size-1 shrink-0 rounded-full bg-accent-foreground/40" />
-                <MathText className="min-w-0">{objective}</MathText>
+                <span className="min-w-0">{objective}</span>
               </li>
             ))}
           </ul>
-        </Section>
-      ) : null}
-
-      {point.commonErrors.length > 0 ? (
-        <Section title="常见错误">
-          <ul className="flex flex-col gap-1.5">
-            {point.commonErrors.map((error) => (
-              <li
-                key={error}
-                className="flex items-start gap-2 text-sm leading-6 text-muted-foreground"
-              >
-                <span className="mt-2 size-1 shrink-0 rounded-full bg-destructive/50" />
-                <MathText className="min-w-0">{error}</MathText>
-              </li>
-            ))}
-          </ul>
-        </Section>
-      ) : null}
-
-      {point.difficultyBasis ? (
-        <Section title="难度依据">
-          <p className="flex items-start gap-1 text-sm leading-6 text-muted-foreground">
-            {point.difficultyBasis}
-            <InfoHint label="难度按该知识点所需的前置知识与步骤数标定。" />
-          </p>
         </Section>
       ) : null}
 
