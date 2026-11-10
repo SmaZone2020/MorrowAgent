@@ -29,6 +29,7 @@ import {
 } from "@/app/shell/navHelpers";
 import { AppStatusFooter } from "@/app/shell/AppStatusFooter";
 import { RailFlyout } from "@/app/shell/RailFlyout";
+import { usePersistedState } from "@/features/uiState/usePersistedState";
 
 // Rail-state spacing is zeroed out so the icon column reads as one even stack
 // instead of five groups each keeping their own padding and gap. Horizontal
@@ -47,7 +48,8 @@ export function AppShell() {
     [entries, location.pathname],
   );
   const locationInfo = describeLocation(activeEntry, location.pathname);
-  const [expanded, setExpanded] = useState<string | null>(
+  const [expanded, setExpanded] = usePersistedState<string | null>(
+    "sidebar.expanded",
     activeEntry?.item.children ? activeEntry.item.key : null,
   );
   // The key is kept after closing so the flyout can animate out with its real

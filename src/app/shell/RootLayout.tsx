@@ -6,6 +6,7 @@ import { ResizeHandles } from "@/app/shell/ResizeHandles";
 import { AnimatedSidebarProvider } from "@/vendor/beui/components/motion/animated-sidebar";
 import { useProviderStatus } from "@/features/settings/providerStatus";
 import { usePreferences } from "@/features/settings/preferencesStore";
+import { usePersistedState } from "@/features/uiState/usePersistedState";
 import { flushUiState, loadUiState } from "@/features/uiState/store";
 
 // The sidebar provider wraps the title bar too, because the sidebar toggle now
@@ -13,6 +14,11 @@ import { flushUiState, loadUiState } from "@/features/uiState/store";
 export function RootLayout() {
   const hydrate = useProviderStatus((state) => state.hydrate);
   const hydratePreferences = usePreferences((state) => state.hydrate);
+  // A collapsed rail is a deliberate layout choice, so it outlives the session.
+  const [sidebarOpen, setSidebarOpen] = usePersistedState(
+    "sidebar.open",
+    true,
+  );
 
   // One read of the encrypted credential blob at boot; every screen after that
   // subscribes to the same store.
@@ -38,7 +44,11 @@ export function RootLayout() {
 
   return (
     <AppProviders>
-      <AnimatedSidebarProvider className="h-svh flex-col overflow-hidden">
+      <AnimatedSidebarProvider
+        className="h-svh flex-col overflow-hidden"
+        open={sidebarOpen}
+        onOpenChange={setSidebarOpen}
+      >
         <TitleBar />
         <div className="min-h-0 flex-1">
           <AppShell />
