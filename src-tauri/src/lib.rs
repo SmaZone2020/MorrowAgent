@@ -7,7 +7,7 @@ mod provider;
 mod store;
 mod ui_state;
 
-use provider::secret::{self, StoredProvider};
+use provider::secret::{self, ProviderBook};
 use provider::types::{ChatRequest, ModelInfo, ProviderConfig};
 use store::{
     ConversationSummary, NewAttempt, NewMessage, PointStats, Store, StoreStats, StoredAttempt,
@@ -48,12 +48,12 @@ fn ai_chat_stream(
 }
 
 #[tauri::command]
-fn provider_save(app: tauri::AppHandle, provider: StoredProvider) -> Result<(), String> {
-    secret::save(&app, &provider)
+fn provider_save(app: tauri::AppHandle, book: ProviderBook) -> Result<(), String> {
+    secret::save(&app, &book)
 }
 
 #[tauri::command]
-fn provider_load(app: tauri::AppHandle) -> Result<Option<StoredProvider>, String> {
+fn provider_load(app: tauri::AppHandle) -> Result<Option<ProviderBook>, String> {
     secret::load(&app)
 }
 

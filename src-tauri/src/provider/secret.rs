@@ -2,18 +2,100 @@ use serde::{Deserialize, Serialize};
 
 use super::protocol::Protocol;
 
-/// What gets persisted for a provider. The API key travels through here but is
-/// never written in plaintext: the whole record is encrypted as one blob.
+/// One configured provider. The API key travels through here but is never
+/// written in plaintext: the whole book is encrypted as one blob.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StoredProvider {
+pub struct StoredProviderProfile {
+    #[serde(rename = "id")]
+    pub Id: String,
+    #[serde(rename = "name")]
+    pub Name: String,
     #[serde(rename = "baseUrl")]
     pub BaseUrl: String,
-    #[serde(rename = "model")]
-    pub Model: String,
     #[serde(rename = "apiKey")]
     pub ApiKey: String,
     #[serde(rename = "protocol", default)]
     pub Protocol: Protocol,
+    /// Models known for this provider, filled by "拉取模型" or typed by hand.
+    #[serde(rename = "models", default)]
+    pub Models: Vec<String>,
+}
+
+/// Every provider the user has added, plus the single model in use (D-076).
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ProviderBook {
+    #[serde(rename = "providers", default)]
+    pub Providers: Vec<StoredProviderProfile>,
+    #[serde(rename = "activeProviderId", default)]
+    pub ActiveProviderId: Option<String>,
+    #[serde(rename = "activeModel", default)]
+    pub ActiveModel: Option<String>,
+}
+
+/// The pre-multi-provider blob. Kept only so an existing install can migrate
+/// instead of losing its credential on upgrade.
+#[derive(Debug, Deserialize)]
+struct LegacyProvider {
+    #[serde(rename = "baseUrl")]
+    BaseUrl: String,
+    #[serde(rename = "model")]
+    Model: String,
+    #[serde(rename = "apiKey")]
+    ApiKey: String,
+    #[serde(rename = "protocol", default)]
+    Protocol: Protocol,
+}
+
+impl ProviderBook {
+    /// Drops a dangling pointer instead of leaving the app on "nothing active".
+    pub fn normalize(mut self) -> Self {
+        self.Providers.retain(|provider| !provider.Id.is_empty());
+        let active = self
+            .ActiveProviderId
+            .as_ref()
+            .and_then(|id| self.Providers.iter().find(|provider| &provider.Id == id));
+        match active {
+            Some(provider) => {
+                let model_ok = self
+                    .ActiveModel
+                    .as_ref()
+                    .map(|model| provider.Models.iter().any(|known| known == model))
+                    .unwrap_or(false);
+                if !model_ok {
+                    self.ActiveModel = provider.Models.first().cloned();
+                }
+            }
+            None => {
+                self.ActiveProviderId = self.Providers.first().map(|provider| provider.Id.clone());
+                self.ActiveModel = self
+                    .ActiveProviderId
+                    .as_ref()
+                    .and_then(|id| self.Providers.iter().find(|provider| &provider.Id == id))
+                    .and_then(|provider| provider.Models.first().cloned());
+            }
+        }
+        self
+    }
+}
+
+fn migrate_legacy(legacy: LegacyProvider) -> ProviderBook {
+    let profile = StoredProviderProfile {
+        Id: "legacy".to_string(),
+        Name: "默认供应商".to_string(),
+        BaseUrl: legacy.BaseUrl,
+        ApiKey: legacy.ApiKey,
+        Protocol: legacy.Protocol,
+        Models: if legacy.Model.is_empty() {
+            Vec::new()
+        } else {
+            vec![legacy.Model.clone()]
+        },
+    };
+    ProviderBook {
+        ActiveModel: Some(legacy.Model),
+        ActiveProviderId: Some(profile.Id.clone()),
+        Providers: vec![profile],
+    }
 }
 
 #[cfg(target_os = "windows")]
@@ -115,22 +197,33 @@ fn blob_path(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
     Ok(dir.join("provider.secret"))
 }
 
-pub fn save(app: &tauri::AppHandle, provider: &StoredProvider) -> Result<(), String> {
-    let json = serde_json::to_vec(provider).map_err(|error| error.to_string())?;
+pub fn save(app: &tauri::AppHandle, book: &ProviderBook) -> Result<(), String> {
+    let json = serde_json::to_vec(&book.clone().normalize()).map_err(|error| error.to_string())?;
     let cipher = platform::protect(&json)?;
     std::fs::write(blob_path(app)?, cipher).map_err(|error| format!("写入失败：{}", error))
 }
 
-pub fn load(app: &tauri::AppHandle) -> Result<Option<StoredProvider>, String> {
+pub fn load(app: &tauri::AppHandle) -> Result<Option<ProviderBook>, String> {
     let path = blob_path(app)?;
     if !path.exists() {
         return Ok(None);
     }
     let cipher = std::fs::read(&path).map_err(|error| format!("读取失败：{}", error))?;
     let plain = platform::unprotect(&cipher)?;
-    let provider =
+    // Shape sniffing beats a version field here: the only two shapes that ever
+    // existed are "providers array" and the old flat record. Checking the key
+    // first matters, because the new shape deserializes successfully from the
+    // old one (every field has a default) and would silently drop the key.
+    let value: serde_json::Value =
         serde_json::from_slice(&plain).map_err(|error| format!("配置已损坏：{}", error))?;
-    Ok(Some(provider))
+    if value.get("providers").is_some() {
+        let book: ProviderBook =
+            serde_json::from_value(value).map_err(|error| format!("配置已损坏：{}", error))?;
+        return Ok(Some(book.normalize()));
+    }
+    let legacy: LegacyProvider =
+        serde_json::from_value(value).map_err(|error| format!("配置已损坏：{}", error))?;
+    Ok(Some(migrate_legacy(legacy).normalize()))
 }
 
 pub fn clear(app: &tauri::AppHandle) -> Result<(), String> {

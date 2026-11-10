@@ -81,4 +81,4 @@ export const navigationGroups: NavigationGroup[] = [
   },
 ];
 
-export const settingsPath = "/settings/provider";
+export const settingsPath = "/settings/general";

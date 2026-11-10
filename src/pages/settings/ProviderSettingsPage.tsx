@@ -1,226 +1,277 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/vendor/beui/components/motion/button";
-import { Input } from "@/vendor/beui/components/motion/input";
 import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
 import { Panel } from "@/components/Panel";
-import {
-  activeProvider,
-  useProviderStatus,
-} from "@/features/settings/providerStatus";
-import {
-  listModels,
-  type ModelInfo,
-  type Protocol,
-} from "@/features/settings/aiBridge";
+import { InfoHint } from "@/components/InfoHint";
+import { ProviderEditor, type TestState } from "@/pages/settings/ProviderEditor";
+import { useProviderStatus } from "@/features/settings/providerStatus";
+import { listModels } from "@/features/settings/aiBridge";
+import type { StoredProviderProfile } from "@/features/settings/providerStore";
 import { usePersistedState } from "@/features/uiState";
 
-type TestState =
-  | { status: "idle" }
-  | { status: "testing" }
-  | { status: "ok"; count: number }
-  | { status: "error"; message: string };
-
 /**
- * The half-typed form, kept across page changes. The API key is deliberately
- * absent: it is a secret, and interface state is a plain file (D-070).
+ * The half-edited provider list, kept across page changes. API keys are
+ * deliberately absent: interface state is a plain file (D-070).
  */
-interface ProviderDraft {
+interface DraftProvider {
+  id: string;
+  name: string;
   baseUrl: string;
-  model: string;
-  protocol: Protocol;
+  protocol: NonNullable<StoredProviderProfile["protocol"]>;
+  models: string[];
 }
 
-// The protocol decides the URL path and the auth header, so it is a first-class
-// choice rather than something inferred from the base URL.
-const PROTOCOLS: { value: Protocol; label: string }[] = [
-  { value: "openai-chat", label: "Chat Completions" },
-  { value: "openai-responses", label: "Responses" },
-  { value: "anthropic", label: "Anthropic" },
-];
+interface ProviderDraft {
+  providers: DraftProvider[];
+  activeProviderId: string | null;
+  activeModel: string | null;
+}
+
+const newId = () => `provider-${crypto.randomUUID()}`;
+
+function stripKey(profile: StoredProviderProfile): DraftProvider {
+  return {
+    id: profile.id,
+    name: profile.name,
+    baseUrl: profile.baseUrl,
+    protocol: profile.protocol ?? "openai-chat",
+    models: profile.models,
+  };
+}
 
 export function ProviderSettingsPage() {
-  const provider = useProviderStatus((state) => state.provider);
+  const providers = useProviderStatus((state) => state.providers);
+  const activeProviderId = useProviderStatus((state) => state.activeProviderId);
+  const activeModel = useProviderStatus((state) => state.activeModel);
   const configured = useProviderStatus((state) => state.configured);
-  const save = useProviderStatus((state) => state.save);
+  const saveBook = useProviderStatus((state) => state.saveBook);
   const clear = useProviderStatus((state) => state.clear);
 
-  // A draft only exists while the form differs from what is stored; saving or
-  // clearing drops it, so the saved values show through again.
   const [draft, setDraft] = usePersistedState<ProviderDraft | null>(
-    "settings.provider.draft",
+    "settings.providers.draft",
     null,
   );
-
-  // Mirror the credential that requests actually use, so a debug-only setup
-  // shows its values here instead of an empty form that looks unconfigured.
-  const stored = provider ?? activeProvider() ?? null;
-  const form: ProviderDraft = draft ?? {
-    baseUrl: stored?.baseUrl ?? "",
-    model: stored?.model ?? "",
-    protocol: stored?.protocol ?? "openai-chat",
-  };
-
-  const [apiKey, setApiKey] = useState(stored?.apiKey ?? "");
-  const keyTouched = useRef(false);
-  const [test, setTest] = useState<TestState>({ status: "idle" });
-  const [models, setModels] = useState<ModelInfo[]>([]);
+  // Keys live only in memory; they are re-seeded from the encrypted store.
+  const [keys, setKeys] = useState<Record<string, string>>({});
+  const [tests, setTests] = useState<Record<string, TestState>>({});
   const [saving, setSaving] = useState(false);
 
-  // Fill the key once the encrypted blob has been read at boot, unless the user
-  // already started typing one.
   useEffect(() => {
-    if (!provider || keyTouched.current) return;
-    setApiKey(provider.apiKey);
-  }, [provider]);
+    setKeys((current) => {
+      let changed = false;
+      const next = { ...current };
+      for (const profile of providers) {
+        if (next[profile.id] === undefined) {
+          next[profile.id] = profile.apiKey;
+          changed = true;
+        }
+      }
+      return changed ? next : current;
+    });
+  }, [providers]);
 
-  // Functional update: two inputs changed in one tick must both land, and the
-  // first draft is built from the stored values rather than an empty form.
-  const patch = (next: Partial<ProviderDraft>) =>
-    setDraft((current) => ({ ...(current ?? form), ...next }));
+  const storedDraft: ProviderDraft = {
+    providers: providers.map(stripKey),
+    activeProviderId,
+    activeModel,
+  };
+  const base = draft ?? storedDraft;
+  const profiles: StoredProviderProfile[] = base.providers.map((entry) => ({
+    ...entry,
+    apiKey: keys[entry.id] ?? "",
+  }));
 
-  const canSave = Boolean(form.baseUrl.trim() && form.model.trim() && apiKey.trim());
+  const patchProvider = (id: string, patch: Partial<DraftProvider>) =>
+    setDraft((current) => {
+      const source = current ?? storedDraft;
+      return {
+        ...source,
+        providers: source.providers.map((entry) =>
+          entry.id === id ? { ...entry, ...patch } : entry,
+        ),
+      };
+    });
 
-  const runTest = async () => {
-    setTest({ status: "testing" });
+  const addProvider = () => {
+    const id = newId();
+    setKeys((current) => ({ ...current, [id]: "" }));
+    setDraft((current) => {
+      const source = current ?? storedDraft;
+      return {
+        ...source,
+        providers: [
+          ...source.providers,
+          {
+            id,
+            name: `供应商 ${source.providers.length + 1}`,
+            baseUrl: "",
+            protocol: "openai-chat",
+            models: [],
+          },
+        ],
+      };
+    });
+  };
+
+  const removeProvider = (id: string) => {
+    setDraft((current) => {
+      const source = current ?? storedDraft;
+      const remaining = source.providers.filter((entry) => entry.id !== id);
+      // Removing the active provider must hand the role to a survivor, or the
+      // app would sit on "configured" with nothing behind it.
+      const stillActive = source.activeProviderId !== id;
+      const nextActive = stillActive
+        ? source.activeProviderId
+        : remaining[0]?.id ?? null;
+      const nextModel = stillActive
+        ? source.activeModel
+        : remaining[0]?.models[0] ?? null;
+      return {
+        providers: remaining,
+        activeProviderId: nextActive,
+        activeModel: nextModel,
+      };
+    });
+  };
+
+  const setTest = (id: string, next: TestState) =>
+    setTests((current) => ({ ...current, [id]: next }));
+
+  const fetchModels = async (profile: StoredProviderProfile) => {
+    setTest(profile.id, { status: "testing" });
     try {
       const list = await listModels({
-        baseUrl: form.baseUrl.trim(),
-        apiKey: apiKey.trim(),
-        model: form.model.trim(),
-        protocol: form.protocol,
+        baseUrl: profile.baseUrl.trim(),
+        apiKey: profile.apiKey.trim(),
+        model: "",
+        protocol: profile.protocol ?? "openai-chat",
       });
-      setModels(list);
-      setTest({ status: "ok", count: list.length });
+      const models = list.map((entry) => entry.id).filter(Boolean);
+      setTest(profile.id, { status: "ok", count: models.length });
+      // A failed fetch leaves the saved list alone; a successful one replaces it
+      // so a removed model cannot linger in the picker.
+      setDraft((current) => {
+        const source = current ?? storedDraft;
+        return {
+          ...source,
+          providers: source.providers.map((entry) =>
+            entry.id === profile.id ? { ...entry, models } : entry,
+          ),
+          activeProviderId: source.activeProviderId,
+          activeModel:
+            source.activeProviderId === profile.id &&
+            models.length > 0 &&
+            !models.includes(source.activeModel ?? "")
+              ? models[0] ?? null
+              : source.activeModel,
+        };
+      });
     } catch (error) {
-      setTest({
+      setTest(profile.id, {
         status: "error",
-        message: error instanceof Error ? error.message : "连接失败",
+        message: error instanceof Error ? error.message : "拉取失败",
       });
     }
   };
 
+  const useModel = (providerId: string, model: string) =>
+    setDraft((current) => {
+      const source = current ?? storedDraft;
+      return { ...source, activeProviderId: providerId, activeModel: model };
+    });
+
   const submit = async () => {
-    if (!canSave) return;
     setSaving(true);
     try {
-      await save({
-        baseUrl: form.baseUrl.trim(),
-        model: form.model.trim(),
-        apiKey: apiKey.trim(),
-        protocol: form.protocol,
+      await saveBook({
+        providers: profiles.map((entry) => ({
+          ...entry,
+          baseUrl: entry.baseUrl.trim(),
+          name: entry.name.trim() || "未命名供应商",
+          apiKey: (keys[entry.id] ?? "").trim(),
+        })),
+        activeProviderId: base.activeProviderId,
+        activeModel: base.activeModel,
       });
-      // The draft is now the stored value, so keeping it would only pin a copy
-      // that can drift from the real credential.
+      // The draft now equals the stored book, so keeping it would only pin a
+      // copy that can drift from the real credential.
       setDraft(null);
+      setTests({});
     } finally {
       setSaving(false);
     }
   };
 
-  const forget = async () => {
+  const forgetAll = async () => {
     await clear();
     setDraft(null);
-    setApiKey("");
-    keyTouched.current = false;
+    setKeys({});
+    setTests({});
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 p-5 sm:p-7">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 p-5 sm:p-7">
       <Panel
-        title="AI Provider"
+        title="AI 供应商"
         action={
-          <AnimatedBadge
-            status={configured ? "success" : "warning"}
-            size="sm"
-            contentKey={configured ? "configured" : "missing"}
-          >
-            {configured ? "已配置" : "未接入"}
-          </AnimatedBadge>
+          <div className="flex items-center gap-2">
+            <InfoHint label="每个供应商保存自己的地址、密钥和模型列表；同一时间只有一个模型在用。" />
+            <AnimatedBadge
+              status={configured ? "success" : "warning"}
+              size="sm"
+              contentKey={configured ? "configured" : "missing"}
+            >
+              {configured ? "已配置" : "未接入"}
+            </AnimatedBadge>
+          </div>
         }
       >
         <div className="flex flex-col gap-3">
-          <div className="flex flex-wrap gap-2">
-            {PROTOCOLS.map((entry) => (
-              <Button
-                key={entry.value}
-                size="sm"
-                variant={form.protocol === entry.value ? "primary" : "secondary"}
-                onClick={() => patch({ protocol: entry.value })}
-              >
-                {entry.label}
-              </Button>
-            ))}
-          </div>
-
-          <Input
-            label="Base URL"
-            value={form.baseUrl}
-            onChange={(value) => patch({ baseUrl: value })}
-            placeholder="https://api.example.com/v1"
-            spellCheck={false}
-            autoComplete="off"
-          />
-          <Input
-            label="模型"
-            value={form.model}
-            onChange={(value) => patch({ model: value })}
-            placeholder="deepseek-v4.1-flash"
-            spellCheck={false}
-            autoComplete="off"
-            list="provider-models"
-          />
-          <datalist id="provider-models">
-            {models.map((entry) => (
-              <option key={entry.id} value={entry.id} />
-            ))}
-          </datalist>
-          <Input
-            label="API Key"
-            type="password"
-            value={apiKey}
-            onChange={(value) => {
-              keyTouched.current = true;
-              setApiKey(value);
-            }}
-            placeholder="sk-..."
-            spellCheck={false}
-            autoComplete="off"
-          />
+          {profiles.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              还没有供应商，先添加一个。
+            </p>
+          ) : (
+            profiles.map((profile) => (
+              <ProviderEditor
+                key={profile.id}
+                profile={profile}
+                activeModel={base.activeModel}
+                isActiveProvider={profile.id === base.activeProviderId}
+                test={tests[profile.id] ?? { status: "idle" }}
+                busy={saving}
+                canRemove={profiles.length > 1}
+                onChange={(patch) => patchProvider(profile.id, patch)}
+                onFetchModels={() => void fetchModels(profile)}
+                onUseModel={(model) => useModel(profile.id, model)}
+                onRemove={() => removeProvider(profile.id)}
+              />
+            ))
+          )}
 
           <div className="flex flex-wrap items-center gap-2 pt-1">
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={
-                !form.baseUrl.trim() ||
-                !apiKey.trim() ||
-                test.status === "testing"
-              }
-              onClick={() => void runTest()}
-            >
-              {test.status === "testing" ? "测试中" : "测试连接"}
+            <Button size="sm" variant="secondary" className="text-sm" onClick={addProvider}>
+              添加供应商
             </Button>
             <Button
               size="sm"
-              disabled={!canSave || saving}
+              className="text-sm"
+              disabled={saving || profiles.length === 0}
               onClick={() => void submit()}
             >
               {saving ? "保存中" : "保存"}
             </Button>
-            {provider ? (
-              <Button size="sm" variant="ghost" onClick={() => void forget()}>
-                清除
+            {providers.length > 0 ? (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-sm"
+                onClick={() => void forgetAll()}
+              >
+                清除全部
               </Button>
             ) : null}
-            {test.status === "ok" ? (
-              <span className="text-xs text-muted-foreground">
-                连接正常，返回 {test.count} 个模型
-              </span>
-            ) : null}
           </div>
-          {test.status === "error" ? (
-            <p className="text-xs leading-5 text-destructive">{test.message}</p>
-          ) : null}
         </div>
       </Panel>
     </div>

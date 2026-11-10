@@ -9,8 +9,8 @@ import { cn } from "@/vendor/beui/lib/utils";
 /** Shape pairs Lumi alternates between while idling. */
 const SHAPES = ["blob", "pebble"] as const;
 
-/** Lumi reads as near-black ink rather than the app's blue-grey foreground. */
-const LUMI_INK = "#1a1c1e";
+/** Lumi reads as ink against the page; the token flips with the theme. */
+const LUMI_INK = "var(--lumi-ink, #1a1c1e)";
 
 /** Lumi switches action on its own every 15s; a click restarts that clock. */
 const ACTION_INTERVAL = 15000;
@@ -78,7 +78,9 @@ export function LumiCharacter({ className }: { className?: string }) {
         followPointer: true,
       });
       engine.setInk(LUMI_INK);
-      engine.setEyeColor("var(--card)");
+      // The eye holes punch through to the page surface, so they must name the
+      // same colour the character is standing on, not the card tone.
+      engine.setEyeColor("var(--background)");
 
       // Poking Lumi is a coin flip: half the time it sulks, otherwise it
       // switches to any other reaction. No body flourish on top — the state

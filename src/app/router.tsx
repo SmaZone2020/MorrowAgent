@@ -6,6 +6,9 @@ import { PlaceholderPage } from "@/pages/PlaceholderPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 import { SettingsLayout } from "@/pages/settings/SettingsLayout";
 import { SettingsOverviewPage } from "@/pages/settings/SettingsOverviewPage";
+import { GeneralSettingsPage } from "@/pages/settings/GeneralSettingsPage";
+import { AppearanceSettingsPage } from "@/pages/settings/AppearanceSettingsPage";
+import { AboutSettingsPage } from "@/pages/settings/AboutSettingsPage";
 import { ProviderSettingsPage } from "@/pages/settings/ProviderSettingsPage";
 import { ModelSettingsPage } from "@/pages/settings/ModelSettingsPage";
 import { DataSettingsPage } from "@/pages/settings/DataSettingsPage";
@@ -37,9 +40,12 @@ export const router = createHashRouter([
         element: <SettingsLayout />,
         children: [
           { index: true, element: <SettingsOverviewPage /> },
+          { path: "general", element: <GeneralSettingsPage /> },
+          { path: "appearance", element: <AppearanceSettingsPage /> },
           { path: "provider", element: <ProviderSettingsPage /> },
           { path: "model", element: <ModelSettingsPage /> },
           { path: "data", element: <DataSettingsPage /> },
+          { path: "about", element: <AboutSettingsPage /> },
         ],
       },
       { path: "*", element: <NotFoundPage /> },

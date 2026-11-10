@@ -3,72 +3,132 @@ import {
   clearProvider as clearStoredProvider,
   loadProvider,
   saveProvider as saveStoredProvider,
-  type StoredProvider,
+  type ProviderBook,
+  type StoredProviderProfile,
 } from "@/features/settings/providerStore";
 import { readDebugProvider } from "@/features/settings/debugProvider";
 import type { Protocol } from "@/features/settings/aiBridge";
 
-export interface ProviderProfile extends StoredProvider {
+/** A saved profile with its protocol resolved to a concrete value. */
+export interface ProviderProfile extends StoredProviderProfile {
+  protocol: Protocol;
+}
+
+/** What a request needs: one endpoint, one key, one model. */
+export interface ActiveProviderConfig {
+  profileId: string;
+  baseUrl: string;
+  apiKey: string;
+  model: string;
   protocol: Protocol;
 }
 
 interface ProviderStatus {
-  /** The stored credential, if the user has saved one. */
-  provider: ProviderProfile | null;
+  /** Every configured provider, in the order the user added them. */
+  providers: ProviderProfile[];
+  /** The provider whose model is currently in use. */
+  activeProviderId: string | null;
+  /** The one model every screen sends requests to (D-076). */
+  activeModel: string | null;
   /** Whether Lumi can reach a model right now. */
   configured: boolean;
-  /** Read the encrypted blob once at startup. */
   hydrate: () => Promise<void>;
-  save: (provider: ProviderProfile) => Promise<void>;
+  /** Replaces the whole book; the settings page edits it locally, then saves. */
+  saveBook: (book: ProviderBook) => Promise<void>;
   clear: () => Promise<void>;
 }
 
-function debugAsProvider(): ProviderProfile | null {
+function withProtocol(provider: StoredProviderProfile): ProviderProfile {
+  return { ...provider, protocol: provider.protocol ?? "openai-chat" };
+}
+
+function debugProfile(): ProviderProfile | null {
   const debug = readDebugProvider();
   if (!debug) return null;
   return {
+    id: "debug",
+    name: "本地调试",
     baseUrl: debug.baseUrl,
-    model: debug.model,
     apiKey: debug.apiKey,
     protocol: "openai-chat",
+    models: [debug.model],
+  };
+}
+
+/** Local `.env.local` credentials only count when nothing was saved. */
+function debugFallback(): ProviderProfile[] {
+  const debug = debugProfile();
+  return debug ? [debug] : [];
+}
+
+function canReach(
+  providers: ProviderProfile[],
+  activeProviderId: string | null,
+  activeModel: string | null,
+): boolean {
+  const active = providers.find((provider) => provider.id === activeProviderId);
+  return Boolean(active?.apiKey.trim() && active.baseUrl.trim() && activeModel);
+}
+
+function fromBook(book: ProviderBook | null) {
+  const providers = book ? book.providers.map(withProtocol) : [];
+  const saved = providers.length > 0;
+  const list = saved ? providers : debugFallback();
+  const activeProviderId = saved
+    ? book?.activeProviderId ?? providers[0]?.id ?? null
+    : list[0]?.id ?? null;
+  const activeModel = saved
+    ? book?.activeModel ?? null
+    : list[0]?.models[0] ?? null;
+  return {
+    providers: list,
+    activeProviderId,
+    activeModel,
+    configured: canReach(list, activeProviderId, activeModel),
   };
 }
 
 // This store is the single answer to "can Lumi reach a model yet", so every
-// screen agrees instead of hard-coding a placeholder badge. A saved credential
-// wins over the local debug environment, which keeps the debug endpoint from
+// screen agrees instead of hard-coding a placeholder badge. Saved providers win
+// over the local debug environment, which keeps the debug endpoint from
 // shadowing a real configuration during development.
 export const useProviderStatus = create<ProviderStatus>((set) => ({
-  provider: null,
-  configured: Boolean(debugAsProvider()),
+  ...fromBook(null),
 
   hydrate: async () => {
     try {
-      const stored = await loadProvider();
-      set({
-        provider: stored
-          ? { ...stored, protocol: stored.protocol ?? "openai-chat" }
-          : null,
-        configured: Boolean(stored) || Boolean(debugAsProvider()),
-      });
+      set(fromBook(await loadProvider()));
     } catch {
       // A broken blob must not keep the app from booting; treat it as unset.
-      set({ provider: null, configured: Boolean(debugAsProvider()) });
+      set(fromBook(null));
     }
   },
 
-  save: async (provider) => {
-    await saveStoredProvider(provider);
-    set({ provider, configured: true });
+  saveBook: async (book) => {
+    await saveStoredProvider(book);
+    // Trust the backend's normalization rather than the local copy: it is the
+    // one that drops dangling ids and falls back to a first model.
+    const stored = await loadProvider().catch(() => null);
+    set(fromBook(stored ?? book));
   },
 
   clear: async () => {
     await clearStoredProvider();
-    set({ provider: null, configured: Boolean(debugAsProvider()) });
+    set(fromBook(null));
   },
 }));
 
-/** The credential to send with a request: stored first, debug env second. */
-export function activeProvider(): ProviderProfile | null {
-  return useProviderStatus.getState().provider ?? debugAsProvider();
+/** The credential to send with a request: saved book first, debug env second. */
+export function activeProvider(): ActiveProviderConfig | null {
+  const { providers, activeProviderId, activeModel } = useProviderStatus.getState();
+  const profile = providers.find((entry) => entry.id === activeProviderId);
+  if (!profile || !activeModel) return null;
+  if (!profile.baseUrl.trim() || !profile.apiKey.trim()) return null;
+  return {
+    profileId: profile.id,
+    baseUrl: profile.baseUrl,
+    apiKey: profile.apiKey,
+    model: activeModel,
+    protocol: profile.protocol,
+  };
 }
