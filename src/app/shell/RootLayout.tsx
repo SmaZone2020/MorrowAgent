@@ -6,6 +6,7 @@ import { ResizeHandles } from "@/app/shell/ResizeHandles";
 import { AnimatedSidebarProvider } from "@/vendor/beui/components/motion/animated-sidebar";
 import { useProviderStatus } from "@/features/settings/providerStatus";
 import { usePreferences } from "@/features/settings/preferencesStore";
+import { flushUiState, loadUiState } from "@/features/uiState/store";
 
 // The sidebar provider wraps the title bar too, because the sidebar toggle now
 // lives there and reads its open state from the provider.
@@ -18,7 +19,22 @@ export function RootLayout() {
   useEffect(() => {
     void hydrate();
     void hydratePreferences();
+    // Interface state is read once here so pages mount with their stored value
+    // already in memory instead of flashing a default first.
+    void loadUiState();
   }, [hydrate, hydratePreferences]);
+
+  // The debounced writer must not lose the last change when the window closes.
+  useEffect(() => {
+    const onHide = () => flushUiState();
+    window.addEventListener("pagehide", onHide);
+    window.addEventListener("beforeunload", onHide);
+    return () => {
+      window.removeEventListener("pagehide", onHide);
+      window.removeEventListener("beforeunload", onHide);
+      flushUiState();
+    };
+  }, []);
 
   return (
     <AppProviders>

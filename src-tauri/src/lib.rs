@@ -5,6 +5,7 @@
 mod prefs;
 mod provider;
 mod store;
+mod ui_state;
 
 use provider::secret::{self, StoredProvider};
 use provider::types::{ChatRequest, ModelInfo, ProviderConfig};
@@ -134,6 +135,16 @@ fn prefs_save(app: tauri::AppHandle, preferences: prefs::Preferences) -> Result<
     prefs::save(&app, &preferences)
 }
 
+#[tauri::command]
+fn ui_state_load(app: tauri::AppHandle) -> Result<ui_state::UiState, String> {
+    ui_state::load(&app)
+}
+
+#[tauri::command]
+fn ui_state_save(app: tauri::AppHandle, state: ui_state::UiState) -> Result<(), String> {
+    ui_state::save(&app, &state)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let client = reqwest::Client::builder()
@@ -174,7 +185,9 @@ pub fn run() {
             attempt_forget,
             attempt_point_stats,
             prefs_load,
-            prefs_save
+            prefs_save,
+            ui_state_load,
+            ui_state_save
         ])
         .run(tauri::generate_context!())
         .expect("error while running Morrow Agent");
