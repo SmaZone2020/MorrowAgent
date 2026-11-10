@@ -15,6 +15,7 @@ use store::{
 };
 use tauri::Manager;
 use tauri::State;
+use tauri_plugin_opener::OpenerExt;
 
 // One shared client keeps the connection pool warm across turns; a per-request
 // client would re-handshake TLS on every message.
@@ -159,6 +160,19 @@ fn ui_state_save(app: tauri::AppHandle, state: ui_state::UiState) -> Result<(), 
     ui_state::save(&app, &state)
 }
 
+/// Opens a reply's link in the user's real browser. The scheme check is
+/// repeated here because the frontend value comes from model output.
+#[tauri::command]
+fn open_external_url(app: tauri::AppHandle, url: String) -> Result<(), String> {
+    let trimmed = url.trim();
+    if !(trimmed.starts_with("https://") || trimmed.starts_with("http://")) {
+        return Err(format!("不支持的链接协议：{trimmed}"));
+    }
+    app.opener()
+        .open_url(trimmed, None::<&str>)
+        .map_err(|error| format!("无法打开浏览器：{error}"))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let client = reqwest::Client::builder()
@@ -203,7 +217,8 @@ pub fn run() {
             prefs_load,
             prefs_save,
             ui_state_load,
-            ui_state_save
+            ui_state_save,
+            open_external_url
         ])
         .run(tauri::generate_context!())
         .expect("error while running Morrow Agent");

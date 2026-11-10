@@ -7,7 +7,7 @@ import {
 import { MessageScroller } from "@/vendor/beui/components/agents/message-scroller";
 import { StreamingResponse } from "@/vendor/beui/components/agents/streaming-response";
 import { ReasoningText } from "@/vendor/beui/components/agents/loading-states";
-import { MathText } from "@/components/MathText";
+import { Markdown } from "@/features/rich/Markdown";
 import { LumiMark } from "@/features/lumi/LumiMark";
 import type { ConversationTurn } from "@/features/lumi/conversation";
 
@@ -70,15 +70,13 @@ export function MessageList({ turns, onRetry }: MessageListProps) {
                   className="w-full"
                   contentClassName="text-foreground"
                 >
-                  <div className="text-sm leading-7 whitespace-pre-wrap">
-                    <MathText>{turn.content}</MathText>
-                    {turn.pending ? (
-                      <span
-                        aria-hidden="true"
-                        className="ml-0.5 inline-block h-4 w-[2px] animate-pulse bg-foreground align-middle"
-                      />
-                    ) : null}
-                  </div>
+                  <Markdown source={turn.content} />
+                  {turn.pending ? (
+                    <span
+                      aria-hidden="true"
+                      className="ml-0.5 inline-block h-4 w-[2px] animate-pulse bg-foreground align-middle"
+                    />
+                  ) : null}
                 </StreamingResponse>
               )}
             </MessageContent>
