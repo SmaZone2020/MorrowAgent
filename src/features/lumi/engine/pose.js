@@ -1,7 +1,7 @@
 /* L3 — applyPose switch(Pt) + nextGaze. Source $_t Gr(). */
 (function (g) {
-  const { clamp, rand, sign, K2 } = g.GROK_MATH;
-  const { EYE_PLAYLIST } = g.GROK_TABLES;
+  const { clamp, rand, sign, K2 } = g.LUMI_MATH;
+  const { EYE_PLAYLIST } = g.LUMI_TABLES;
 
   function applyPose(state, mt, dtState, now, ctx, extra = {}) {
     const pt = 0;
@@ -405,5 +405,5 @@
     }
   }
 
-  g.GROK_POSE = { applyPose, nextGaze };
+  g.LUMI_POSE = { applyPose, nextGaze };
 })(window);

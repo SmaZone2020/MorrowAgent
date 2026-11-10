@@ -26,6 +26,8 @@ interface ConversationState {
   /** Pull the most recent conversation from disk. */
   hydrate: () => Promise<void>;
   send: (message: string) => Promise<void>;
+  /** Ask again for the last user message, dropping the answers after it. */
+  regenerate: () => Promise<void>;
   stop: () => void;
   reset: () => void;
 }
@@ -38,8 +40,10 @@ const nextId = (prefix: string) =>
 // moves into the prompt registry once that lands.
 const SYSTEM_PROMPT = [
   "你是 Lumi，Morrow Agent 的学习伙伴。",
-  "用户备考陕西专升本高等数学。回答用中文，简洁、直接，先给结论再解释。",
+  "回答用中文，简洁、直接，先给结论再解释。",
   "数学式子用 LaTeX 行内写法，不要长篇铺陈，也不要反复确认用户意图。",
+  "用户做题正确需要给予鼓励，错误需要指出并解释。",
+  "如果用户问到知识点或题目，先给出简短回答，再提供相关知识点和题目链接。",
 ].join("\n");
 
 let controller: AbortController | null = null;
@@ -64,54 +68,12 @@ function persist(conversationId: string, turn: ConversationTurn) {
   }).catch(() => undefined);
 }
 
-export const useConversation = create<ConversationState>((set, get) => ({
-  conversationId: null,
-  turns: [],
-  sending: false,
-
-  hydrate: async () => {
-    try {
-      const [latest] = await loadConversations(1);
-      if (!latest) return;
-      const stored = await loadMessages(latest.id);
-      if (!stored.length) return;
-      set({
-        conversationId: latest.id,
-        turns: stored.map((message) => ({
-          id: message.id,
-          role: message.role === "user" ? "user" : "assistant",
-          content: message.content,
-        })),
-      });
-    } catch {
-      // No database (browser preview) or a broken file: start empty.
-    }
-  },
-
-  send: async (message) => {
-    const text = message.trim();
-    if (!text || get().sending) return;
-
-    const conversationId = get().conversationId ?? nextId("conv");
-    const userTurn: ConversationTurn = {
-      id: nextId("turn"),
-      role: "user",
-      content: text,
-    };
-    const replyTurn: ConversationTurn = {
-      id: nextId("turn"),
-      role: "assistant",
-      content: "",
-      pending: true,
-    };
-
-    set((state) => ({
-      conversationId,
-      turns: [...state.turns, userTurn, replyTurn],
-      sending: true,
-    }));
-    persist(conversationId, userTurn);
-
+export const useConversation = create<ConversationState>((set, get) => {
+  /** Streams one reply into an already-inserted pending turn. */
+  const requestReply = async (
+    conversationId: string,
+    replyTurn: ConversationTurn,
+  ) => {
     const patchReply = (patch: Partial<ConversationTurn>) =>
       set((state) => ({
         turns: state.turns.map((turn) =>
@@ -154,17 +116,93 @@ export const useConversation = create<ConversationState>((set, get) => ({
       controller = null;
       set({ sending: false });
     }
-  },
+  };
 
-  stop: () => {
-    controller?.abort();
-    controller = null;
-    set({ sending: false });
-  },
+  return {
+    conversationId: null,
+    turns: [],
+    sending: false,
 
-  reset: () => {
-    controller?.abort();
-    controller = null;
-    set({ conversationId: null, turns: [], sending: false });
-  },
-}));
+    hydrate: async () => {
+      try {
+        const [latest] = await loadConversations(1);
+        if (!latest) return;
+        const stored = await loadMessages(latest.id);
+        if (!stored.length) return;
+        set({
+          conversationId: latest.id,
+          turns: stored.map((message) => ({
+            id: message.id,
+            role: message.role === "user" ? "user" : "assistant",
+            content: message.content,
+          })),
+        });
+      } catch {
+        // No database (browser preview) or a broken file: start empty.
+      }
+    },
+
+    send: async (message) => {
+      const text = message.trim();
+      if (!text || get().sending) return;
+
+      const conversationId = get().conversationId ?? nextId("conv");
+      const userTurn: ConversationTurn = {
+        id: nextId("turn"),
+        role: "user",
+        content: text,
+      };
+      const replyTurn: ConversationTurn = {
+        id: nextId("turn"),
+        role: "assistant",
+        content: "",
+        pending: true,
+      };
+
+      set((state) => ({
+        conversationId,
+        turns: [...state.turns, userTurn, replyTurn],
+        sending: true,
+      }));
+      persist(conversationId, userTurn);
+
+      await requestReply(conversationId, replyTurn);
+    },
+
+    regenerate: async () => {
+      if (get().sending) return;
+      const conversationId = get().conversationId;
+      if (!conversationId) return;
+
+      // Trim back to the last user message: everything after it was a failed or
+      // rejected attempt at the same answer.
+      const trimmed = [...get().turns];
+      while (trimmed.length && trimmed[trimmed.length - 1]?.role === "assistant") {
+        trimmed.pop();
+      }
+      if (!trimmed.length) return;
+
+      const replyTurn: ConversationTurn = {
+        id: nextId("turn"),
+        role: "assistant",
+        content: "",
+        pending: true,
+      };
+
+      set({ turns: [...trimmed, replyTurn], sending: true });
+      await requestReply(conversationId, replyTurn);
+    },
+
+    stop: () => {
+      controller?.abort();
+      controller = null;
+      set({ sending: false });
+    },
+
+    reset: () => {
+      controller?.abort();
+      controller = null;
+      set({ conversationId: null, turns: [], sending: false });
+    },
+  };
+});

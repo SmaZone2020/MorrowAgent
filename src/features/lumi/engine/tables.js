@@ -112,7 +112,7 @@
   };
   const INK_ANGLE = 135;
   const inkFg = (id) => {
-    const pal = g.GROK_GEO.palette[id] || g.GROK_GEO.palette.black;
+    const pal = g.LUMI_GEO.palette[id] || g.LUMI_GEO.palette.black;
     return `light-dark(${pal.light}, ${pal.dark})`;
   };
   const inkCss = (id) => {
@@ -121,7 +121,7 @@
   };
   const EYE_BG = "var(--sand-bg-base, var(--disk, #f3efe6))";
 
-  g.GROK_TABLES = {
+  g.LUMI_TABLES = {
     GROUPS, EYE_PLAYLIST, EYE_HOLD_MS, BLINK_MS,
     ONBOARDING, ONBOARDING_MS, onboardMood,
     SPRINGS, FACE_TUNE, POSE, POSE_HOME, UNIFORM_EYES,

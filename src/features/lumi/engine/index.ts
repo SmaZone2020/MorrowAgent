@@ -53,8 +53,8 @@ interface EngineMeta {
 
 declare global {
   interface Window {
-    GrokCharacter?: new (svg: SVGSVGElement, options?: LumiEngineOptions) => LumiEngine;
-    GROK_META?: EngineMeta;
+    LumiCharacter?: new (svg: SVGSVGElement, options?: LumiEngineOptions) => LumiEngine;
+    LUMI_META?: EngineMeta;
   }
 }
 
@@ -62,7 +62,7 @@ export function createLumiEngine(
   svg: SVGSVGElement,
   options: LumiEngineOptions,
 ): LumiEngine {
-  const Character = window.GrokCharacter;
+  const Character = window.LumiCharacter;
   if (!Character) {
     throw new Error("Lumi engine failed to load");
   }
@@ -71,7 +71,7 @@ export function createLumiEngine(
 
 /** State vocabulary the engine already ships with, grouped by lifecycle stage. */
 export function readLumiStates(...labels: string[]): string[] {
-  const groups = window.GROK_META?.groups ?? [];
+  const groups = window.LUMI_META?.groups ?? [];
   return labels.flatMap(
     (label) => groups.find((group) => group.label === label)?.states ?? [],
   );

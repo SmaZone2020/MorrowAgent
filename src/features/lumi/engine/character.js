@@ -1,11 +1,11 @@
-/* L2 — GrokCharacter. Orchestrates pose, eyes, tricks, overlays. Source $_t + sd(). */
+/* L2 — LumiCharacter. Orchestrates pose, eyes, tricks, overlays. Source $_t + sd(). */
 (function (g) {
-  const M = g.GROK_MATH;
-  const T = g.GROK_TABLES;
-  const { applyPose, nextGaze } = g.GROK_POSE;
-  const TR = g.GROK_TRICKS;
-  const EY = g.GROK_EYES;
-  const FX = g.GROK_FX;
+  const M = g.LUMI_MATH;
+  const T = g.LUMI_TABLES;
+  const { applyPose, nextGaze } = g.LUMI_POSE;
+  const TR = g.LUMI_TRICKS;
+  const EY = g.LUMI_EYES;
+  const FX = g.LUMI_FX;
   const {
     spring, stepSpring, springSteps, clamp, rand, sign, K2, Dke, lerpPoly, lerpFace, relRot, mapPointer, Rn,
   } = M;
@@ -17,7 +17,7 @@
     VIEW, VIEW_HALF, VIEW_MID, inkFg, inkCss, EYE_BG,
   } = T;
 
-  class GrokCharacter {
+  class LumiCharacter {
     constructor(svg, opts = {}) {
       this.svg = svg;
       this.shapeName = opts.shape || "blob";
@@ -176,10 +176,10 @@
     }
 
     setShape(name) {
-      if (!g.GROK_GEO.shapes[name] || name === this.shapeName) return;
-      const R = g.GROK_GEO.Re;
+      if (!g.LUMI_GEO.shapes[name] || name === this.shapeName) return;
+      const R = g.LUMI_GEO.Re;
       const k = K2(clamp(this.shapeSpring.x, 0, 1));
-      const rest = FX.shapeMetrics(g.GROK_GEO.shapes[this.shapeName], R);
+      const rest = FX.shapeMetrics(g.LUMI_GEO.shapes[this.shapeName], R);
       if (k >= 1 || !this.prevFace || !this.prevRing) {
         this.prevFace = rest.face;
         this.prevRing = rest.ring;
@@ -209,7 +209,7 @@
       } else if (this.loginWrap) {
         this.svg.style.setProperty("--fg", inkFg(id));
       } else {
-        const pal = g.GROK_GEO.palette[id] || g.GROK_GEO.palette.black;
+        const pal = g.LUMI_GEO.palette[id] || g.LUMI_GEO.palette.black;
         this.svg.style.setProperty("--fg", this.scheme === "dark" ? pal.dark : pal.light);
       }
       this.svg.style.setProperty("--ink", inkCss(id));
@@ -329,7 +329,7 @@
     }
 
     _build() {
-      const geo = g.GROK_GEO;
+      const geo = g.LUMI_GEO;
       const vb = geo.viewBox;
       this.svg.setAttribute("viewBox", `${vb.minX} ${vb.minY} ${vb.width} ${vb.height}`);
       this.svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
@@ -338,7 +338,7 @@
       const ns = "http://www.w3.org/2000/svg";
       const defs = document.createElementNS(ns, "defs");
       const clip = document.createElementNS(ns, "clipPath");
-      const clipId = `grok-clip-${Math.random().toString(36).slice(2, 8)}`;
+      const clipId = `lumi-clip-${Math.random().toString(36).slice(2, 8)}`;
       clip.setAttribute("id", clipId);
       this.clipPath = document.createElementNS(ns, "path");
       clip.appendChild(this.clipPath);
@@ -400,7 +400,7 @@
     }
 
     _currentPolys(t) {
-      const eyes = g.GROK_GEO.eyes;
+      const eyes = g.LUMI_GEO.eyes;
       const from = this._fromPolys || eyes[this.eyeFrom];
       const to = eyes[this.eyeTo];
       return [lerpPoly(from[0], to[0], t), lerpPoly(from[1], to[1], t)];
@@ -707,7 +707,7 @@
     }
 
     _paint(now) {
-      const geo = g.GROK_GEO;
+      const geo = g.LUMI_GEO;
       const R = geo.Re;
       const shape = geo.shapes[this.shapeName];
       const morphK = K2(clamp(this.shapeSpring.x, 0, 1));
@@ -842,8 +842,8 @@
     }
   }
 
-  g.GrokCharacter = GrokCharacter;
-  g.GROK_META = {
+  g.LumiCharacter = LumiCharacter;
+  g.LUMI_META = {
     groups: GROUPS,
     onboarding: ONBOARDING,
     onboardingMs: ONBOARDING_MS,

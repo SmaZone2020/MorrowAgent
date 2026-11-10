@@ -1,15 +1,15 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Button } from "@/vendor/beui/components/motion/button";
 import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
+import { PromptInput } from "@/vendor/beui/components/agents/prompt-input";
 import { LumiCharacter } from "@/features/lumi/LumiCharacter";
 import { MessageList } from "@/features/lumi/MessageList";
 import { useConversation } from "@/features/lumi/conversation";
 import { greetingFor } from "@/features/lumi/greetings";
 import { useProviderStatus } from "@/features/settings/providerStatus";
+import { useEffect } from "react";
 
 export function LumiPage() {
-  const [draft, setDraft] = useState("");
   const [greeting, setGreeting] = useState(() => greetingFor());
   const configured = useProviderStatus((state) => state.configured);
   const conversationId = useConversation((state) => state.conversationId);
@@ -34,13 +34,6 @@ export function LumiPage() {
     return () => clearInterval(tick);
   }, []);
 
-  const submit = () => {
-    const text = draft.trim();
-    if (!text || !configured || sending) return;
-    setDraft("");
-    void send(text);
-  };
-
   return (
     <div className="mx-auto flex h-full w-full max-w-4xl flex-col gap-4 p-5 sm:p-7">
       {empty ? (
@@ -51,51 +44,37 @@ export function LumiPage() {
           </p>
         </div>
       ) : (
-        <MessageList turns={turns} />
+        <MessageList turns={turns} onRetry={reset} />
       )}
 
-      <div className="shrink-0 rounded-2xl bg-card p-2 shadow-surface">
-        <textarea
-          id="lumi-draft"
-          name="lumi-draft"
-          aria-label="和 Lumi 说点什么"
-          rows={2}
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" && !event.shiftKey) {
-              event.preventDefault();
-              submit();
+      <div className="shrink-0">
+        {/* Without a provider there is nothing to send to, so the banner
+            replaces the composer instead of sitting above a dead one. */}
+        {configured ? (
+          <PromptInput
+            placeholder="和 Lumi 说点什么"
+            aria-label="和 Lumi 说点什么"
+            minRows={1}
+            maxRows={8}
+            loading={sending}
+            onSubmit={(value) => void send(value)}
+            onStop={stop}
+            leadingAction={
+              empty ? null : (
+                <button
+                  type="button"
+                  onClick={reset}
+                  disabled={sending}
+                  className="ml-1 inline-flex h-8 items-center rounded-xl px-2 text-xs text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                >
+                  新对话
+                </button>
+              )
             }
-          }}
-          placeholder="和 Lumi 说点什么"
-          className="min-h-16 max-h-40 w-full resize-none rounded-xl bg-transparent px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground"
-        />
-        <div className="flex items-center justify-between gap-2 px-1 pb-1">
-          {empty ? (
-            <span />
-          ) : (
-            <Button
-              size="sm"
-              variant="ghost"
-              disabled={sending}
-              onClick={reset}
-            >
-              新对话
-            </Button>
-          )}
-          {/* Without a provider there is nothing to send to, so the banner
-              replaces the send button instead of sitting next to a dead one. */}
-          {configured ? (
-            <Button
-              size="md"
-              className="px-6"
-              disabled={!draft.trim() && !sending}
-              onClick={sending ? stop : submit}
-            >
-              {sending ? "停止" : "发送"}
-            </Button>
-          ) : (
+            className="bg-card shadow-surface"
+          />
+        ) : (
+          <div className="flex justify-end rounded-2xl bg-card p-2 shadow-surface">
             <Link
               to="/settings/provider"
               className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -104,8 +83,8 @@ export function LumiPage() {
                 去配置 Provider
               </AnimatedBadge>
             </Link>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

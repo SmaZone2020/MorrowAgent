@@ -2,7 +2,7 @@
 (function (g) {
   const {
     clamp, lerpPoly, centroid, polyPath, Dke, spanAt, spanPoly, Rn,
-  } = g.GROK_MATH;
+  } = g.LUMI_MATH;
 
   function queueBlink(q, now) {
     q.push(
@@ -214,5 +214,5 @@
     }
   }
 
-  g.GROK_EYES = { queueBlink, consumeBlink, paintEyes, lerpPoly };
+  g.LUMI_EYES = { queueBlink, consumeBlink, paintEyes, lerpPoly };
 })(window);

@@ -1,60 +1,90 @@
-import { useEffect, useRef } from "react";
-import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
+import {
+  Message,
+  MessageBubble,
+  MessageBubbleContent,
+  MessageContent,
+} from "@/vendor/beui/components/agents/message";
+import { MessageScroller } from "@/vendor/beui/components/agents/message-scroller";
+import { StreamingResponse } from "@/vendor/beui/components/agents/streaming-response";
+import { ReasoningText } from "@/vendor/beui/components/agents/loading-states";
 import { MathText } from "@/components/MathText";
 import { LumiMark } from "@/features/lumi/LumiMark";
 import type { ConversationTurn } from "@/features/lumi/conversation";
 
 interface MessageListProps {
   turns: ConversationTurn[];
+  onRetry?: () => void;
 }
 
-export function MessageList({ turns }: MessageListProps) {
-  const endRef = useRef<HTMLDivElement>(null);
-  const lastId = turns.at(-1)?.id;
-  const lastLength = turns.at(-1)?.content.length ?? 0;
+// Phrased as work in progress rather than a spinner label: the reply really is
+// the model reading the question and drafting an answer.
+const THINKING_PHRASES = ["正在读题", "在理清思路", "正在组织表述", "马上就好"];
 
-  // Follow the tail as tokens arrive, not just when a turn is added.
-  useEffect(() => {
-    endRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
-  }, [lastId, lastLength]);
+export function MessageList({ turns, onRetry }: MessageListProps) {
+  const busy = turns.at(-1)?.pending === true;
 
   return (
-    <div className="scrollbar-thin flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto py-2">
+    <MessageScroller
+      label="与 Lumi 的对话"
+      busy={busy}
+      followOutput
+      navigation="rail"
+      navigationLabel="对话导航"
+      className="min-h-0 flex-1"
+      contentClassName="flex flex-col gap-5 py-2 pr-2"
+    >
       {turns.map((turn) =>
         turn.role === "user" ? (
-          <div key={turn.id} className="flex justify-end">
-            <p className="max-w-[80%] rounded-2xl bg-muted px-4 py-2.5 text-sm leading-6 whitespace-pre-wrap text-foreground">
-              {turn.content}
-            </p>
-          </div>
+          <Message key={turn.id} from="user" animateIn>
+            <MessageContent>
+              <MessageBubble variant="soft">
+                <MessageBubbleContent className="whitespace-pre-wrap">
+                  {turn.content}
+                </MessageBubbleContent>
+              </MessageBubble>
+            </MessageContent>
+          </Message>
         ) : (
-          <div key={turn.id} className="flex items-start gap-3">
-            <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
-              <LumiMark className="size-5" />
+          <Message key={turn.id} from="assistant" animateIn>
+            <span className="mt-0.5 grid size-7 shrink-0 place-items-center">
+              <LumiMark className="size-7" />
             </span>
-            <div className="min-w-0 flex-1">
+            <MessageContent>
               {turn.error ? (
-                <p className="text-sm leading-6 text-destructive">{turn.error}</p>
+                <MessageBubble variant="danger">
+                  <MessageBubbleContent>{turn.error}</MessageBubbleContent>
+                </MessageBubble>
               ) : turn.pending && !turn.content ? (
-                <AnimatedBadge status="info" size="sm" contentKey="thinking">
-                  正在思考
-                </AnimatedBadge>
+                <ReasoningText
+                  phrases={THINKING_PHRASES}
+                  variant="cascade"
+                  interval={2200}
+                  className="py-1"
+                />
               ) : (
-                <p className="text-sm leading-7 whitespace-pre-wrap text-foreground">
-                  <MathText>{turn.content}</MathText>
-                  {turn.pending ? (
-                    <span
-                      aria-hidden="true"
-                      className="ml-0.5 inline-block h-4 w-[2px] animate-pulse bg-foreground align-middle"
-                    />
-                  ) : null}
-                </p>
+                <StreamingResponse
+                  status={turn.pending ? "streaming" : "complete"}
+                  copyText={turn.content}
+                  onRetry={onRetry}
+                  announce={false}
+                  className="w-full"
+                  contentClassName="text-foreground"
+                >
+                  <div className="text-sm leading-7 whitespace-pre-wrap">
+                    <MathText>{turn.content}</MathText>
+                    {turn.pending ? (
+                      <span
+                        aria-hidden="true"
+                        className="ml-0.5 inline-block h-4 w-[2px] animate-pulse bg-foreground align-middle"
+                      />
+                    ) : null}
+                  </div>
+                </StreamingResponse>
               )}
-            </div>
-          </div>
+            </MessageContent>
+          </Message>
         ),
       )}
-      <div ref={endRef} />
-    </div>
+    </MessageScroller>
   );
 }

@@ -237,7 +237,7 @@
     };
   }
 
-  g.GROK_MATH = {
+  g.LUMI_MATH = {
     spring, stepSpring, DT, springSteps,
     clamp, lerp, rand, sign, K2, Rc, y1e, Dke, x_t, Rn,
     polyPath, centroid, lerpPoly, lerpFace,

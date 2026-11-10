@@ -1,6 +1,6 @@
 /* L3 — hop / pn / spinBounce / spinDizzy / spinWild. Source hr, ai, wie, ys. */
 (function (g) {
-  const { spring, K2, rand, sign } = g.GROK_MATH;
+  const { spring, K2, rand, sign } = g.LUMI_MATH;
 
   const HOP_SEGS = [
     { h: 48, d: 0.5 },
@@ -109,7 +109,7 @@
     return Math.abs(s.t - s.x) < 0.004 && Math.abs(s.v) < 0.015;
   }
 
-  g.GROK_TRICKS = {
+  g.LUMI_TRICKS = {
     HOP_SEGS, HOP_DUR, hopY, startTrick, evalTrick, makeSpinTurn, spinTurnSettled,
   };
 })(window);

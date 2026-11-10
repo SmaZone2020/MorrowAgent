@@ -210,7 +210,7 @@
     let parts = [];
     const burst = (W = 20, H = 1, G = 0) => {
       if (reduce || !back || parts.length > 120) return;
-      const R = global.GROK_GEO.Re;
+      const R = global.LUMI_GEO.Re;
       for (let Y = 0; Y < W; Y++) {
         const U = (Y / W) * Math.PI * 2 + rand(-0.35, 0.35);
         const ee = rand(96, 116) * scale();
@@ -241,7 +241,7 @@
       if (parts.length > 110) return;
       if (!planes.length) makePlanes();
       const Y = planes[i % planes.length];
-      const R = global.GROK_GEO.Re;
+      const R = global.LUMI_GEO.Re;
       parts.push({
         x: R, y: R, vx: 0, vy: 0, ret: 0, life: 0, max: 9,
         r: (beltN <= 3 ? rand(8, 10.5) : beltN === 4 ? rand(6.6, 8.6) : rand(5.6, 7.4)),
@@ -260,7 +260,7 @@
     const project = (W, H) => {
       const G = W.rad * Math.sin(H), Y = -W.rad * Math.cos(H) * Math.sin(W.tilt);
       const U = Math.cos(W.roll), ee = Math.sin(W.roll);
-      const R = global.GROK_GEO.Re;
+      const R = global.LUMI_GEO.Re;
       return { x: R + G * U - Y * ee, y: R + G * ee + Y * U };
     };
     const depth = (W, H) => Math.cos(H) * Math.cos(W.tilt);
@@ -328,7 +328,7 @@
       if (!back || !parts.length) return;
       const spinning = Math.abs(spinVel) >= THRESH;
       const keep = [];
-      const R = global.GROK_GEO.Re;
+      const R = global.LUMI_GEO.Re;
       for (const j of parts) {
         j.life += j.life > 0 ? realDt : dt;
         const Z = clamp(j.life / j.max, 0, 1);
@@ -828,7 +828,7 @@
         return (tbl[cur] || 19) * mix + (prev ? tbl[prev] || tbl[cur] : tbl[cur] || 19) * (1 - mix);
       };
       const A2 = mixR(RADIUS);
-      const wre = (A2 / (global.GROK_GEO?.Re || Re0)) * iX;
+      const wre = (A2 / (global.LUMI_GEO?.Re || Re0)) * iX;
       const standby = kl("standby");
       const fade = standby > 0 ? (0.28 + 0.2 * Math.sin(now * 0.0016)) * standby : 0;
       const zoomCur = cur ? Math.max(SCALE[cur], 1) : 1;
@@ -843,12 +843,12 @@
   const turnAtCache = new Map();
   function turnAtOf(name, path, R) {
     if (turnAtCache.has(name)) return turnAtCache.get(name);
-    const solid = global.GROK_GEO.solids?.[name];
-    if (!solid || !global.GROK_MATH?.makeTurnAt) {
+    const solid = global.LUMI_GEO.solids?.[name];
+    if (!solid || !global.LUMI_MATH?.makeTurnAt) {
       turnAtCache.set(name, null);
       return null;
     }
-    const fn = global.GROK_MATH.makeTurnAt(solid, shapeRing(path, R), R);
+    const fn = global.LUMI_MATH.makeTurnAt(solid, shapeRing(path, R), R);
     turnAtCache.set(name, fn);
     return fn;
   }
@@ -882,7 +882,7 @@
     };
   }
 
-  global.GROK_FX = {
+  global.LUMI_FX = {
     MAP, CYCLE, CYCLE_ON, CYCLE_OFF, SCALE, P_BLEND,
     createParticles,
     OverlayLayer,
