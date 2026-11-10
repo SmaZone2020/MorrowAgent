@@ -11,12 +11,15 @@ import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
 import { Clock, Sparkles, Target, TargetDart } from "@gravity-ui/icons";
 import { SectionTitle } from "@/components/SectionTitle";
 import { EmptyState } from "@/components/EmptyState";
+import { SubjectBook } from "@/features/knowledge/SubjectBook";
+import { findSubject, subjects } from "@/features/knowledge/subjects";
 import {
   knowledgePoints,
   questions,
   weakPointCandidates,
 } from "@/features/knowledge";
 import { loadStats } from "@/features/settings/preferences";
+import { usePersistedState } from "@/features/uiState";
 
 const cardClass = "border-transparent bg-card shadow-surface";
 
@@ -26,6 +29,18 @@ export function DashboardPage() {
   const navigate = useNavigate();
   const candidates = weakPointCandidates().slice(0, 3);
   const [attemptedPoints, setAttemptedPoints] = useState<number | null>(null);
+  // Subscribed rather than read once, so returning from a drill updates the shelf.
+  const [recentIds] = usePersistedState<string[]>("subjects.recent", []);
+  const recent = recentIds
+    .map((id) => findSubject(id))
+    .filter((subject): subject is NonNullable<typeof subject> => Boolean(subject));
+  // Nothing studied yet: the shelf still has to be a shortcut, so it falls back
+  // to the first subjects that actually have questions.
+  const shelf = (
+    recent.length > 0
+      ? recent
+      : subjects.filter((subject) => subject.questionCount > 0)
+  ).slice(0, 2);
 
   useEffect(() => {
     void loadStats().then((stats) => {
@@ -78,6 +93,40 @@ export function DashboardPage() {
           </Card>
         ))}
       </div>
+
+      {shelf.length > 0 ? (
+        <Card variant="outlined" size="compact" className={cardClass}>
+          <CardHeader>
+            <CardTitle as="h2">
+              <SectionTitle
+                title={recent.length > 0 ? "最近学习" : "书架"}
+                action={
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-sm"
+                    onClick={() => navigate("/training")}
+                  >
+                    全部科目
+                  </Button>
+                }
+              />
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-3 sm:max-w-md">
+              {shelf.map((subject) => (
+                <SubjectBook
+                  key={subject.id}
+                  subject={subject}
+                  compact
+                  onOpen={() => navigate(`/training/drill?subject=${subject.id}`)}
+                />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <div className="grid items-start gap-3 lg:grid-cols-[1.4fr_1fr]">
         <Card variant="outlined" size="compact" className={cardClass}>

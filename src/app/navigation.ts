@@ -70,6 +70,7 @@ export const navigationGroups: NavigationGroup[] = [
         path: "/training",
         icon: GraduationCap,
         children: [
+          { key: "shelf", label: "科目书架", path: "/training" },
           { key: "assessment", label: "智能测评", path: "/training/assessment" },
           { key: "drill", label: "专项训练", path: "/training/drill" },
           { key: "mock", label: "模拟考试", path: "/training/mock" },

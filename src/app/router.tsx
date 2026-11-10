@@ -16,6 +16,7 @@ import { KnowledgePage } from "@/pages/KnowledgePage";
 import { WrongBookPage } from "@/pages/WrongBookPage";
 import { ProfilePage } from "@/pages/ProfilePage";
 import { DrillPage } from "@/pages/training/DrillPage";
+import { TrainingShelfPage } from "@/pages/training/TrainingShelfPage";
 
 export const router = createHashRouter([
   {
@@ -29,7 +30,7 @@ export const router = createHashRouter([
       { path: "learning/plan", element: <PlaceholderPage /> },
       { path: "learning/profile", element: <ProfilePage /> },
       { path: "learning/report", element: <PlaceholderPage /> },
-      { path: "training", element: <Navigate to="/training/assessment" replace /> },
+      { path: "training", element: <TrainingShelfPage /> },
       { path: "training/assessment", element: <PlaceholderPage /> },
       { path: "training/drill", element: <DrillPage /> },
       { path: "training/mock", element: <PlaceholderPage /> },

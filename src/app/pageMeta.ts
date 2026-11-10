@@ -50,6 +50,13 @@ export const pageMetaList: PageMeta[] = [
     scope: ["周期报告与前后测对照", "薄弱点变化与训练建议", "讲解难度反馈"],
   },
   {
+    path: "/training",
+    title: "训练中心",
+    section: "训练中心",
+    stage: "skeleton",
+    scope: ["科目书架与最近学习", "按科目进入专项训练", "测评与模考入口"],
+  },
+  {
     path: "/training/assessment",
     title: "智能测评",
     section: "训练中心",
@@ -65,7 +72,7 @@ export const pageMetaList: PageMeta[] = [
     title: "专项训练",
     section: "训练中心",
     stage: "skeleton",
-    scope: ["训练时长与知识点选择", "诊断驱动的题目推荐", "训练后掌握度更新"],
+    scope: ["训练时长与知识点选择", "按科目分组的题目", "训练后掌握度更新"],
   },
   {
     path: "/training/mock",
