@@ -30,13 +30,13 @@
   --radius-xl: 1rem;
   --radius-2xl: 1.25rem;
 
-  --shadow-surface: 0 1px 2px 0 rgb(56 66 72 / 0.04), 0 10px 28px -16px rgb(56 66 72 / 0.16);
+  --shadow-surface: var(--surface-shadow);
 }
 
-/* Light-only palette.
-   雾白 #EFEAE2 is the dominant surface, 岩灰 #A59E95 and 墨青 #384248 are the
-   only accents, so hierarchy comes from tonal steps rather than hue. */
-:root {
+/* Two palettes, one vocabulary. Components only ever name a semantic token, so
+   switching the theme is a variable swap and never a style change (D-071). */
+:root,
+:root[data-theme="light"] {
   color-scheme: light;
 
   --background: #efeae2;
@@ -63,4 +63,48 @@
   --success: #4f6b57;
   --warning: #8a6530;
   --info: #47616f;
+
+  --surface-shadow: 0 1px 2px 0 rgb(56 66 72 / 0.04), 0 10px 28px -16px rgb(56 66 72 / 0.16);
+}
+
+/* Dark is the same paper family seen at night: ink replaces paper, the accents
+   keep their hue and only rise in lightness so contrast survives. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --background: #1c1f21;
+  --foreground: #e8e3da;
+
+  --card: #24282b;
+  --card-foreground: #e8e3da;
+
+  --muted: #2e3336;
+  --muted-foreground: #a6a09a;
+
+  --primary: #e8e3da;
+  --primary-foreground: #1c1f21;
+
+  --accent: #6f6a63;
+  --accent-foreground: #efeae2;
+
+  --border: #34393c;
+  --border-strong: #6f6a63;
+  --ring: #a59e95;
+
+  --destructive: #c0766a;
+  --destructive-foreground: #1c1f21;
+  --success: #7f9c86;
+  --warning: #c3a06a;
+  --info: #7f9aa8;
+
+  --surface-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.3), 0 10px 28px -16px rgb(0 0 0 / 0.5);
+}
+
+/* Interface font is a three-way choice; headings keep the serif face. */
+:root[data-font="serif"] body {
+  font-family: var(--font-serif);
+}
+
+:root[data-font="mono"] body {
+  font-family: var(--font-mono);
 }

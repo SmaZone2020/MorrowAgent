@@ -6,6 +6,7 @@ import { ResizeHandles } from "@/app/shell/ResizeHandles";
 import { AnimatedSidebarProvider } from "@/vendor/beui/components/motion/animated-sidebar";
 import { useProviderStatus } from "@/features/settings/providerStatus";
 import { usePreferences } from "@/features/settings/preferencesStore";
+import { useAppearance } from "@/features/appearance/useAppearance";
 import { usePersistedState } from "@/features/uiState/usePersistedState";
 import { flushUiState, loadUiState } from "@/features/uiState/store";
 
@@ -19,6 +20,8 @@ export function RootLayout() {
     "sidebar.open",
     true,
   );
+  // Mounted here, not in settings: appearance has to stay applied on every page.
+  useAppearance();
 
   // One read of the encrypted credential blob at boot; every screen after that
   // subscribes to the same store.
