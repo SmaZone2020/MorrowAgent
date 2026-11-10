@@ -76,16 +76,25 @@ impl Store {
 
     /// Append one turn, creating its conversation on first write. Returning the
     /// stored row keeps the caller from guessing what the database assigned.
-    pub fn append(&self, conversation_id: &str, message: NewMessage) -> Result<StoredMessage, String> {
+    ///
+    /// `workspace_id` keeps two learning packages apart: the same question
+    /// asked in calculus and in linear algebra are different transcripts, not
+    /// two rows in one list (MLPS §1.2).
+    pub fn append(
+        &self,
+        conversation_id: &str,
+        workspace_id: &str,
+        message: NewMessage,
+    ) -> Result<StoredMessage, String> {
         let connection = self.lock()?;
         let created_at = message.CreatedAt.unwrap_or_else(now);
 
         connection
             .execute(
-                "INSERT INTO conversations (id, title, created_at, updated_at)
-                 VALUES (?1, '', ?2, ?2)
+                "INSERT INTO conversations (id, title, created_at, updated_at, workspace_id)
+                 VALUES (?1, '', ?2, ?2, ?3)
                  ON CONFLICT(id) DO UPDATE SET updated_at = excluded.updated_at",
-                params![conversation_id, created_at],
+                params![conversation_id, created_at, workspace_id],
             )
             .map_err(|error| format!("写入会话失败：{}", error))?;
 
@@ -158,17 +167,24 @@ impl Store {
             .map_err(|error| format!("解析消息失败：{}", error))
     }
 
-    pub fn conversations(&self, limit: i64) -> Result<Vec<ConversationSummary>, String> {
+    /// Conversations in one workspace. An orphaned workspace still lists its
+    /// own history, which is the point of orphaning rather than deleting.
+    pub fn conversations(
+        &self,
+        workspace_id: &str,
+        limit: i64,
+    ) -> Result<Vec<ConversationSummary>, String> {
         let connection = self.lock()?;
         let mut statement = connection
             .prepare(
                 "SELECT id, title, updated_at FROM conversations
-                 ORDER BY updated_at DESC LIMIT ?1",
+                 WHERE workspace_id = ?1
+                 ORDER BY updated_at DESC LIMIT ?2",
             )
             .map_err(|error| format!("查询会话失败：{}", error))?;
 
         let rows = statement
-            .query_map(params![limit], |row| {
+            .query_map(params![workspace_id, limit], |row| {
                 Ok(ConversationSummary {
                     Id: row.get(0)?,
                     Title: row.get(1)?,
@@ -243,14 +259,32 @@ impl Store {
         Ok(())
     }
 
-    /// Wipes conversations and attempts; credentials live outside the database.
-    pub fn reset(&self) -> Result<(), String> {
+    /// Wipes conversations and attempts in one workspace; credentials live
+    /// outside the database. Other packages keep their history.
+    pub fn reset(&self, workspace_id: &str) -> Result<(), String> {
         let connection = self.lock()?;
+        // Messages hang off conversations by foreign key, so they go with them;
+        // deleting them first keeps the cascade from depending on the pragma.
         connection
-            .execute_batch(
-                "DELETE FROM messages; DELETE FROM conversations; DELETE FROM answer_attempts;",
+            .execute(
+                "DELETE FROM messages WHERE conversation_id IN
+                   (SELECT id FROM conversations WHERE workspace_id = ?1)",
+                params![workspace_id],
             )
-            .map_err(|error| format!("清空数据失败：{}", error))
+            .map_err(|error| format!("清空消息失败：{}", error))?;
+        connection
+            .execute(
+                "DELETE FROM conversations WHERE workspace_id = ?1",
+                params![workspace_id],
+            )
+            .map_err(|error| format!("清空会话失败：{}", error))?;
+        connection
+            .execute(
+                "DELETE FROM answer_attempts WHERE workspace_id = ?1",
+                params![workspace_id],
+            )
+            .map(|_| ())
+            .map_err(|error| format!("清空作答失败：{}", error))
     }
 }
 
@@ -288,10 +322,10 @@ mod tests {
         let (path, store) = temp_store();
 
         store
-            .append("c1", message("m1", "user", "极限怎么算"))
+            .append("c1", "w1", message("m1", "user", "极限怎么算"))
             .expect("first turn");
         store
-            .append("c1", message("m2", "assistant", "先看定义"))
+            .append("c1", "w1", message("m2", "assistant", "先看定义"))
             .expect("second turn");
 
         let stored = store.messages("c1").expect("messages load");
@@ -299,7 +333,7 @@ mod tests {
         assert_eq!(stored[0].Role, "user");
         assert_eq!(stored[1].Content, "先看定义");
 
-        let conversations = store.conversations(10).expect("conversations load");
+        let conversations = store.conversations("w1", 10).expect("conversations load");
         assert_eq!(conversations.len(), 1);
         assert_eq!(conversations[0].Title, "极限怎么算");
 
@@ -311,12 +345,12 @@ mod tests {
         let (path, store) = temp_store();
 
         store
-            .append("c1", message("m1", "user", "hello"))
+            .append("c1", "w1", message("m1", "user", "hello"))
             .expect("turn");
         store.delete_conversation("c1").expect("delete");
 
         assert!(store.messages("c1").expect("messages load").is_empty());
-        assert!(store.conversations(10).expect("load").is_empty());
+        assert!(store.conversations("w1", 10).expect("load").is_empty());
 
         let _ = std::fs::remove_file(path);
     }
@@ -326,13 +360,19 @@ mod tests {
         let (path, store) = temp_store();
 
         store
-            .append("c1", message("m1", "user", "极限怎么算"))
+            .append("c1", "w1", message("m1", "user", "极限怎么算"))
             .expect("turn");
         assert!(store.rename_conversation("c1", "   ").is_err());
-        assert_eq!(store.conversations(10).expect("load")[0].Title, "极限怎么算");
+        assert_eq!(
+            store.conversations("w1", 10).expect("load")[0].Title,
+            "极限怎么算"
+        );
 
         store.rename_conversation("c1", "第一章复习").expect("rename");
-        assert_eq!(store.conversations(10).expect("load")[0].Title, "第一章复习");
+        assert_eq!(
+            store.conversations("w1", 10).expect("load")[0].Title,
+            "第一章复习"
+        );
 
         let _ = std::fs::remove_file(path);
     }
@@ -342,7 +382,7 @@ mod tests {
         let (path, store) = temp_store();
 
         store
-            .append("used", message("m1", "user", "hello"))
+            .append("used", "w1", message("m1", "user", "hello"))
             .expect("turn");
         store
             .discard_empty_conversation("unused")
@@ -351,7 +391,7 @@ mod tests {
             .discard_empty_conversation("used")
             .expect("discard used");
 
-        let conversations = store.conversations(10).expect("load");
+        let conversations = store.conversations("w1", 10).expect("load");
         assert_eq!(conversations.len(), 1);
         assert_eq!(conversations[0].Id, "used");
 

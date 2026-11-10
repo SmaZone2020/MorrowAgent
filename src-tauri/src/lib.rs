@@ -81,9 +81,10 @@ fn provider_clear(app: tauri::AppHandle) -> Result<(), String> {
 fn chat_append(
     state: State<'_, Store>,
     conversation_id: String,
+    workspace_id: String,
     message: NewMessage,
 ) -> Result<StoredMessage, String> {
-    state.append(&conversation_id, message)
+    state.append(&conversation_id, &workspace_id, message)
 }
 
 #[tauri::command]
@@ -97,9 +98,10 @@ fn chat_messages(
 #[tauri::command]
 fn chat_conversations(
     state: State<'_, Store>,
+    workspace_id: String,
     limit: Option<i64>,
 ) -> Result<Vec<ConversationSummary>, String> {
-    state.conversations(limit.unwrap_or(20))
+    state.conversations(&workspace_id, limit.unwrap_or(20))
 }
 
 #[tauri::command]
@@ -136,8 +138,8 @@ fn chat_truncate(
 }
 
 #[tauri::command]
-fn chat_reset(state: State<'_, Store>) -> Result<(), String> {
-    state.reset()
+fn chat_reset(state: State<'_, Store>, workspace_id: String) -> Result<(), String> {
+    state.reset(&workspace_id)
 }
 
 #[tauri::command]
@@ -146,26 +148,38 @@ fn data_stats(state: State<'_, Store>) -> Result<StoreStats, String> {
 }
 
 #[tauri::command]
-fn attempt_record(state: State<'_, Store>, attempt: NewAttempt) -> Result<(), String> {
-    state.record_attempt(attempt)
+fn attempt_record(
+    state: State<'_, Store>,
+    workspace_id: String,
+    attempt: NewAttempt,
+) -> Result<(), String> {
+    state.record_attempt(&workspace_id, attempt)
 }
 
 #[tauri::command]
 fn attempt_wrong_list(
     state: State<'_, Store>,
+    workspace_id: String,
     limit: Option<i64>,
 ) -> Result<Vec<StoredAttempt>, String> {
-    state.wrong_attempts(limit.unwrap_or(50))
+    state.wrong_attempts(&workspace_id, limit.unwrap_or(50))
 }
 
 #[tauri::command]
-fn attempt_forget(state: State<'_, Store>, question_id: String) -> Result<(), String> {
-    state.forget_attempt(&question_id)
+fn attempt_forget(
+    state: State<'_, Store>,
+    workspace_id: String,
+    question_id: String,
+) -> Result<(), String> {
+    state.forget_attempt(&workspace_id, &question_id)
 }
 
 #[tauri::command]
-fn attempt_point_stats(state: State<'_, Store>) -> Result<Vec<PointStats>, String> {
-    state.point_stats()
+fn attempt_point_stats(
+    state: State<'_, Store>,
+    workspace_id: String,
+) -> Result<Vec<PointStats>, String> {
+    state.point_stats(&workspace_id)
 }
 
 #[tauri::command]

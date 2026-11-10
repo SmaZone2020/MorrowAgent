@@ -165,9 +165,15 @@ mod tests {
 
     fn seeded() -> (std::path::PathBuf, super::Store) {
         let (path, store) = temp_store();
-        store.append("c1", message("m1", "user", "极限怎么算")).expect("m1");
-        store.append("c1", message("m2", "assistant", "先看定义")).expect("m2");
-        store.append("c1", message("m3", "user", "然后呢")).expect("m3");
+        store
+            .append("c1", "w1", message("m1", "user", "极限怎么算"))
+            .expect("m1");
+        store
+            .append("c1", "w1", message("m2", "assistant", "先看定义"))
+            .expect("m2");
+        store
+            .append("c1", "w1", message("m3", "user", "然后呢"))
+            .expect("m3");
         (path, store)
     }
 
@@ -182,7 +188,7 @@ mod tests {
         assert_eq!(stored[0].Id, "m1");
         assert_eq!(stored[1].Id, "m3");
         // The opening question is intact, so the title still names it.
-        assert_eq!(store.conversations(10).expect("load")[0].Title, "极限怎么算");
+        assert_eq!(store.conversations("w1", 10).expect("load")[0].Title, "极限怎么算");
 
         let _ = std::fs::remove_file(path);
     }
@@ -195,7 +201,7 @@ mod tests {
 
         let stored = store.messages("c1").expect("messages load");
         assert_eq!(stored.len(), 2);
-        assert_eq!(store.conversations(10).expect("load")[0].Title, "然后呢");
+        assert_eq!(store.conversations("w1", 10).expect("load")[0].Title, "然后呢");
 
         let _ = std::fs::remove_file(path);
     }
@@ -209,7 +215,7 @@ mod tests {
         store.delete_message("m3").expect("m3");
 
         assert!(store.messages("c1").expect("messages load").is_empty());
-        assert_eq!(store.conversations(10).expect("load")[0].Title, "");
+        assert_eq!(store.conversations("w1", 10).expect("load")[0].Title, "");
 
         let _ = std::fs::remove_file(path);
     }
@@ -231,7 +237,7 @@ mod tests {
         let stored = store.messages("c1").expect("messages load");
         assert_eq!(stored.len(), 1);
         assert_eq!(stored[0].Id, "m1");
-        assert_eq!(store.conversations(10).expect("load")[0].Title, "极限怎么算");
+        assert_eq!(store.conversations("w1", 10).expect("load")[0].Title, "极限怎么算");
 
         let _ = std::fs::remove_file(path);
     }
@@ -243,7 +249,7 @@ mod tests {
         store.truncate_from("c1", "m1").expect("truncate");
 
         assert!(store.messages("c1").expect("messages load").is_empty());
-        assert_eq!(store.conversations(10).expect("load")[0].Title, "");
+        assert_eq!(store.conversations("w1", 10).expect("load")[0].Title, "");
 
         let _ = std::fs::remove_file(path);
     }
@@ -255,7 +261,7 @@ mod tests {
 
         store.delete_message("m1").expect("delete");
 
-        assert_eq!(store.conversations(10).expect("load")[0].Title, "第一章复习");
+        assert_eq!(store.conversations("w1", 10).expect("load")[0].Title, "第一章复习");
 
         let _ = std::fs::remove_file(path);
     }

@@ -38,14 +38,14 @@ pub struct StoredAttempt {
 }
 
 impl Store {
-    pub fn record_attempt(&self, attempt: NewAttempt) -> Result<(), String> {
+    pub fn record_attempt(&self, workspace_id: &str, attempt: NewAttempt) -> Result<(), String> {
         let connection = self.lock()?;
         connection
             .execute(
                 "INSERT INTO answer_attempts
                  (id, question_id, knowledge_point_id, question_version,
-                  question_snapshot, answer, is_correct, created_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                  question_snapshot, answer, is_correct, created_at, workspace_id)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
                 params![
                     attempt.Id,
                     attempt.QuestionId,
@@ -54,16 +54,22 @@ impl Store {
                     attempt.QuestionSnapshot,
                     attempt.Answer,
                     i64::from(attempt.IsCorrect),
-                    now()
+                    now(),
+                    workspace_id
                 ],
             )
             .map_err(|error| format!("记录作答失败：{}", error))?;
         Ok(())
     }
 
-    /// Questions whose most recent attempt was wrong. Answering correctly later
-    /// retires the entry without deleting the history behind it.
-    pub fn wrong_attempts(&self, limit: i64) -> Result<Vec<StoredAttempt>, String> {
+    /// Questions whose most recent attempt in this workspace was wrong.
+    /// Answering correctly later retires the entry without deleting the history
+    /// behind it.
+    pub fn wrong_attempts(
+        &self,
+        workspace_id: &str,
+        limit: i64,
+    ) -> Result<Vec<StoredAttempt>, String> {
         let connection = self.lock()?;
         let mut statement = connection
             .prepare(
@@ -75,26 +81,27 @@ impl Store {
                          ORDER BY created_at DESC, rowid DESC
                      ) AS rank
                      FROM answer_attempts
+                     WHERE workspace_id = ?1
                  )
                  WHERE rank = 1 AND is_correct = 0
-                 ORDER BY created_at DESC LIMIT ?1",
+                 ORDER BY created_at DESC LIMIT ?2",
             )
             .map_err(|error| format!("查询错题失败：{}", error))?;
 
         let rows = statement
-            .query_map(params![limit], read_attempt)
+            .query_map(params![workspace_id, limit], read_attempt)
             .map_err(|error| format!("读取错题失败：{}", error))?;
 
         rows.collect::<Result<Vec<_>, _>>()
             .map_err(|error| format!("解析错题失败：{}", error))
     }
 
-    pub fn forget_attempt(&self, question_id: &str) -> Result<(), String> {
+    pub fn forget_attempt(&self, workspace_id: &str, question_id: &str) -> Result<(), String> {
         let connection = self.lock()?;
         connection
             .execute(
-                "DELETE FROM answer_attempts WHERE question_id = ?1",
-                params![question_id],
+                "DELETE FROM answer_attempts WHERE question_id = ?1 AND workspace_id = ?2",
+                params![question_id, workspace_id],
             )
             .map_err(|error| format!("移除错题失败：{}", error))?;
         Ok(())
@@ -103,7 +110,7 @@ impl Store {
     /// Raw tallies per knowledge point. These are evidence, not mastery: the
     /// 0-100 mastery model is still an open product question, so nothing here
     /// pretends to be a score.
-    pub fn point_stats(&self) -> Result<Vec<PointStats>, String> {
+    pub fn point_stats(&self, workspace_id: &str) -> Result<Vec<PointStats>, String> {
         let connection = self.lock()?;
         let mut statement = connection
             .prepare(
@@ -112,14 +119,14 @@ impl Store {
                         SUM(is_correct),
                         MAX(created_at)
                  FROM answer_attempts
-                 WHERE knowledge_point_id <> ''
+                 WHERE knowledge_point_id <> '' AND workspace_id = ?1
                  GROUP BY knowledge_point_id
                  ORDER BY COUNT(*) DESC",
             )
             .map_err(|error| format!("查询知识点统计失败：{}", error))?;
 
         let rows = statement
-            .query_map([], |row| {
+            .query_map(params![workspace_id], |row| {
                 Ok(PointStats {
                     KnowledgePointId: row.get(0)?,
                     Attempts: row.get(1)?,
@@ -181,11 +188,11 @@ mod tests {
     fn a_later_correct_attempt_retires_the_wrong_entry() {
         let (path, store) = temp_store();
 
-        store.record_attempt(attempt("a1", false)).expect("wrong");
-        assert_eq!(store.wrong_attempts(10).expect("list").len(), 1);
+        store.record_attempt("w1", attempt("a1", false)).expect("wrong");
+        assert_eq!(store.wrong_attempts("w1", 10).expect("list").len(), 1);
 
-        store.record_attempt(attempt("a2", true)).expect("right");
-        assert!(store.wrong_attempts(10).expect("list").is_empty());
+        store.record_attempt("w1", attempt("a2", true)).expect("right");
+        assert!(store.wrong_attempts("w1", 10).expect("list").is_empty());
         assert_eq!(store.stats().expect("stats").Attempts, 2);
 
         let _ = std::fs::remove_file(path);
@@ -195,10 +202,10 @@ mod tests {
     fn forgetting_a_question_clears_its_whole_history() {
         let (path, store) = temp_store();
 
-        store.record_attempt(attempt("a1", false)).expect("wrong");
-        store.forget_attempt("q1").expect("forget");
+        store.record_attempt("w1", attempt("a1", false)).expect("wrong");
+        store.forget_attempt("w1", "q1").expect("forget");
 
-        assert!(store.wrong_attempts(10).expect("list").is_empty());
+        assert!(store.wrong_attempts("w1", 10).expect("list").is_empty());
         assert_eq!(store.stats().expect("stats").Attempts, 0);
 
         let _ = std::fs::remove_file(path);
@@ -208,14 +215,32 @@ mod tests {
     fn point_tallies_count_every_attempt_not_just_the_latest() {
         let (path, store) = temp_store();
 
-        store.record_attempt(attempt("a1", false)).expect("first");
-        store.record_attempt(attempt("a2", true)).expect("second");
+        store.record_attempt("w1", attempt("a1", false)).expect("first");
+        store.record_attempt("w1", attempt("a2", true)).expect("second");
 
-        let stats = store.point_stats().expect("point stats");
+        let stats = store.point_stats("w1").expect("point stats");
         assert_eq!(stats.len(), 1);
         assert_eq!(stats[0].KnowledgePointId, "limit");
         assert_eq!(stats[0].Attempts, 2);
         assert_eq!(stats[0].Correct, 1);
+
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn one_workspace_cannot_see_another_workspaces_attempts() {
+        let (path, store) = temp_store();
+
+        store.record_attempt("w1", attempt("a1", false)).expect("w1");
+        store.record_attempt("w2", attempt("a2", true)).expect("w2");
+
+        assert_eq!(store.wrong_attempts("w1", 10).expect("list").len(), 1);
+        assert!(store.wrong_attempts("w2", 10).expect("list").is_empty());
+        assert_eq!(store.point_stats("w2").expect("stats")[0].Attempts, 1);
+
+        // Forgetting in one workspace must not erase the other's row.
+        store.forget_attempt("w1", "q1").expect("forget");
+        assert_eq!(store.stats().expect("stats").Attempts, 1);
 
         let _ = std::fs::remove_file(path);
     }

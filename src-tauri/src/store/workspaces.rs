@@ -309,6 +309,7 @@ mod tests {
         store
             .append(
                 "c1",
+                "w1",
                 super::super::NewMessage {
                     Id: "m1".to_string(),
                     Role: "user".to_string(),
@@ -328,14 +329,29 @@ mod tests {
     fn adopting_orphan_rows_claims_only_unassigned_ones() {
         let (path, store) = temp_store();
         store.upsert_workspace(workspace("w1", "cn.morrow.calculus")).expect("insert");
+        // An empty workspace id is what a row written before workspaces existed
+        // looks like after migration 3.
         store
             .append(
-                "c1",
+                "legacy",
+                "",
                 super::super::NewMessage {
                     Id: "m1".to_string(),
                     Role: "user".to_string(),
                     Content: "hi".to_string(),
                     CreatedAt: Some(1),
+                },
+            )
+            .expect("append");
+        store
+            .append(
+                "owned",
+                "w2",
+                super::super::NewMessage {
+                    Id: "m2".to_string(),
+                    Role: "user".to_string(),
+                    Content: "hello".to_string(),
+                    CreatedAt: Some(2),
                 },
             )
             .expect("append");
@@ -350,7 +366,8 @@ mod tests {
                 |row| row.get(0),
             )
             .expect("count");
-        assert_eq!(assigned, 1);
+        assert_eq!(assigned, 1, "only the unassigned row is claimed");
+        assert_eq!(store.conversations("w2", 10).expect("w2").len(), 1);
 
         let _ = std::fs::remove_file(path);
     }
