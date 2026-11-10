@@ -4,8 +4,12 @@
  * choice (D-071 ~ D-074).
  */
 export type ThemeMode = "light" | "dark" | "system";
-export type InterfaceFont = "sans" | "serif" | "mono";
-export type UiScale = 0.9 | 1 | 1.1 | 1.25;
+export type InterfaceFont = "system" | "sans" | "serif" | "mono";
+/** Root font scale as a fraction; 1 = 100%. */
+export type UiScale = number;
+
+export const UI_SCALE_MIN = 0.8;
+export const UI_SCALE_MAX = 1.5;
 
 export interface Appearance {
   theme: ThemeMode;
@@ -26,20 +30,23 @@ export const THEME_OPTIONS: { value: ThemeMode; label: string }[] = [
 ];
 
 export const FONT_OPTIONS: { value: InterfaceFont; label: string }[] = [
+  { value: "system", label: "系统字体" },
   { value: "sans", label: "无衬线" },
   { value: "serif", label: "宋体" },
   { value: "mono", label: "等宽" },
 ];
 
-export const SCALE_OPTIONS: { value: UiScale; label: string }[] = [
-  { value: 0.9, label: "紧凑 90%" },
-  { value: 1, label: "标准 100%" },
-  { value: 1.1, label: "宽松 110%" },
-  { value: 1.25, label: "特大 125%" },
-];
+/** One-tap stops; any value in range can still be typed. */
+export const SCALE_PRESETS = [0.9, 1, 1.1, 1.25];
 
 const THEMES = new Set<string>(THEME_OPTIONS.map((option) => option.value));
 const FONTS = new Set<string>(FONT_OPTIONS.map((option) => option.value));
+
+/** Keeps a typed percentage inside the supported band. */
+export function clampScale(scale: number): UiScale {
+  if (!Number.isFinite(scale)) return defaultAppearance.scale;
+  return Math.min(UI_SCALE_MAX, Math.max(UI_SCALE_MIN, scale));
+}
 
 /** Coerces a stored blob; unknown values fall back one axis at a time. */
 export function normalizeAppearance(raw: unknown): Appearance {
@@ -52,9 +59,10 @@ export function normalizeAppearance(raw: unknown): Appearance {
     font: FONTS.has(String(value.font))
       ? (value.font as InterfaceFont)
       : defaultAppearance.font,
-    scale: SCALE_OPTIONS.some((option) => option.value === value.scale)
-      ? (value.scale as UiScale)
-      : defaultAppearance.scale,
+    scale:
+      typeof value.scale === "number"
+        ? clampScale(value.scale)
+        : defaultAppearance.scale,
   };
 }
 
@@ -73,7 +81,7 @@ export function applyAppearance(appearance: Appearance): void {
   root.dataset.theme = resolvedTheme(appearance.theme);
   root.dataset.font = appearance.font;
   // Tailwind sizes are rem-based, so the root size is the whole zoom.
-  root.style.fontSize = `${BASE_FONT_SIZE * appearance.scale}px`;
+  root.style.fontSize = `${BASE_FONT_SIZE * clampScale(appearance.scale)}px`;
 }
 
 /**

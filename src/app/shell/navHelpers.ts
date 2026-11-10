@@ -24,6 +24,14 @@ export function entryPath(entry: FlatNavigationEntry): string {
   return entry.child?.path ?? entry.item.path;
 }
 
+/**
+ * Settings replaces the app shell: it brings its own left rail, so the main
+ * sidebar and breadcrumb would be two navigations side by side.
+ */
+export function isSettingsPath(pathname: string): boolean {
+  return pathname === "/settings" || pathname.startsWith("/settings/");
+}
+
 export function matchesPath(entry: FlatNavigationEntry, pathname: string): boolean {
   const target = entryPath(entry);
   if (target === "/") return pathname === "/";

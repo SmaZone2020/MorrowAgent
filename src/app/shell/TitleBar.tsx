@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { AnimatedSidebarTrigger } from "@/vendor/beui/components/motion/animated-sidebar";
 import { LayoutSideContentLeft } from "@gravity-ui/icons";
+import { isSettingsPath } from "@/app/shell/navHelpers";
 import {
   closeWindow,
   isTauriRuntime,
@@ -14,8 +16,12 @@ const CONTROL_SIZE = "size-9";
 
 // The sidebar toggle lives beside the product name so the content header stays
 // a pure breadcrumb. The title bar renders inside the sidebar provider, which
-// is what gives the trigger its context.
+// is what gives the trigger its context. Settings owns the whole window and has
+// no sidebar, so the toggle is disabled there instead of being removed: the bar
+// keeps its shape and the button returns the moment you leave settings.
 export function TitleBar() {
+  const { pathname } = useLocation();
+  const sidebarToggleDisabled = isSettingsPath(pathname);
   const [maximized, setMaximized] = useState(false);
 
   useEffect(() => {
@@ -56,7 +62,9 @@ export function TitleBar() {
         </span>
         <AnimatedSidebarTrigger
           aria-label="收起或展开侧边栏"
-          className="ml-1 size-7 rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          disabled={sidebarToggleDisabled}
+          title={sidebarToggleDisabled ? "设置页不显示侧边栏" : "收起或展开侧边栏"}
+          className="ml-1 size-7 rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40 disabled:hover:bg-transparent"
         >
           <LayoutSideContentLeft aria-hidden="true" className="size-4.5" />
         </AnimatedSidebarTrigger>

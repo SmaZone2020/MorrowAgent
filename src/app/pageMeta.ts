@@ -107,14 +107,14 @@ export const pageMetaList: PageMeta[] = [
     title: "首选项",
     section: "设置",
     stage: "skeleton",
-    scope: ["题目字号", "侧边栏初始状态"],
+    scope: ["配色主题与界面字体", "界面缩放与题目字号"],
   },
   {
     path: "/settings/appearance",
     title: "外观",
     section: "设置",
     stage: "skeleton",
-    scope: ["浅色 / 深色 / 跟随系统", "界面字体三选一", "界面缩放档位"],
+    scope: ["已并入首选项"],
   },
   {
     path: "/settings/provider",

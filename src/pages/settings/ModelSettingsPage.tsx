@@ -1,8 +1,11 @@
 import { useState } from "react";
-import { Button } from "@/vendor/beui/components/motion/button";
 import { Input } from "@/vendor/beui/components/motion/input";
-import { Panel } from "@/components/Panel";
-import { InfoHint } from "@/components/InfoHint";
+import {
+  ChoiceTabs,
+  SettingsGroup,
+  SettingsPageShell,
+  SettingsRow,
+} from "@/pages/settings/SettingsBlocks";
 import { usePreferences } from "@/features/settings/preferencesStore";
 
 // Presets instead of a slider: the two axes users actually reason about are
@@ -45,56 +48,77 @@ export function ModelSettingsPage() {
     setTokenDraft(String(value));
   };
 
-  return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 p-5 sm:p-7">
-      <Panel
-        title="生成参数"
-        action={
-          <InfoHint label="温度 0–2，越低越稳定，适合公式推导；回复上限 64–16384 tokens。" />
-        }
-      >
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-wrap gap-2">
-            {PRESETS.map((preset) => {
-              const active =
-                temperature === preset.temperature &&
-                maxTokens === preset.maxTokens;
-              return (
-                <Button
-                  key={preset.label}
-                  size="sm"
-                  variant={active ? "primary" : "secondary"}
-                  onClick={() => {
-                    update({
-                      temperature: preset.temperature,
-                      maxTokens: preset.maxTokens,
-                    });
-                    setTemperatureDraft(String(preset.temperature));
-                    setTokenDraft(String(preset.maxTokens));
-                  }}
-                >
-                  {preset.label}
-                </Button>
-              );
-            })}
-          </div>
+  const activePreset = PRESETS.find(
+    (preset) =>
+      preset.temperature === temperature && preset.maxTokens === maxTokens,
+  );
 
-          <Input
-            label="温度"
-            value={temperatureDraft}
-            onChange={setTemperatureDraft}
-            onBlur={commitTemperature}
-            inputMode="decimal"
-          />
-          <Input
-            label="回复上限（tokens）"
-            value={tokenDraft}
-            onChange={setTokenDraft}
-            onBlur={commitTokens}
-            inputMode="numeric"
-          />
-        </div>
-      </Panel>
-    </div>
+  return (
+    <SettingsPageShell title="生成参数">
+      <SettingsGroup title="预设">
+        <SettingsRow
+          title="回复风格"
+          hint="温度 0–2，越低越稳定，适合公式推导；回复上限 64–16384 tokens。"
+          control={
+            <ChoiceTabs
+              label="回复风格预设"
+              options={PRESETS.map((preset) => ({
+                value: preset.label,
+                label: preset.label,
+              }))}
+              value={activePreset?.label ?? ""}
+              onChange={(label) => {
+                const preset = PRESETS.find((entry) => entry.label === label);
+                if (!preset) return;
+                update({
+                  temperature: preset.temperature,
+                  maxTokens: preset.maxTokens,
+                });
+                setTemperatureDraft(String(preset.temperature));
+                setTokenDraft(String(preset.maxTokens));
+              }}
+            />
+          }
+        />
+      </SettingsGroup>
+
+      <SettingsGroup title="数值">
+        <SettingsRow
+          title="温度"
+          control={
+            <Input
+              value={temperatureDraft}
+              onChange={setTemperatureDraft}
+              onBlur={commitTemperature}
+              inputMode="decimal"
+              aria-label="温度"
+              className="w-24"
+              classNames={{
+                field: "h-8 rounded-lg",
+                input: "pl-2 pr-2 text-right text-sm tabular-nums",
+              }}
+            />
+          }
+        />
+        <SettingsRow
+          title="回复上限"
+          hint="单位是 tokens，超出会被截断。"
+          control={
+            <Input
+              value={tokenDraft}
+              onChange={setTokenDraft}
+              onBlur={commitTokens}
+              inputMode="numeric"
+              aria-label="回复上限 tokens"
+              className="w-28"
+              classNames={{
+                field: "h-8 rounded-lg",
+                input: "pl-2 pr-2 text-right text-sm tabular-nums",
+              }}
+            />
+          }
+        />
+      </SettingsGroup>
+    </SettingsPageShell>
   );
 }

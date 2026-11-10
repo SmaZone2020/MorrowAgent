@@ -7,7 +7,6 @@ import { NotFoundPage } from "@/pages/NotFoundPage";
 import { SettingsLayout } from "@/pages/settings/SettingsLayout";
 import { SettingsOverviewPage } from "@/pages/settings/SettingsOverviewPage";
 import { GeneralSettingsPage } from "@/pages/settings/GeneralSettingsPage";
-import { AppearanceSettingsPage } from "@/pages/settings/AppearanceSettingsPage";
 import { AboutSettingsPage } from "@/pages/settings/AboutSettingsPage";
 import { ProviderSettingsPage } from "@/pages/settings/ProviderSettingsPage";
 import { ModelSettingsPage } from "@/pages/settings/ModelSettingsPage";
@@ -42,7 +41,8 @@ export const router = createHashRouter([
         children: [
           { index: true, element: <SettingsOverviewPage /> },
           { path: "general", element: <GeneralSettingsPage /> },
-          { path: "appearance", element: <AppearanceSettingsPage /> },
+          // Appearance folded into preferences; keep old links working.
+          { path: "appearance", element: <Navigate to="/settings/general" replace /> },
           { path: "provider", element: <ProviderSettingsPage /> },
           { path: "model", element: <ModelSettingsPage /> },
           { path: "data", element: <DataSettingsPage /> },

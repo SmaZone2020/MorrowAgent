@@ -1,8 +1,10 @@
 import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { AppShell } from "@/app/shell/AppShell";
 import { AppProviders } from "@/app/providers";
 import { TitleBar } from "@/app/shell/TitleBar";
 import { ResizeHandles } from "@/app/shell/ResizeHandles";
+import { isSettingsPath } from "@/app/shell/navHelpers";
 import { AnimatedSidebarProvider } from "@/vendor/beui/components/motion/animated-sidebar";
 import { useProviderStatus } from "@/features/settings/providerStatus";
 import { usePreferences } from "@/features/settings/preferencesStore";
@@ -13,6 +15,8 @@ import { flushUiState, loadUiState } from "@/features/uiState/store";
 // The sidebar provider wraps the title bar too, because the sidebar toggle now
 // lives there and reads its open state from the provider.
 export function RootLayout() {
+  const { pathname } = useLocation();
+  const settings = isSettingsPath(pathname);
   const hydrate = useProviderStatus((state) => state.hydrate);
   const hydratePreferences = usePreferences((state) => state.hydrate);
   // A collapsed rail is a deliberate layout choice, so it outlives the session.
@@ -49,8 +53,12 @@ export function RootLayout() {
     <AppProviders>
       <AnimatedSidebarProvider
         className="h-svh flex-col overflow-hidden"
-        open={sidebarOpen}
-        onOpenChange={setSidebarOpen}
+        // Settings has no sidebar, so the stored choice is frozen while it is
+        // open: the Ctrl+B shortcut cannot change a panel that is not on screen.
+        open={settings ? true : sidebarOpen}
+        onOpenChange={(next) => {
+          if (!settings) setSidebarOpen(next);
+        }}
       >
         <TitleBar />
         <div className="min-h-0 flex-1">
