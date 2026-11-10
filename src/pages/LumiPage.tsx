@@ -54,25 +54,22 @@ export function LumiPage() {
 
   return (
     <div className="flex h-full min-h-0 w-full">
-      <div className="pl-3 pt-4 sm:pl-5">
-        <ConversationList
-          list={list}
-          activeId={conversationId}
-          open={listOpen}
-          onToggle={() => setListOpen((value) => !value)}
-          onSelect={(id) => void openConversation(id)}
-          onCreate={() => {
-            setDraft("");
-            void startNew();
-          }}
-          onRename={(id, title) => void rename(id, title)}
-          onDelete={(id) => void remove(id)}
-        />
-      </div>
+      <ConversationList
+        list={list}
+        activeId={conversationId}
+        open={listOpen}
+        onToggle={() => setListOpen((value) => !value)}
+        onSelect={(id) => void openConversation(id)}
+        onCreate={() => {
+          setDraft("");
+          void startNew();
+        }}
+        onRename={(id, title) => void rename(id, title)}
+        onDelete={(id) => void remove(id)}
+      />
 
       <div className="mx-auto flex min-h-0 min-w-0 flex-1 flex-col gap-4 p-5 sm:p-7">
-        {empty ? (
-          <div className="-mt-18 flex min-h-0 flex-1 flex-col items-center justify-center gap-4">
+        {empty ? (          <div className="-mt-18 flex min-h-0 flex-1 flex-col items-center justify-center gap-4">
             <LumiCharacter className="size-28 sm:size-32" />
             <p className="max-w-md text-center text-lg text-muted-foreground">
               {greeting}
@@ -91,7 +88,7 @@ export function LumiPage() {
               onValueChange={setDraft}
               placeholder="和 Lumi 说点什么"
               aria-label="和 Lumi 说点什么"
-              minRows={1}
+              minRows={2}
               maxRows={8}
               loading={sending}
               onSubmit={submit}

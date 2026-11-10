@@ -48,10 +48,68 @@ export function ConversationList({
   onRename,
   onDelete,
 }: ConversationListProps) {
-  // Collapsed the rail keeps only the toggle, so the transcript gets the width.
-  if (!open) {
-    return (
-      <div className="flex shrink-0 flex-col items-center gap-1 pt-1">
+  // Nothing to show and nothing to fold: the transcript takes the whole width.
+  // Hiding it also covers the first launch, where the first message creates the
+  // first conversation.
+  if (list.length === 0) return null;
+
+  return (
+    // One container that animates its width, instead of swapping two trees: the
+    // transcript slides over rather than jumping when the rail is folded.
+    <aside
+      className="relative h-full shrink-0 overflow-hidden transition-[width] duration-200 ease-out motion-reduce:transition-none"
+      style={{ width: open ? 240 : 52 }}
+    >
+      <div
+        aria-hidden={!open}
+        className={`flex h-full w-56 flex-col gap-2 pt-4 pr-3 pl-3 transition-opacity duration-150 sm:pl-5 ${
+          open ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      >
+        <div className="flex items-center gap-1">
+          <Button
+            size="sm"
+            variant="secondary"
+            className="min-w-0 flex-1 justify-center gap-1.5"
+            onClick={onCreate}
+          >
+            <Plus className="size-4" />
+            新对话
+          </Button>
+          <Tooltip content="收起会话历史" side="left">
+            <Button
+              size="sm"
+              variant="ghost"
+              aria-label="收起会话历史"
+              className="size-8 shrink-0 rounded-lg p-0"
+              onClick={onToggle}
+            >
+              <ChevronLeft className="size-4" />
+            </Button>
+          </Tooltip>
+        </div>
+
+        <div className="scrollbar-thin flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">
+          {list.map((entry) => (
+            <ConversationRow
+              key={entry.id}
+              entry={entry}
+              active={entry.id === activeId}
+              onSelect={() => onSelect(entry.id)}
+              onRename={(title) => onRename(entry.id, title)}
+              onDelete={() => onDelete(entry.id)}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Folded rail: only the two actions, so the transcript gets the width. */}
+      <div
+        aria-hidden={open}
+        className={`absolute inset-y-0 left-0 flex w-10 flex-col items-center gap-1 pt-4 pl-3 transition-opacity duration-150 sm:pl-5 ${
+          open ? "pointer-events-none opacity-0" : "opacity-100"
+        }`}
+      >
         <Tooltip content="会话历史" side="right">
           <Button
             size="sm"
@@ -74,50 +132,6 @@ export function ConversationList({
             <Plus className="size-4" />
           </Button>
         </Tooltip>
-      </div>
-    );
-  }
-
-  return (
-    <aside className="flex w-56 shrink-0 flex-col gap-2 border-r border-border/60 pr-3">
-      <div className="flex items-center gap-1">
-        <Button
-          size="sm"
-          variant="secondary"
-          className="min-w-0 flex-1 justify-center gap-1.5"
-          onClick={onCreate}
-        >
-          <Plus className="size-4" />
-          新对话
-        </Button>
-        <Tooltip content="收起会话历史" side="left">
-          <Button
-            size="sm"
-            variant="ghost"
-            aria-label="收起会话历史"
-            className="size-8 shrink-0 rounded-lg p-0"
-            onClick={onToggle}
-          >
-            <ChevronLeft className="size-4" />
-          </Button>
-        </Tooltip>
-      </div>
-
-      <div className="scrollbar-thin flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">
-        {list.length === 0 ? (
-          <p className="px-2 py-3 text-xs text-muted-foreground">还没有会话</p>
-        ) : (
-          list.map((entry) => (
-            <ConversationRow
-              key={entry.id}
-              entry={entry}
-              active={entry.id === activeId}
-              onSelect={() => onSelect(entry.id)}
-              onRename={(title) => onRename(entry.id, title)}
-              onDelete={() => onDelete(entry.id)}
-            />
-          ))
-        )}
       </div>
     </aside>
   );
