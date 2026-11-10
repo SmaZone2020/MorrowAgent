@@ -61,11 +61,13 @@ function Frame({
       >
         {body}
       </ArtifactFrame>
-      {open ? (
-        <ArtifactOverlay title={title} onClose={() => setOpen(false)}>
-          {full}
-        </ArtifactOverlay>
-      ) : null}
+      <ArtifactOverlay
+        open={open}
+        title={title}
+        onClose={() => setOpen(false)}
+      >
+        {full}
+      </ArtifactOverlay>
     </>
   );
 }
@@ -188,7 +190,6 @@ function ImageBlock({ src, alt }: { src: string; alt: string }) {
       className="mx-auto h-auto max-h-[380px] w-auto max-w-full rounded-lg"
     />
   );
-
   return (
     <>
       <ArtifactFrame
@@ -216,15 +217,17 @@ function ImageBlock({ src, alt }: { src: string; alt: string }) {
       >
         {image}
       </ArtifactFrame>
-      {open ? (
-        <ArtifactOverlay title={title} onClose={() => setOpen(false)}>
-          <img
-            src={src}
-            alt={alt}
-            className="mx-auto h-auto max-h-[75vh] w-auto max-w-full rounded-lg"
-          />
-        </ArtifactOverlay>
-      ) : null}
+      <ArtifactOverlay
+        open={open}
+        title={title}
+        onClose={() => setOpen(false)}
+      >
+        <img
+          src={src}
+          alt={alt}
+          className="mx-auto h-auto max-h-[70vh] w-auto max-w-full rounded-lg"
+        />
+      </ArtifactOverlay>
     </>
   );
 }
