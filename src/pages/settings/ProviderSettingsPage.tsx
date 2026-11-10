@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/vendor/beui/components/motion/button";
 import { Input } from "@/vendor/beui/components/motion/input";
 import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
@@ -12,12 +12,23 @@ import {
   type ModelInfo,
   type Protocol,
 } from "@/features/settings/aiBridge";
+import { usePersistedState } from "@/features/uiState";
 
 type TestState =
   | { status: "idle" }
   | { status: "testing" }
   | { status: "ok"; count: number }
   | { status: "error"; message: string };
+
+/**
+ * The half-typed form, kept across page changes. The API key is deliberately
+ * absent: it is a secret, and interface state is a plain file (D-070).
+ */
+interface ProviderDraft {
+  baseUrl: string;
+  model: string;
+  protocol: Protocol;
+}
 
 // The protocol decides the URL path and the auth header, so it is a first-class
 // choice rather than something inferred from the base URL.
@@ -33,38 +44,50 @@ export function ProviderSettingsPage() {
   const save = useProviderStatus((state) => state.save);
   const clear = useProviderStatus((state) => state.clear);
 
+  // A draft only exists while the form differs from what is stored; saving or
+  // clearing drops it, so the saved values show through again.
+  const [draft, setDraft] = usePersistedState<ProviderDraft | null>(
+    "settings.provider.draft",
+    null,
+  );
+
   // Mirror the credential that requests actually use, so a debug-only setup
   // shows its values here instead of an empty form that looks unconfigured.
-  const initial = activeProvider();
-  const [baseUrl, setBaseUrl] = useState(initial?.baseUrl ?? "");
-  const [model, setModel] = useState(initial?.model ?? "");
-  const [apiKey, setApiKey] = useState(initial?.apiKey ?? "");
-  const [protocol, setProtocol] = useState<Protocol>(
-    initial?.protocol ?? "openai-chat",
-  );
+  const stored = provider ?? activeProvider() ?? null;
+  const form: ProviderDraft = draft ?? {
+    baseUrl: stored?.baseUrl ?? "",
+    model: stored?.model ?? "",
+    protocol: stored?.protocol ?? "openai-chat",
+  };
+
+  const [apiKey, setApiKey] = useState(stored?.apiKey ?? "");
+  const keyTouched = useRef(false);
   const [test, setTest] = useState<TestState>({ status: "idle" });
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [saving, setSaving] = useState(false);
 
-  // Fill the form once the encrypted blob has been read at boot.
+  // Fill the key once the encrypted blob has been read at boot, unless the user
+  // already started typing one.
   useEffect(() => {
-    if (!provider) return;
-    setBaseUrl(provider.baseUrl);
-    setModel(provider.model);
+    if (!provider || keyTouched.current) return;
     setApiKey(provider.apiKey);
-    setProtocol(provider.protocol);
   }, [provider]);
 
-  const canSave = Boolean(baseUrl.trim() && model.trim() && apiKey.trim());
+  // Functional update: two inputs changed in one tick must both land, and the
+  // first draft is built from the stored values rather than an empty form.
+  const patch = (next: Partial<ProviderDraft>) =>
+    setDraft((current) => ({ ...(current ?? form), ...next }));
+
+  const canSave = Boolean(form.baseUrl.trim() && form.model.trim() && apiKey.trim());
 
   const runTest = async () => {
     setTest({ status: "testing" });
     try {
       const list = await listModels({
-        baseUrl: baseUrl.trim(),
+        baseUrl: form.baseUrl.trim(),
         apiKey: apiKey.trim(),
-        model: model.trim(),
-        protocol,
+        model: form.model.trim(),
+        protocol: form.protocol,
       });
       setModels(list);
       setTest({ status: "ok", count: list.length });
@@ -81,14 +104,24 @@ export function ProviderSettingsPage() {
     setSaving(true);
     try {
       await save({
-        baseUrl: baseUrl.trim(),
-        model: model.trim(),
+        baseUrl: form.baseUrl.trim(),
+        model: form.model.trim(),
         apiKey: apiKey.trim(),
-        protocol,
+        protocol: form.protocol,
       });
+      // The draft is now the stored value, so keeping it would only pin a copy
+      // that can drift from the real credential.
+      setDraft(null);
     } finally {
       setSaving(false);
     }
+  };
+
+  const forget = async () => {
+    await clear();
+    setDraft(null);
+    setApiKey("");
+    keyTouched.current = false;
   };
 
   return (
@@ -111,8 +144,8 @@ export function ProviderSettingsPage() {
               <Button
                 key={entry.value}
                 size="sm"
-                variant={protocol === entry.value ? "primary" : "secondary"}
-                onClick={() => setProtocol(entry.value)}
+                variant={form.protocol === entry.value ? "primary" : "secondary"}
+                onClick={() => patch({ protocol: entry.value })}
               >
                 {entry.label}
               </Button>
@@ -121,16 +154,16 @@ export function ProviderSettingsPage() {
 
           <Input
             label="Base URL"
-            value={baseUrl}
-            onChange={setBaseUrl}
+            value={form.baseUrl}
+            onChange={(value) => patch({ baseUrl: value })}
             placeholder="https://api.example.com/v1"
             spellCheck={false}
             autoComplete="off"
           />
           <Input
             label="模型"
-            value={model}
-            onChange={setModel}
+            value={form.model}
+            onChange={(value) => patch({ model: value })}
             placeholder="deepseek-v4.1-flash"
             spellCheck={false}
             autoComplete="off"
@@ -145,7 +178,10 @@ export function ProviderSettingsPage() {
             label="API Key"
             type="password"
             value={apiKey}
-            onChange={setApiKey}
+            onChange={(value) => {
+              keyTouched.current = true;
+              setApiKey(value);
+            }}
             placeholder="sk-..."
             spellCheck={false}
             autoComplete="off"
@@ -156,7 +192,9 @@ export function ProviderSettingsPage() {
               size="sm"
               variant="secondary"
               disabled={
-                !baseUrl.trim() || !apiKey.trim() || test.status === "testing"
+                !form.baseUrl.trim() ||
+                !apiKey.trim() ||
+                test.status === "testing"
               }
               onClick={() => void runTest()}
             >
@@ -170,7 +208,7 @@ export function ProviderSettingsPage() {
               {saving ? "保存中" : "保存"}
             </Button>
             {provider ? (
-              <Button size="sm" variant="ghost" onClick={() => void clear()}>
+              <Button size="sm" variant="ghost" onClick={() => void forget()}>
                 清除
               </Button>
             ) : null}
