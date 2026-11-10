@@ -189,6 +189,57 @@ impl Store {
         Ok(())
     }
 
+    /// Renames a conversation. A blank title is rejected rather than stored: an
+    /// unnamed row is indistinguishable from a failed one in the history list.
+    pub fn rename_conversation(&self, conversation_id: &str, title: &str) -> Result<(), String> {
+        let trimmed = title.trim();
+        if trimmed.is_empty() {
+            return Err("会话标题不能为空".to_string());
+        }
+
+        let connection = self.lock()?;
+        let changed = connection
+            .execute(
+                "UPDATE conversations SET title = ?1 WHERE id = ?2",
+                params![trimmed, conversation_id],
+            )
+            .map_err(|error| format!("重命名会话失败：{}", error))?;
+
+        if changed == 0 {
+            return Err("会话不存在".to_string());
+        }
+        Ok(())
+    }
+
+    /// Drops a conversation that never received a turn. Creating an id before
+    /// the first send leaves an empty row behind when the user changes their
+    /// mind, and an empty row in a history list is just noise.
+    pub fn discard_empty_conversation(&self, conversation_id: &str) -> Result<(), String> {
+        let connection = self.lock()?;
+        connection
+            .execute(
+                "DELETE FROM conversations
+                 WHERE id = ?1
+                   AND NOT EXISTS (
+                     SELECT 1 FROM messages WHERE conversation_id = ?1
+                   )",
+                params![conversation_id],
+            )
+            .map_err(|error| format!("清理空会话失败：{}", error))?;
+        Ok(())
+    }
+
+    pub fn touch_conversation(&self, conversation_id: &str) -> Result<(), String> {
+        let connection = self.lock()?;
+        connection
+            .execute(
+                "UPDATE conversations SET updated_at = ?1 WHERE id = ?2",
+                params![now(), conversation_id],
+            )
+            .map_err(|error| format!("更新会话时间失败：{}", error))?;
+        Ok(())
+    }
+
     /// Wipes conversations and attempts; credentials live outside the database.
     pub fn reset(&self) -> Result<(), String> {
         let connection = self.lock()?;
@@ -263,6 +314,43 @@ mod tests {
 
         assert!(store.messages("c1").expect("messages load").is_empty());
         assert!(store.conversations(10).expect("load").is_empty());
+
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn renaming_rejects_a_blank_title_and_keeps_the_old_one() {
+        let (path, store) = temp_store();
+
+        store
+            .append("c1", message("m1", "user", "极限怎么算"))
+            .expect("turn");
+        assert!(store.rename_conversation("c1", "   ").is_err());
+        assert_eq!(store.conversations(10).expect("load")[0].Title, "极限怎么算");
+
+        store.rename_conversation("c1", "第一章复习").expect("rename");
+        assert_eq!(store.conversations(10).expect("load")[0].Title, "第一章复习");
+
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn discarding_an_empty_conversation_leaves_a_used_one_alone() {
+        let (path, store) = temp_store();
+
+        store
+            .append("used", message("m1", "user", "hello"))
+            .expect("turn");
+        store
+            .discard_empty_conversation("unused")
+            .expect("discard empty");
+        store
+            .discard_empty_conversation("used")
+            .expect("discard used");
+
+        let conversations = store.conversations(10).expect("load");
+        assert_eq!(conversations.len(), 1);
+        assert_eq!(conversations[0].Id, "used");
 
         let _ = std::fs::remove_file(path);
     }

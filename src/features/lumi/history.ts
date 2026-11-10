@@ -33,8 +33,31 @@ export async function loadMessages(
 }
 
 export async function loadConversations(
-  limit = 20,
+  limit = 50,
 ): Promise<ConversationSummary[]> {
   if (!isTauriRuntime) return [];
   return invoke<ConversationSummary[]>("chat_conversations", { limit });
+}
+
+export async function renameConversation(
+  conversationId: string,
+  title: string,
+): Promise<void> {
+  if (!isTauriRuntime) return;
+  await invoke("chat_rename", { conversationId, title });
+}
+
+export async function deleteConversation(
+  conversationId: string,
+): Promise<void> {
+  if (!isTauriRuntime) return;
+  await invoke("chat_delete", { conversationId });
+}
+
+/** Drops a conversation that never got a turn, so the list has no empty rows. */
+export async function discardEmptyConversation(
+  conversationId: string,
+): Promise<void> {
+  if (!isTauriRuntime) return;
+  await invoke("chat_discard_empty", { conversationId });
 }

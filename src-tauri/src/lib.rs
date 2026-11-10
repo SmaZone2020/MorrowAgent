@@ -93,6 +93,20 @@ fn chat_delete(state: State<'_, Store>, conversation_id: String) -> Result<(), S
 }
 
 #[tauri::command]
+fn chat_rename(
+    state: State<'_, Store>,
+    conversation_id: String,
+    title: String,
+) -> Result<(), String> {
+    state.rename_conversation(&conversation_id, &title)
+}
+
+#[tauri::command]
+fn chat_discard_empty(state: State<'_, Store>, conversation_id: String) -> Result<(), String> {
+    state.discard_empty_conversation(&conversation_id)
+}
+
+#[tauri::command]
 fn chat_reset(state: State<'_, Store>) -> Result<(), String> {
     state.reset()
 }
@@ -178,6 +192,8 @@ pub fn run() {
             chat_messages,
             chat_conversations,
             chat_delete,
+            chat_rename,
+            chat_discard_empty,
             chat_reset,
             data_stats,
             attempt_record,

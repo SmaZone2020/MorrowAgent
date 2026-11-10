@@ -1,31 +1,42 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
 import { PromptInput } from "@/vendor/beui/components/agents/prompt-input";
 import { LumiCharacter } from "@/features/lumi/LumiCharacter";
 import { MessageList } from "@/features/lumi/MessageList";
+import { ConversationList } from "@/features/lumi/ConversationList";
 import { useConversation } from "@/features/lumi/conversation";
 import { greetingFor } from "@/features/lumi/greetings";
 import { useProviderStatus } from "@/features/settings/providerStatus";
-import { useEffect } from "react";
+import { usePersistedState } from "@/features/uiState/usePersistedState";
 
 export function LumiPage() {
   const [greeting, setGreeting] = useState(() => greetingFor());
+  const [draft, setDraft] = usePersistedState("lumi.draft", "");
+  const [listOpen, setListOpen] = usePersistedState("lumi.listOpen", true);
   const configured = useProviderStatus((state) => state.configured);
+
   const conversationId = useConversation((state) => state.conversationId);
   const turns = useConversation((state) => state.turns);
   const sending = useConversation((state) => state.sending);
+  const list = useConversation((state) => state.list);
+  const listLoaded = useConversation((state) => state.listLoaded);
+  const hydrate = useConversation((state) => state.hydrate);
+  const openConversation = useConversation((state) => state.openConversation);
+  const startNew = useConversation((state) => state.startNew);
+  const rename = useConversation((state) => state.rename);
+  const remove = useConversation((state) => state.remove);
   const send = useConversation((state) => state.send);
   const stop = useConversation((state) => state.stop);
-  const hydrate = useConversation((state) => state.hydrate);
-  const reset = useConversation((state) => state.reset);
+  const regenerate = useConversation((state) => state.regenerate);
+
   const empty = turns.length === 0;
 
-  // Pick up the last conversation once, then leave the store alone: a reload
-  // mid-conversation should not look like a fresh page.
+  // Resume where the reader left off: the remembered conversation wins, then
+  // the most recently updated one (D-068).
   useEffect(() => {
-    if (!conversationId) void hydrate();
-  }, [conversationId, hydrate]);
+    if (!listLoaded) void hydrate();
+  }, [listLoaded, hydrate]);
 
   // The greeting names a slice of the day, so it only has to change when that
   // slice does; a minute tick is the cheapest way to catch the boundary.
@@ -34,57 +45,72 @@ export function LumiPage() {
     return () => clearInterval(tick);
   }, []);
 
-  return (
-    <div className="mx-auto flex h-full w-full max-w-4xl flex-col gap-4 p-5 sm:p-7">
-      {empty ? (
-        <div className="-mt-18 flex min-h-0 flex-1 flex-col items-center justify-center gap-4">
-          <LumiCharacter className="size-28 sm:size-32" />
-          <p className="max-w-md text-center text-lg text-muted-foreground">
-            {greeting}
-          </p>
-        </div>
-      ) : (
-        <MessageList turns={turns} onRetry={reset} />
-      )}
+  const submit = (value: string) => {
+    const text = value.trim();
+    if (!text || !configured || sending) return;
+    setDraft("");
+    void send(text);
+  };
 
-      <div className="shrink-0">
-        {/* Without a provider there is nothing to send to, so the banner
-            replaces the composer instead of sitting above a dead one. */}
-        {configured ? (
-          <PromptInput
-            placeholder="和 Lumi 说点什么"
-            aria-label="和 Lumi 说点什么"
-            minRows={1}
-            maxRows={8}
-            loading={sending}
-            onSubmit={(value) => void send(value)}
-            onStop={stop}
-            leadingAction={
-              empty ? null : (
-                <button
-                  type="button"
-                  onClick={reset}
-                  disabled={sending}
-                  className="ml-1 inline-flex h-8 items-center rounded-xl px-2 text-xs text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-                >
-                  新对话
-                </button>
-              )
-            }
-            className="bg-card shadow-surface"
-          />
-        ) : (
-          <div className="flex justify-end rounded-2xl bg-card p-2 shadow-surface">
-            <Link
-              to="/settings/provider"
-              className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <AnimatedBadge status="warning" contentKey="no-provider">
-                去配置 Provider
-              </AnimatedBadge>
-            </Link>
+  return (
+    <div className="flex h-full min-h-0 w-full">
+      <div className="pl-3 pt-4 sm:pl-5">
+        <ConversationList
+          list={list}
+          activeId={conversationId}
+          open={listOpen}
+          onToggle={() => setListOpen((value) => !value)}
+          onSelect={(id) => void openConversation(id)}
+          onCreate={() => {
+            setDraft("");
+            void startNew();
+          }}
+          onRename={(id, title) => void rename(id, title)}
+          onDelete={(id) => void remove(id)}
+        />
+      </div>
+
+      <div className="mx-auto flex min-h-0 min-w-0 flex-1 flex-col gap-4 p-5 sm:p-7">
+        {empty ? (
+          <div className="-mt-18 flex min-h-0 flex-1 flex-col items-center justify-center gap-4">
+            <LumiCharacter className="size-28 sm:size-32" />
+            <p className="max-w-md text-center text-lg text-muted-foreground">
+              {greeting}
+            </p>
           </div>
+        ) : (
+          <MessageList turns={turns} onRetry={() => void regenerate()} />
         )}
+
+        <div className="shrink-0">
+          {/* Without a provider there is nothing to send to, so the banner
+              replaces the composer instead of sitting above a dead one. */}
+          {configured ? (
+            <PromptInput
+              value={draft}
+              onValueChange={setDraft}
+              placeholder="和 Lumi 说点什么"
+              aria-label="和 Lumi 说点什么"
+              minRows={1}
+              maxRows={8}
+              loading={sending}
+              onSubmit={submit}
+              onStop={stop}
+              className="bg-card shadow-surface"
+            />
+          ) : (
+            <div className="flex justify-end rounded-2xl bg-card p-2 shadow-surface">
+              <Link
+                to="/settings/provider"
+                className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <AnimatedBadge status="warning" contentKey="no-provider">
+                  去配置 Provider
+                </AnimatedBadge>
+              </Link>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
