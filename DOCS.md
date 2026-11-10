@@ -43,6 +43,7 @@ Morrow Agent 是一个以目标达成为导向的 AI 学习伙伴。它通过持
 | `docs/05-Engineering/Architecture.md`           | 技术架构决策框架        |
 | `docs/05-Engineering/Communication-Protocol.md` | API 与组件通信协议     |
 | `docs/06-Project/Roadmap.md`                    | MVP 路线图         |
+| `docs/06-Project/Work-Plan.md`                  | 工程待办清单          |
 | `docs/06-Project/Task-Board.md`                 | 团队任务分工模板        |
 | `docs/06-Project/Acceptance-Criteria.md`        | MVP 验收标准        |
 | `docs/DECISIONS.md`                             | 产品决策记录          |
