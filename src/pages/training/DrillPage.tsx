@@ -4,6 +4,7 @@ import { Button } from "@/vendor/beui/components/motion/button";
 import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
 import { Panel } from "@/components/Panel";
 import { QuestionCard } from "@/features/training/QuestionCard";
+import { DrillToolbar } from "@/features/training/DrillToolbar";
 import { recordAttempt } from "@/features/training/attempts";
 import { knowledgePoints, questions, questionsFor } from "@/features/knowledge";
 
@@ -60,42 +61,47 @@ export function DrillPage() {
   const chipsVisible = !questionId;
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 p-5 sm:p-7">
-      {chipsVisible ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            size="sm"
-            variant={pointId ? "ghost" : "primary"}
-            onClick={() => selectPoint(null)}
-          >
-            全部题目
-          </Button>
-          {knowledgePoints.map((entry) => (
-            <Button
-              key={entry.id}
-              size="sm"
-              variant={entry.id === pointId ? "primary" : "ghost"}
-              onClick={() => selectPoint(entry.id)}
-            >
-              {entry.name}
-            </Button>
-          ))}
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-5 sm:p-7">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex min-w-0 flex-1 flex-col gap-3">
+          {chipsVisible ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                variant={pointId ? "ghost" : "primary"}
+                onClick={() => selectPoint(null)}
+              >
+                全部题目
+              </Button>
+              {knowledgePoints.map((entry) => (
+                <Button
+                  key={entry.id}
+                  size="sm"
+                  variant={entry.id === pointId ? "primary" : "ghost"}
+                  onClick={() => selectPoint(entry.id)}
+                >
+                  {entry.name}
+                </Button>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <AnimatedBadge status="info" size="sm" contentKey="single">
+                错题重做
+              </AnimatedBadge>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => selectPoint(pointId)}
+              >
+                {pointId ? "返回本知识点" : "全部题目"}
+              </Button>
+            </div>
+          )}
         </div>
-      ) : (
-        <div className="flex flex-wrap items-center gap-2">
-          <AnimatedBadge status="info" size="sm" contentKey="single">
-            错题重做
-          </AnimatedBadge>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="ml-auto"
-            onClick={() => selectPoint(pointId)}
-          >
-            {pointId ? "返回本知识点" : "全部题目"}
-          </Button>
-        </div>
-      )}
+
+        <DrillToolbar />
+      </div>
 
       {current ? (
         <>
@@ -113,6 +119,11 @@ export function DrillPage() {
                 // A failed write must not block the drill; the answer stays on
                 // screen and the next submit simply tries again.
               });
+              // Answering correctly flows straight to the next question; a wrong
+              // answer stays put so the explanation is actually read.
+              if (isCorrect && index + 1 < openQuestions.length) {
+                setIndex((value) => value + 1);
+              }
             }}
             onRevealed={() => {
               setResults((previous) => ({
