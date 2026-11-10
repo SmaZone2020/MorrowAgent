@@ -6,6 +6,11 @@ export interface StrokePoint {
 
 export interface Stroke {
   points: StrokePoint[];
+  /**
+   * Nib width used when the stroke was drawn. Optional so ink recorded before
+   * the pen had a width control still replays at the default.
+   */
+  width?: number;
 }
 
 /**

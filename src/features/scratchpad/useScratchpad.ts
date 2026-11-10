@@ -1,10 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { strokeToPath, pointFromEvent } from "@/features/scratchpad/geometry";
+import {
+  normalizeWidth,
+  pointFromEvent,
+  strokeToPath,
+  type InkWidth,
+} from "@/features/scratchpad/geometry";
 import {
   emptyDocument,
   type Stroke,
   type StrokeDocument,
 } from "@/features/scratchpad/types";
+import {
+  loadUiState,
+  peekScope,
+  readScope,
+  writeScope,
+} from "@/features/uiState/store";
 
 export interface ScratchpadHandlers {
   pointerDown: (event: React.PointerEvent<HTMLCanvasElement>) => void;
@@ -17,6 +28,8 @@ export interface ScratchpadApi {
   handlers: ScratchpadHandlers;
   strokes: Stroke[];
   isEmpty: boolean;
+  width: InkWidth;
+  setWidth: (width: InkWidth) => void;
   undo: () => void;
   clear: () => void;
   toDocument: () => StrokeDocument;
@@ -26,14 +39,63 @@ export interface ScratchpadApi {
  * Owns the ink state and canvas painting for one scratchpad. Strokes are stored
  * as point lists, never as bitmaps, so undo is a pop and the same data can be
  * replayed or sent to Lumi later.
+ *
+ * `persistKey` binds the ink to an interface-state scope. Passing the question
+ * id is what makes a half-finished answer survive a reload (T-02): the strokes
+ * are the answer, so losing them is losing work, not a lost scroll position.
  */
-export function useScratchpad(): ScratchpadApi {
+export function useScratchpad(persistKey?: string): ScratchpadApi {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [strokes, setStrokes] = useState<Stroke[]>([]);
+  const [strokes, setStrokes] = useState<Stroke[]>(() =>
+    persistKey ? readScope<Stroke[]>(persistKey, []) : [],
+  );
+  // The nib width is a tool setting, not a property of one pad, so every pad on
+  // screen follows the same choice.
+  const [width, setWidth] = useState<InkWidth>(() =>
+    normalizeWidth(readScope<number>("drill.inkWidth", 1)),
+  );
+  const widthRef = useRef(width);
+  widthRef.current = width;
+
+  const chooseWidth = useCallback((next: InkWidth) => {
+    setWidth(next);
+    writeScope("drill.inkWidth", next);
+  }, []);
   const drawingRef = useRef<Stroke | null>(null);
   const strokesRef = useRef<Stroke[]>([]);
+  // Writes stay off until the stored ink has been read. The state file is
+  // loaded asynchronously at boot, and a write before that would replace the
+  // saved strokes with the empty initial value.
+  const readyRef = useRef(!persistKey || peekScope(persistKey) !== undefined);
+  // Set as soon as the reader draws, so the late disk read cannot replace a
+  // stroke that is already on the canvas.
+  const touchedRef = useRef(false);
 
   strokesRef.current = strokes;
+
+  useEffect(() => {
+    if (!persistKey) return;
+    let cancelled = false;
+
+    if (!readyRef.current) {
+      void loadUiState().then(() => {
+        if (cancelled) return;
+        readyRef.current = true;
+        if (!touchedRef.current) {
+          setStrokes(readScope<Stroke[]>(persistKey, []));
+        }
+      });
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [persistKey]);
+
+  useEffect(() => {
+    if (!persistKey || !readyRef.current) return;
+    writeScope(persistKey, strokes);
+  }, [persistKey, strokes]);
 
   const paint = useCallback((committed: Stroke[], live?: Stroke) => {
     const canvas = canvasRef.current;
@@ -43,8 +105,10 @@ export function useScratchpad(): ScratchpadApi {
     const ratio = window.devicePixelRatio || 1;
     context.clearRect(0, 0, canvas.width / ratio, canvas.height / ratio);
     context.fillStyle = inkColor();
-    for (const stroke of committed) context.fill(strokeToPath(stroke));
-    if (live) context.fill(strokeToPath(live));
+    for (const stroke of committed) {
+      context.fill(strokeToPath(stroke, normalizeWidth(stroke.width)));
+    }
+    if (live) context.fill(strokeToPath(live, normalizeWidth(live.width)));
   }, []);
 
   useEffect(() => {
@@ -77,9 +141,13 @@ export function useScratchpad(): ScratchpadApi {
     (event: React.PointerEvent<HTMLCanvasElement>) => {
       const canvas = canvasRef.current;
       if (!canvas) return;
+      touchedRef.current = true;
       canvas.setPointerCapture(event.pointerId);
       const rect = canvas.getBoundingClientRect();
-      drawingRef.current = { points: [pointFromEvent(event, rect)] };
+      drawingRef.current = {
+        points: [pointFromEvent(event, rect)],
+        width: widthRef.current,
+      };
     },
     [],
   );
@@ -108,10 +176,12 @@ export function useScratchpad(): ScratchpadApi {
   }, []);
 
   const undo = useCallback(() => {
+    touchedRef.current = true;
     setStrokes((previous) => previous.slice(0, -1));
   }, []);
 
   const clear = useCallback(() => {
+    touchedRef.current = true;
     setStrokes([]);
   }, []);
 
@@ -130,6 +200,8 @@ export function useScratchpad(): ScratchpadApi {
     handlers: { pointerDown, pointerMove, pointerUp },
     strokes,
     isEmpty: strokes.length === 0,
+    width,
+    setWidth: chooseWidth,
     undo,
     clear,
     toDocument,

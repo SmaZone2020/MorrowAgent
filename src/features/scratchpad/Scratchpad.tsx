@@ -1,14 +1,40 @@
 import { Button } from "@/vendor/beui/components/motion/button";
+import { Tooltip } from "@/vendor/beui/components/motion/tooltip";
 import { ArrowUturnCcwLeft, TrashBin } from "@gravity-ui/icons";
+import {
+  INK_WIDTHS,
+  type InkWidth,
+} from "@/features/scratchpad/geometry";
 import { useScratchpad } from "@/features/scratchpad/useScratchpad";
+
+// A dot at each nib width, so the choice reads at a glance instead of needing a
+// label per button.
+const WIDTH_LABELS: Record<InkWidth, string> = {
+  0.6: "细笔",
+  1: "标准",
+  1.6: "粗笔",
+};
+
+const DOT_SIZE: Record<InkWidth, string> = {
+  0.6: "size-1",
+  1: "size-1.5",
+  1.6: "size-2.5",
+};
 
 /**
  * Free-hand scratchpad. The canvas records stroke point lists rather than
  * bitmaps, so undo is a pop and the drawing can later be replayed or handed to
  * Lumi as data instead of a picture.
  */
-export function ScratchpadPanel({ height = 300 }: { height?: number }) {
-  const pad = useScratchpad();
+export function ScratchpadPanel({
+  height = 300,
+  persistKey,
+}: {
+  height?: number;
+  /** Binds the ink to a scope so it survives a reload; omit for a throwaway pad. */
+  persistKey?: string;
+}) {
+  const pad = useScratchpad(persistKey);
 
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-border/60 bg-card p-2">
@@ -20,25 +46,45 @@ export function ScratchpadPanel({ height = 300 }: { height?: number }) {
         className="w-full touch-none rounded-lg bg-background/60 [background-image:radial-gradient(var(--border)_1px,transparent_1px)] [background-size:16px_16px]"
         {...pad.handlers}
       />
-      <div className="flex items-center justify-end gap-1">
-        <Button
-          size="sm"
-          variant="ghost"
-          disabled={pad.isEmpty}
-          onClick={pad.undo}
-        >
-          <ArrowUturnCcwLeft className="size-4" />
-          撤销
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          disabled={pad.isEmpty}
-          onClick={pad.clear}
-        >
-          <TrashBin className="size-4" />
-          清空
-        </Button>
+      <div className="flex items-center justify-between gap-1">
+        <div className="flex items-center gap-0.5">
+          {INK_WIDTHS.map((width) => (
+            <Tooltip key={width} content={WIDTH_LABELS[width]} side="top">
+              <Button
+                size="sm"
+                variant={pad.width === width ? "primary" : "ghost"}
+                aria-label={WIDTH_LABELS[width]}
+                aria-pressed={pad.width === width}
+                className="size-7 rounded-md p-0"
+                onClick={() => pad.setWidth(width)}
+              >
+                <span
+                  className={`rounded-full bg-current ${DOT_SIZE[width]}`}
+                />
+              </Button>
+            </Tooltip>
+          ))}
+        </div>
+        <div className="flex items-center gap-1">
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={pad.isEmpty}
+            onClick={pad.undo}
+          >
+            <ArrowUturnCcwLeft className="size-4" />
+            撤销
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={pad.isEmpty}
+            onClick={pad.clear}
+          >
+            <TrashBin className="size-4" />
+            清空
+          </Button>
+        </div>
       </div>
     </div>
   );

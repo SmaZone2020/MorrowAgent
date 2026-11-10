@@ -6,11 +6,20 @@ import type { Stroke, StrokePoint } from "@/features/scratchpad/types";
 const INK_SIZE = 4.2;
 const THINNING = 0.62;
 
-export function strokeToPath(stroke: Stroke): Path2D {
+/** Nib width multipliers, so the pen can be made finer for dense working. */
+export const INK_WIDTHS = [0.6, 1, 1.6] as const;
+export type InkWidth = (typeof INK_WIDTHS)[number];
+
+/** Coerces a stored stroke width back to a known nib, defaulting to standard. */
+export function normalizeWidth(width: number | undefined): InkWidth {
+  return INK_WIDTHS.find((entry) => entry === width) ?? 1;
+}
+
+export function strokeToPath(stroke: Stroke, width: InkWidth = 1): Path2D {
   const outline = getStroke(
     stroke.points.map((point) => [point.x, point.y, point.pressure]),
     {
-      size: INK_SIZE,
+      size: INK_SIZE * width,
       thinning: THINNING,
       smoothing: 0.55,
       streamline: 0.42,

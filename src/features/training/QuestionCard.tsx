@@ -12,6 +12,7 @@ import { ContentFigures } from "@/components/ContentFigure";
 import { AnswerVerdict, type Verdict } from "@/features/training/AnswerVerdict";
 import { AnswerOptions } from "@/features/training/AnswerOptions";
 import { imagesAt, type Question } from "@/features/knowledge";
+import { ScratchpadPanel } from "@/features/scratchpad/Scratchpad";
 import { scaledText } from "@/features/training/textScale";
 import { usePreferences } from "@/features/settings/preferencesStore";
 
@@ -112,9 +113,10 @@ export function QuestionCard({
             onSelect={setSelected}
           />
         ) : (
-          <p className="text-sm text-muted-foreground">
-            这道题需要画板作答，画板还没做。
-          </p>
+          // A board question has nothing to click, so the working surface takes
+          // the place of the options instead of being a separate tool the user
+          // has to find.
+          <ScratchpadPanel height={240} persistKey={`drill.ink.${question.id}`} />
         )}
 
         {revealExplanation ? (
