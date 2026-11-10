@@ -151,7 +151,7 @@ export function QuestionCard({
                     className="flex items-start gap-2 text-xs leading-5 text-muted-foreground"
                   >
                     <span className="mt-1.5 size-1 shrink-0 rounded-full bg-accent-foreground/40" />
-                    <span>{error.description}</span>
+                    <MathText className="min-w-0">{error.description}</MathText>
                   </li>
                 ))}
               </ul>
