@@ -1,4 +1,4 @@
-import bundle from "@/features/knowledge/generated/knowledge.json";
+import bundle from "@data/json/knowledge.json";
 
 export interface KnowledgePoint {
   id: string;

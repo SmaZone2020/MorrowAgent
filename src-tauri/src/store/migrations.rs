@@ -41,4 +41,28 @@ pub const MIGRATIONS: &[&str] = &[
     CREATE INDEX IF NOT EXISTS idx_attempts_point
         ON answer_attempts(knowledge_point_id, created_at);
     "#,
+    // 3 — workspaces. A workspace is the data side of a learning package: a
+    // package can be uninstalled while its history stays readable, so the row
+    // keeps its own identity and only loses `root_path` when orphaned.
+    r#"
+    CREATE TABLE IF NOT EXISTS workspaces (
+        id               TEXT PRIMARY KEY,
+        package_id       TEXT NOT NULL,
+        package_version  TEXT NOT NULL DEFAULT '',
+        name             TEXT NOT NULL DEFAULT '',
+        root_path        TEXT NOT NULL DEFAULT '',
+        cover_path       TEXT,
+        accent           TEXT,
+        tags             TEXT NOT NULL DEFAULT '[]',
+        installed_at     INTEGER NOT NULL,
+        last_opened_at   INTEGER NOT NULL DEFAULT 0,
+        orphaned         INTEGER NOT NULL DEFAULT 0
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_workspaces_package
+        ON workspaces(package_id);
+
+    ALTER TABLE conversations ADD COLUMN workspace_id TEXT NOT NULL DEFAULT '';
+    ALTER TABLE answer_attempts ADD COLUMN workspace_id TEXT NOT NULL DEFAULT '';
+    "#,
 ];

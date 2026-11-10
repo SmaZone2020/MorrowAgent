@@ -8,9 +8,11 @@ pub mod messages;
 pub mod migrations;
 pub mod stats;
 pub mod types;
+pub mod workspaces;
 
 pub use attempts::{PointStats, StoredAttempt};
 pub use types::{ConversationSummary, NewAttempt, NewMessage, StoreStats, StoredMessage};
+pub use workspaces::{NewWorkspace, Workspace};
 
 /// The database handle shared by every command. SQLite serialises writes
 /// anyway, and the app has one window, so a single connection behind a mutex is
@@ -358,10 +360,21 @@ mod tests {
 
     #[test]
     fn opening_a_version_one_database_applies_the_rest() {
-        let (path, _) = temp_store();
+        // Build a database that only knows migration 1, the shape shipped
+        // before attempts and workspaces existed, and mark it as such. It has
+        // to be its own file: `open` would otherwise have created the full
+        // schema first, and the later `ALTER TABLE` steps would see columns
+        // they had already added.
+        let path = std::env::temp_dir().join(format!(
+            "morrow-legacy-{}-{}.db",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|elapsed| elapsed.as_nanos())
+                .unwrap_or(0)
+        ));
+        let _ = std::fs::remove_file(&path);
         {
-            // Build a database that only knows migration 1, the shape shipped
-            // before attempts existed, and mark it as such.
             let connection = rusqlite::Connection::open(&path).expect("open");
             connection
                 .execute_batch(super::migrations::MIGRATIONS[0])
@@ -373,6 +386,7 @@ mod tests {
 
         let store = open(&path).expect("reopen migrates");
         assert_eq!(store.stats().expect("stats").Attempts, 0);
+        assert!(store.workspaces().expect("workspaces").is_empty());
 
         let version: i64 = store
             .lock()
