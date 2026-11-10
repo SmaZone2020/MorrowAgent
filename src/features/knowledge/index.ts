@@ -9,6 +9,7 @@ export interface KnowledgePoint {
   prerequisites: string[];
   related: string[];
   difficulty: string;
+  difficultyBasis: string;
   examImportance: string;
   examLevels: string[];
   commonErrors: string[];
@@ -32,6 +33,7 @@ export interface Question {
   content: string;
   questionType: string;
   difficulty: string;
+  difficultyBasis: string;
   examLevel?: string;
   options: QuestionOption[];
   answer: string;

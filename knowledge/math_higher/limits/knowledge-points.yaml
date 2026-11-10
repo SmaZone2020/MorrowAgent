@@ -9,6 +9,7 @@ chapter:
       subject_id: math_higher
       chapter_id: math_higher_limits
       description: 函数是从定义域到值域的对应关系，给定自变量有唯一因变量与之对应；研究极限前需先明确定义域与对应法则。
+      difficulty_basis: 只需理解定义与直接套用，不依赖其他知识点。
       learning_objectives:
         - 能判断给定对应关系是否为函数
         - 能求出简单函数的定义域与值域
@@ -33,6 +34,7 @@ chapter:
       subject_id: math_higher
       chapter_id: math_higher_limits
       description: 函数在一点的左极限与右极限分别描述自变量从该点左侧与右侧趋近时函数值的趋向。
+      difficulty_basis: 依赖函数概念，需要区分两侧表达式并做一次比较，属单步转化。
       learning_objectives:
         - 能写出左极限与右极限的记号并解释其含义
         - 能用左右极限判断双侧极限是否存在
@@ -59,6 +61,7 @@ chapter:
       subject_id: math_higher
       chapter_id: math_higher_limits
       description: 双侧极限存在的充要条件是左右极限都存在且相等；夹逼准则与单调有界准则给出不需要求出极限值也能判定存在的途径。
+      difficulty_basis: 依赖左右极限与函数概念，需要在夹逼准则与单调有界准则之间选择方法，属多知识点联用。
       learning_objectives:
         - 能用左右极限相等判定双侧极限存在
         - 能用夹逼准则判定极限存在并求值

@@ -55,3 +55,15 @@ Morrow Agent 是一个以目标达成为导向的 AI 学习伙伴。它通过持
 3. AI 的推测不能直接写成已确认的用户弱项；应记录证据、置信度，并通过验证题确认。
 4. 文档修改应通过 Pull Request 或团队评审；重要决定同步更新 `DECISIONS.md`。
 5. 文档中的技术选型均为待评审项，不能仅凭示例当成最终决定。
+
+## 知识库生产
+
+知识点、题目与真题登记的字段规则见 `docs/04-Data/Knowledge-Standard.md`，可执行细则见 `prompts/conventions.md`。
+
+| 任务 | 提示词 | Schema |
+|---|---|---|
+| 知识点 | `prompts/knowledge-point-generation.md` | `schemas/knowledge-point.schema.json` |
+| 题目 | `prompts/question-generation.md` | `schemas/question.schema.json` |
+| 真题登记 | `prompts/exam-source-registration.md` | `schemas/exam-source.schema.json` |
+
+产出统一用 `pnpm validate:knowledge` 校验，`pnpm build:knowledge` 编译进包。

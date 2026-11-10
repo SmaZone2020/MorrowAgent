@@ -10,6 +10,7 @@
     "content",
     "question_type",
     "difficulty",
+    "difficulty_basis",
     "answer",
     "explanation",
     "knowledge_tags",
@@ -76,7 +77,22 @@
     },
     "source_reference": {
       "type": "string",
-      "description": "真题需写明年份与卷别；AI 原创需写明生成批次"
+      "description": "AI 原创写生成批次；真题与改编题由 source_exam_id 指向真题登记项"
+    },
+    "source_exam_id": {
+      "type": "string",
+      "pattern": "^math_higher_exam_[a-z0-9_]+$",
+      "description": "真题或改编题必填，指向 exam-sources.yaml 中的登记项；无授权的真题只登记元数据，不入题库"
+    },
+    "adaptation_note": {
+      "type": "string",
+      "minLength": 10,
+      "description": "改编题必填：说明相对原题改了什么，以及为什么这样改"
+    },
+    "difficulty_basis": {
+      "type": "string",
+      "minLength": 6,
+      "description": "难度判定依据，写目标人群的正确率区间，而不是主观感受"
     },
     "solution_methods": {
       "type": "array",
@@ -139,6 +155,43 @@
       },
       "then": {
         "not": { "required": ["options"] }
+      }
+    },
+    {
+      "if": {
+        "properties": { "question_type": { "const": "true_false" } },
+        "required": ["question_type"]
+      },
+      "then": {
+        "required": ["options"],
+        "properties": { "options": { "minItems": 2, "maxItems": 2 } }
+      }
+    },
+    {
+      "if": {
+        "properties": { "source_type": { "enum": ["real_exam", "adapted_exam"] } },
+        "required": ["source_type"]
+      },
+      "then": {
+        "required": ["source_exam_id"]
+      }
+    },
+    {
+      "if": {
+        "properties": { "source_type": { "const": "adapted_exam" } },
+        "required": ["source_type"]
+      },
+      "then": {
+        "required": ["adaptation_note"]
+      }
+    },
+    {
+      "if": {
+        "properties": { "source_type": { "const": "ai_generated" } },
+        "required": ["source_type"]
+      },
+      "then": {
+        "not": { "required": ["source_exam_id"] }
       }
     }
   ]

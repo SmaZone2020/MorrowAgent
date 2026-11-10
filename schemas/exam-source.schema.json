@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morrow.dev/schemas/exam-source.schema.json",
+  "title": "ExamSource",
+  "description": "真题元数据登记项。未获得再分发授权时只登记出处与链接，不收录题干原文。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "subject_id",
+    "year",
+    "region",
+    "exam",
+    "question_numbers",
+    "link",
+    "license"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^math_higher_exam_[a-z0-9_]+$",
+      "description": "稳定唯一 ID，创建后不得因试卷名称调整而变化"
+    },
+    "subject_id": {
+      "const": "math_higher"
+    },
+    "year": {
+      "type": "integer",
+      "minimum": 2000,
+      "maximum": 2100
+    },
+    "region": {
+      "type": "string",
+      "minLength": 2,
+      "description": "考试地区或组织单位，如「陕西省」"
+    },
+    "exam": {
+      "type": "string",
+      "minLength": 4,
+      "description": "试卷全称，如「陕西省普通高等教育专升本招生考试 高等数学」"
+    },
+    "question_numbers": {
+      "type": "array",
+      "minItems": 1,
+      "description": "本题在本卷中的题号，按试卷原样书写（如「一、3」「17」）",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "link": {
+      "type": "string",
+      "pattern": "^https?://",
+      "description": "可公开访问的试卷或答案出处链接"
+    },
+    "license": {
+      "type": "string",
+      "enum": ["metadata_only", "unclear", "public_domain"],
+      "description": "metadata_only：只允许登记元数据；unclear：授权状态不明；public_domain：已确认可再分发"
+    },
+    "notes": {
+      "type": "string",
+      "description": "待核实事项，不得写入题干原文"
+    }
+  }
+}

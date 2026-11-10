@@ -1,0 +1,140 @@
+chapter:
+  id: math_higher_derivative
+  name: 导数与微分
+  subject_id: math_higher
+  version: 0.1.0
+  knowledge_points:
+    - id: math_higher_derivative_derivative_concept
+      name: 导数的定义
+      subject_id: math_higher
+      chapter_id: math_higher_derivative
+      description: 函数在一点的导数是函数值改变量与自变量改变量之比的极限，刻画函数在该点的瞬时变化率与切线斜率。
+      difficulty_basis: 只需理解差商的极限定义并直接套用，不依赖其他知识点。
+      learning_objectives:
+        - 能用定义式求简单函数在一点的导数
+        - 能说清导数与切线斜率、瞬时变化率的关系
+      prerequisites:
+        - math_higher_limits_limit_existence
+      related_points:
+        - math_higher_derivative_one_sided_derivative
+      difficulty: basic
+      exam_importance: high
+      exam_levels:
+        - score_free
+        - basic
+      common_errors:
+        - 把导数的定义式写成缺少分式的形式
+        - 在分段点直接用求导公式而不用定义
+      sources:
+        - type: textbook
+          reference: 同济大学《高等数学》第七版 第二章
+          license: unclear
+      version: 0.1.0
+
+    - id: math_higher_derivative_one_sided_derivative
+      name: 左右导数与可导性
+      subject_id: math_higher
+      chapter_id: math_higher_derivative
+      description: 函数在一点可导的充要条件是左导数与右导数都存在且相等；可导必连续，连续不一定可导。
+      difficulty_basis: 依赖导数的定义与左右极限，需要分辨两侧导数并比较，属单步转化。
+      learning_objectives:
+        - 能分别写出左导数与右导数的定义式
+        - 能判断分段函数在分段点的可导性
+      prerequisites:
+        - math_higher_derivative_derivative_concept
+        - math_higher_limits_one_sided_limit
+      related_points:
+        - math_higher_derivative_derivative_concept
+      difficulty: medium
+      exam_importance: critical
+      exam_levels:
+        - basic
+        - advanced
+      common_errors:
+        - 由连续性直接推断可导
+        - 只算出一侧导数就断言可导
+      sources:
+        - type: textbook
+          reference: 同济大学《高等数学》第七版 第二章
+          license: unclear
+      version: 0.1.0
+
+    - id: math_higher_derivative_rules
+      name: 求导法则
+      subject_id: math_higher
+      chapter_id: math_higher_derivative
+      description: 四则运算、复合函数与反函数的求导法则把基本初等函数的导数扩展为一般初等函数的导数计算。
+      difficulty_basis: 依赖基本求导公式，需要按链式结构逐层套用，属单步转化。
+      learning_objectives:
+        - 能对复合函数按链式法则逐层求导
+        - 能处理乘积与商的混合求导
+      prerequisites:
+        - math_higher_derivative_derivative_concept
+      related_points:
+        - math_higher_derivative_high_order
+      difficulty: medium
+      exam_importance: critical
+      exam_levels:
+        - basic
+        - advanced
+      common_errors:
+        - 链式法则漏乘内层导数
+        - 商的求导法则分子顺序写反
+      sources:
+        - type: textbook
+          reference: 同济大学《高等数学》第七版 第二章
+          license: unclear
+      version: 0.1.0
+
+    - id: math_higher_derivative_differential
+      name: 微分
+      subject_id: math_higher
+      chapter_id: math_higher_derivative
+      description: 函数的微分是函数改变量的线性主部，等于导数与自变量微分的乘积；可导与可微在一元函数中互为充要条件。
+      difficulty_basis: 依赖导数概念，需要理解线性主部的含义，属概念转化。
+      learning_objectives:
+        - 能写出微分的表达式并求出一元函数的微分
+        - 能区分函数改变量、微分与近似值
+      prerequisites:
+        - math_higher_derivative_derivative_concept
+      related_points:
+        - math_higher_derivative_rules
+      difficulty: medium
+      exam_importance: high
+      exam_levels:
+        - basic
+        - advanced
+      common_errors:
+        - 把微分写成函数值本身而不是线性主部
+        - 忽略一元函数中可导与可微的等价性
+      sources:
+        - type: textbook
+          reference: 同济大学《高等数学》第七版 第二章
+          license: unclear
+      version: 0.1.0
+
+    - id: math_higher_derivative_high_order
+      name: 高阶导数
+      subject_id: math_higher
+      chapter_id: math_higher_derivative
+      description: 高阶导数是对导数再次求导得到的函数，二阶导数刻画函数图象的凹凸性，也可用于判断极值。
+      difficulty_basis: 依赖求导法则，需要连续多次求导并观察一般规律，属多步计算。
+      learning_objectives:
+        - 能求出常见函数的二阶与三阶导数
+        - 能用归纳法写出简单函数的 n 阶导数
+      prerequisites:
+        - math_higher_derivative_rules
+      related_points:
+        - math_higher_derivative_differential
+      difficulty: harder
+      exam_importance: medium
+      exam_levels:
+        - advanced
+      common_errors:
+        - 求高阶导数时漏掉常数因子
+        - 把二阶导数的记号写成平方
+      sources:
+        - type: textbook
+          reference: 同济大学《高等数学》第七版 第二章
+          license: unclear
+      version: 0.1.0

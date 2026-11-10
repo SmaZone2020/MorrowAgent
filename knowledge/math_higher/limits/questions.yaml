@@ -3,6 +3,7 @@ questions:
     content: 设 $f(x)=\begin{cases} x+1, & x<0 \\ x^2, & x \ge 0 \end{cases}$，则 $\lim\limits_{x \to 0} f(x)$ 为
     question_type: single_choice
     difficulty: basic
+    difficulty_basis: 只需分别求两侧极限后比较，步骤固定，预估正确率 85% 以上。
     exam_level: basic
     options:
       - key: A
@@ -34,6 +35,7 @@ questions:
     content: 设 $f(x)=\begin{cases} 2x+a, & x<1 \\ x^2, & x \ge 1 \end{cases}$，若 $\lim\limits_{x \to 1} f(x)$ 存在，则 $a=$
     question_type: fill_blank
     difficulty: medium
+    difficulty_basis: 需要先判定极限存在的条件，再解一次一元方程，预估正确率 55%–70%。
     exam_level: basic
     answer: "$-1$"
     explanation: 左极限为 $2+a$，右极限为 $1$。极限存在要求左右极限相等，故 $2+a=1$，解得 $a=-1$。

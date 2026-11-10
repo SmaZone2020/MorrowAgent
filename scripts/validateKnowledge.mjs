@@ -9,6 +9,7 @@ const schemaDir = join(projectRoot, "schemas");
 
 const KNOWLEDGE_SCHEMA = "knowledge-point.schema.json";
 const QUESTION_SCHEMA = "question.schema.json";
+const EXAM_SOURCE_SCHEMA = "exam-source.schema.json";
 
 function loadSchema(name) {
   return JSON.parse(readFileSync(join(schemaDir, name), "utf8"));
@@ -17,6 +18,7 @@ function loadSchema(name) {
 const ajv = new Ajv2020({ allErrors: true, strict: false });
 const validateKnowledgePoint = ajv.compile(loadSchema(KNOWLEDGE_SCHEMA));
 const validateQuestion = ajv.compile(loadSchema(QUESTION_SCHEMA));
+const validateExamSource = ajv.compile(loadSchema(EXAM_SOURCE_SCHEMA));
 
 function fail(message) {
   console.error(`\u2717 ${message}`);
@@ -95,6 +97,31 @@ function validateKnowledgePoints(doc, file, report) {
   }
 }
 
+function validateExamSources(doc, file, report) {
+  if (!Array.isArray(doc.exam_sources)) {
+    throw new Error(`${file} 缺少 exam_sources 数组`);
+  }
+
+  for (const source of doc.exam_sources) {
+    const label = source?.id ?? "(缺少 id)";
+    if (!validateExamSource(source)) {
+      throw new Error(
+        `${file} 真题登记 ${label} 未通过 Schema 校验：\n${formatAjvErrors(
+          validateExamSource.errors,
+        )}`,
+      );
+    }
+
+    if (report.examSources.has(source.id)) {
+      throw new Error(
+        `${file} 真题登记 ID 重复：${source.id}（已出现在 ${report.examSources.get(source.id)}）`,
+      );
+    }
+
+    report.examSources.set(source.id, { file, license: source.license });
+  }
+}
+
 function validateQuestions(doc, file, report) {
   if (!Array.isArray(doc.questions)) {
     throw new Error(`${file} 缺少 questions 数组`);
@@ -120,6 +147,15 @@ function validateQuestions(doc, file, report) {
     report.pendingTags.push(
       ...question.knowledge_tags.map((id) => ({ id, owner: question.id, file })),
     );
+
+    if (question.source_exam_id) {
+      report.pendingExamSources.push({
+        id: question.source_exam_id,
+        owner: question.id,
+        file,
+        sourceType: question.source_type,
+      });
+    }
 
     const keys = (question.options ?? []).map((option) => option.key);
     if (new Set(keys).size !== keys.length) {
@@ -158,6 +194,67 @@ function resolveReferences(report) {
     }
   }
 
+  // A question may only point at a registered exam source. The license check
+  // is the enforcement point for "unlicensed papers stay metadata-only": if a
+  // question quotes a paper whose license was never cleared, the bundle would
+  // ship text we have no right to redistribute.
+  for (const ref of report.pendingExamSources) {
+    const source = report.examSources.get(ref.id);
+
+    if (!source) {
+      errors.push(`${ref.file} 题 ${ref.owner} 引用了未登记的真题 ${ref.id}`);
+      continue;
+    }
+
+    if (source.license !== "public_domain") {
+      errors.push(
+        `${ref.file} 题 ${ref.owner} 引用了真题 ${ref.id}，但其 license 为 ${source.license}，不得引用题干`,
+      );
+    }
+  }
+
+  return errors;
+}
+
+/**
+ * A prerequisite cycle makes every point in the loop unlearnable: each one
+ * waits for the next. The reference check above already rejects unknown ids,
+ * so the graph here is guaranteed to be closed and DFS is enough.
+ */
+function findPrerequisiteCycles(report) {
+  const edges = new Map();
+  for (const ref of report.pendingPrerequisites) {
+    if (!edges.has(ref.owner)) edges.set(ref.owner, []);
+    edges.get(ref.owner).push(ref);
+  }
+
+  const state = new Map();
+  const errors = [];
+  const reported = new Set();
+
+  const visit = (id) => {
+    state.set(id, "open");
+    for (const edge of edges.get(id) ?? []) {
+      const next = state.get(edge.id);
+      if (next === "open") {
+        const pair = [edge.owner, edge.id].sort().join(" -> ");
+        if (!reported.has(pair)) {
+          reported.add(pair);
+          errors.push(
+            `${edge.file} 知识点 ${edge.owner} 与 ${edge.id} 互为前置，形成循环`,
+          );
+        }
+        continue;
+      }
+      if (!next) visit(edge.id);
+    }
+    state.set(id, "done");
+  };
+
+  for (const id of edges.keys()) {
+    if (!state.has(id)) visit(id);
+  }
+
   return errors;
 }
 
@@ -181,9 +278,11 @@ function main() {
   const report = {
     knowledgePoints: new Map(),
     questions: new Map(),
+    examSources: new Map(),
     pendingPrerequisites: [],
     pendingRelated: [],
     pendingTags: [],
+    pendingExamSources: [],
   };
 
   try {
@@ -195,22 +294,29 @@ function main() {
         validateKnowledgePoints(doc, shown, report);
       } else if (doc && Array.isArray(doc.questions)) {
         validateQuestions(doc, shown, report);
+      } else if (doc && Array.isArray(doc.exam_sources)) {
+        validateExamSources(doc, shown, report);
       } else {
-        throw new Error(`${shown} 无法识别：需要 chapter 或 questions 顶层键`);
+        throw new Error(
+          `${shown} 无法识别：需要 chapter、questions 或 exam_sources 顶层键`,
+        );
       }
     }
   } catch (error) {
     return fail(error.message);
   }
 
-  const referenceErrors = resolveReferences(report);
+  const referenceErrors = [
+    ...resolveReferences(report),
+    ...findPrerequisiteCycles(report),
+  ];
   if (referenceErrors.length > 0) {
     for (const message of referenceErrors) console.error(`\u2717 ${message}`);
     return 1;
   }
 
   console.log(
-    `\u2713 校验通过：${files.length} 个文件，${report.knowledgePoints.size} 个知识点，${report.questions.size} 道题`,
+    `\u2713 校验通过：${files.length} 个文件，${report.knowledgePoints.size} 个知识点，${report.questions.size} 道题，${report.examSources.size} 条真题登记`,
   );
   return 0;
 }

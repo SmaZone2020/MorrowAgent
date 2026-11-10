@@ -54,6 +54,7 @@ function pickKnowledgePoint(point) {
     prerequisites: point.prerequisites ?? [],
     related: point.related_points ?? [],
     difficulty: point.difficulty,
+    difficultyBasis: point.difficulty_basis ?? "",
     examImportance: point.exam_importance,
     examLevels: point.exam_levels ?? [],
     commonErrors: point.common_errors ?? [],
@@ -66,6 +67,7 @@ function pickQuestion(question) {
     content: question.content,
     questionType: question.question_type,
     difficulty: question.difficulty,
+    difficultyBasis: question.difficulty_basis ?? "",
     examLevel: question.exam_level,
     options: (question.options ?? []).map((option) => ({
       key: option.key,
@@ -116,7 +118,11 @@ function main() {
       continue;
     }
 
-    throw new Error(`${relative(projectRoot, file)} 无法识别：需要 chapter 或 questions 顶层键`);
+    // Exam registrations are source bookkeeping, not drillable content, so they
+    // deliberately stay out of the runtime bundle.
+    if (Array.isArray(doc?.exam_sources)) continue;
+
+    throw new Error(`${relative(projectRoot, file)} 无法识别：需要 chapter、questions 或 exam_sources 顶层键`);
   }
 
   // No timestamp: the bundle is a pure function of the YAML, so regenerating it
