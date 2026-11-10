@@ -35,18 +35,22 @@
 
 | ID | 页面 | 需要记住的状态 | scope key |
 |---|---|---|---|
-| S-10 | 侧边栏 | 折叠/展开、当前展开的分组 | `sidebar` |
-| S-11 | Lumi | 最近会话 id、输入框草稿、历史面板开合、滚动位置 | `lumi` |
-| S-12 | 知识库 | 搜索词、展开的知识点、滚动位置 | `knowledge` |
-| S-13 | 专项训练 | 当前题号、本轮作答结果、工具栏展开项、画板笔画 | `drill` |
-| S-14 | 错题本 | 滚动位置、筛选条件（筛选功能落地后） | `wrongBook` |
-| S-15 | 知识画像 | 排序方式（落地后）、滚动位置 | `profile` |
-| S-16 | 设置 · Provider | 未保存的表单草稿（baseUrl / model / protocol，**不含 apiKey**） | `settings.provider` |
+| S-10 | 侧边栏 | 折叠/展开、当前展开的分组 | `sidebar.open`、`sidebar.expanded` |
+| S-11 | Lumi | 最近会话 id、输入框草稿、历史面板开合 | `lumi.conversationId`、`lumi.draft`、`lumi.listOpen` |
+| S-12 | 知识库 | 搜索词、展开的知识点、滚动位置 | `knowledge.query`、`knowledge.openIds`、`knowledge.scrollTop` |
+| S-13 | 专项训练 | 当前题号、本轮作答结果与所选答案、工具栏展开项 | `drill.run`、`drill.tool` |
+| S-14 | 错题本 | 滚动位置、筛选条件（筛选功能落地后） | `wrongBook.scrollTop` |
+| S-15 | 知识画像 | 排序方式（落地后）、滚动位置 | `profile.scrollTop` |
+| S-16 | 设置 · Provider | 未保存的表单草稿（baseUrl / model / protocol，**不含 apiKey**） | `settings.provider.draft` |
+
+> 落地时把 scope 拆到字段级：同一页的不同组件（如训练页与工具栏）各写各的键，互不覆盖；
+> 仍按页面命名空间分组，`sidebar.open` 属于 `sidebar`。
 
 规则：
 - 已经在 URL 里的状态（`point` / `question`）不进 UI 状态，URL 是唯一来源。
 - 密钥、Token 一律不写入 UI 状态。
 - 状态结构带版本号，字段改名时写迁移，不静默丢数据。
+- 滚动位置统一走 `useScrollMemory(scope)`：它等异步内容撑开高度后再恢复，避免空列表时把位置吞掉。
 
 ---
 
