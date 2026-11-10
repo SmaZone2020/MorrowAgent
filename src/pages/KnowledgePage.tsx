@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Magnifier } from "@gravity-ui/icons";
 import { Button } from "@/vendor/beui/components/motion/button";
@@ -6,6 +6,7 @@ import { Input } from "@/vendor/beui/components/motion/input";
 import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
 import { Panel } from "@/components/Panel";
 import { MathText } from "@/components/MathText";
+import { usePersistedState, useScrollMemory } from "@/features/uiState";
 import {
   chapters,
   questionsFor,
@@ -24,9 +25,16 @@ const IMPORTANCE: Record<
 
 const FALLBACK_BADGE = { label: "了解", status: "neutral" as const };
 
-function PointRow({ point }: { point: KnowledgePoint }) {
+function PointRow({
+  point,
+  open,
+  onToggle,
+}: {
+  point: KnowledgePoint;
+  open: boolean;
+  onToggle: () => void;
+}) {
   const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
   const badge = IMPORTANCE[point.examImportance] ?? FALLBACK_BADGE;
   const related = questionsFor(point.id).length;
 
@@ -34,7 +42,7 @@ function PointRow({ point }: { point: KnowledgePoint }) {
     <li className="border-b border-border/60 last:border-0">
       <button
         type="button"
-        onClick={() => setOpen((value) => !value)}
+        onClick={onToggle}
         aria-expanded={open}
         className="flex w-full items-center gap-3 rounded-lg px-1 py-2.5 text-left outline-none transition-colors hover:bg-muted/40 focus-visible:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring"
       >
@@ -90,7 +98,14 @@ function PointRow({ point }: { point: KnowledgePoint }) {
 }
 
 export function KnowledgePage() {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = usePersistedState("knowledge.query", "");
+  // Expanding a point is a deliberate reading choice, so it survives the trip
+  // to a drill and back.
+  const [openIds, setOpenIds] = usePersistedState<string[]>(
+    "knowledge.openIds",
+    [],
+  );
+  const scrollRef = useScrollMemory<HTMLDivElement>("knowledge.scrollTop");
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -107,8 +122,18 @@ export function KnowledgePage() {
       .filter((chapter) => chapter.points.length > 0);
   }, [query]);
 
+  const toggle = (pointId: string) =>
+    setOpenIds((ids) =>
+      ids.includes(pointId)
+        ? ids.filter((id) => id !== pointId)
+        : [...ids, pointId],
+    );
+
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 p-5 sm:p-7">
+    <div
+      ref={scrollRef}
+      className="mx-auto flex w-full max-w-4xl flex-col gap-4 p-5 sm:p-7"
+    >
       <Input
         value={query}
         onChange={setQuery}
@@ -139,7 +164,12 @@ export function KnowledgePage() {
           >
             <ul className="flex flex-col">
               {chapter.points.map((point) => (
-                <PointRow key={point.id} point={point} />
+                <PointRow
+                  key={point.id}
+                  point={point}
+                  open={openIds.includes(point.id)}
+                  onToggle={() => toggle(point.id)}
+                />
               ))}
             </ul>
           </Panel>

@@ -1,4 +1,5 @@
 export { usePersistedState } from "@/features/uiState/usePersistedState";
+export { useScrollMemory } from "@/features/uiState/useScrollMemory";
 export {
   flushUiState,
   loadUiState,
