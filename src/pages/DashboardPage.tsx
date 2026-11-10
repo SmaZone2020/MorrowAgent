@@ -67,8 +67,8 @@ export function DashboardPage() {
             size="compact"
             className={cardClass}
           >
-            <CardContent className="flex items-baseline justify-between gap-3">
-              <span className="truncate text-sm text-muted-foreground">
+            <CardContent className="flex items-baseline justify-between gap-3 -mt-1">
+              <span className="truncate text-base text-muted-foreground">
                 {metric.label}
               </span>
               <span className="shrink-0 text-xl font-semibold tabular-nums tracking-tight text-foreground">

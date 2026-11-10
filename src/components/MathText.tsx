@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import type { CSSProperties } from "react";
 import katex from "katex";
 import "katex/dist/katex.min.css";
 
@@ -71,14 +72,16 @@ function renderMath(value: string, display: boolean): string {
 export function MathText({
   children,
   className,
+  style,
 }: {
   children: string;
   className?: string;
+  style?: CSSProperties;
 }) {
   const segments = useMemo(() => splitMath(children), [children]);
 
   return (
-    <span className={className}>
+    <span className={className} style={style}>
       {segments.map((segment, index) =>
         segment.math ? (
           <span
