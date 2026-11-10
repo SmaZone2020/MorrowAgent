@@ -4,6 +4,8 @@ import { isTauriRuntime } from "@/app/shell/windowControls";
 export interface Preferences {
   temperature: number;
   maxTokens: number;
+  /** Drill text scale for questions and explanations, 1 = default size. */
+  questionScale: number;
 }
 
 export interface StoreStats {
@@ -19,6 +21,7 @@ export interface StoreStats {
 export const defaultPreferences: Preferences = {
   temperature: 0.6,
   maxTokens: 2048,
+  questionScale: 1,
 };
 
 export async function loadPreferences(): Promise<Preferences> {

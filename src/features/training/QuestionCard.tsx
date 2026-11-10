@@ -6,10 +6,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/vendor/beui/components/motion/card";
-import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
 import { SectionTitle } from "@/components/SectionTitle";
 import { MathText } from "@/components/MathText";
-import type { Question } from "@/features/knowledge";
+import { ContentFigures } from "@/components/ContentFigure";
+import { AnswerVerdict, type Verdict } from "@/features/training/AnswerVerdict";
+import { AnswerOptions } from "@/features/training/AnswerOptions";
+import { imagesAt, type Question } from "@/features/knowledge";
+import { scaledText } from "@/features/training/textScale";
+import { usePreferences } from "@/features/settings/preferencesStore";
 
 type Phase = "answering" | "submitted";
 
@@ -41,10 +45,15 @@ export function QuestionCard({
   // Questions that need a board have nothing to submit yet, so they can only
   // reveal the worked answer.
   const [showExplanation, setShowExplanation] = useState(false);
+  // Only the question body follows the reader's text scale; the surrounding
+  // chrome keeps its size so the page does not reflow wholesale.
+  const scale = usePreferences((state) => state.questionScale);
 
   const isChoice = question.options.length > 0;
   const correct = selected === question.answer;
   const revealExplanation = phase === "submitted" || showExplanation;
+  const stemImages = imagesAt(question.images, "stem");
+  const explanationImages = imagesAt(question.images, "explanation");
 
   const submit = () => {
     if (!selected || phase === "submitted") return;
@@ -52,17 +61,13 @@ export function QuestionCard({
     onAnswered?.(selected, selected === question.answer);
   };
 
-  // The badge is the only place a status is announced, so it must cover the
-  // revealed-without-scoring case instead of leaving the card unlabelled.
-  const badge = !isChoice
-    ? showExplanation
-      ? { status: "info" as const, key: "revealed", label: "已看答案" }
-      : { status: "neutral" as const, key: "answering", label: "未作答" }
-    : phase === "answering"
-      ? { status: "neutral" as const, key: "answering", label: "未作答" }
-      : correct
-        ? { status: "success" as const, key: "right", label: "正确" }
-        : { status: "danger" as const, key: "wrong", label: "错误" };
+  // The verdict is drawn as a watermark inside the answer card, which only
+  // renders once the answer is out, so it never has to describe "unanswered".
+  const verdict: Verdict = isChoice
+    ? correct
+      ? "correct"
+      : "wrong"
+    : "revealed";
 
   return (
     <Card
@@ -74,58 +79,30 @@ export function QuestionCard({
         <CardTitle as="h2">
           <SectionTitle
             title={`第 ${index} / ${total} 题`}
-            action={
-              <AnimatedBadge
-                status={badge.status}
-                size="sm"
-                contentKey={badge.key}
-              >
-                {badge.label}
-              </AnimatedBadge>
-            }
           />
         </CardTitle>
       </CardHeader>
 
       <CardContent className="flex flex-col gap-4">
-        <MathText className="block text-sm leading-7 text-foreground">
-          {question.content}
-        </MathText>
+        <div className="flex flex-col gap-3">
+          <MathText
+            className="block leading-[2] text-foreground"
+            style={scaledText(scale)}
+          >
+            {question.content}
+          </MathText>
+          <ContentFigures images={stemImages} />
+        </div>
 
         {isChoice ? (
-          <div className="flex flex-col gap-2" role="group" aria-label="选项">
-            {question.options.map((option) => {
-              const chosen = selected === option.key;
-              const reveal = revealExplanation;
-              const isAnswer = option.key === question.answer;
-              return (
-                <Button
-                  key={option.key}
-                  aria-pressed={chosen}
-                  variant={chosen ? "secondary" : "ghost"}
-                  className={`h-auto w-full justify-start rounded-xl px-4 py-2.5 text-left ${
-                    reveal && isAnswer ? "ring-1 ring-primary/40" : ""
-                  } ${reveal && chosen && !isAnswer ? "opacity-55" : ""} ${
-                    phase === "submitted" ? "cursor-default" : ""
-                  }`}
-                  onClick={() => {
-                    // After submitting the choice is frozen, but keeping the
-                    // button enabled preserves the revealed state's contrast;
-                    // a disabled button would wash the right answer out.
-                    if (phase === "submitted") return;
-                    setSelected(option.key);
-                  }}
-                >
-                  <span className="mr-2 shrink-0 font-medium tabular-nums">
-                    {option.key}
-                  </span>
-                  <MathText className="min-w-0 whitespace-normal">
-                    {option.content}
-                  </MathText>
-                </Button>
-              );
-            })}
-          </div>
+          <AnswerOptions
+            question={question}
+            selected={selected}
+            locked={phase === "submitted"}
+            reveal={revealExplanation}
+            scale={scale}
+            onSelect={setSelected}
+          />
         ) : (
           <p className="text-sm text-muted-foreground">
             这道题需要画板作答，画板还没做。
@@ -133,35 +110,48 @@ export function QuestionCard({
         )}
 
         {revealExplanation ? (
-          <div className="flex flex-col gap-2 rounded-xl bg-muted/50 p-3">
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-muted-foreground">正确答案</span>
-              <MathText className="font-medium text-foreground">
-                {question.answer}
-              </MathText>
+          <div className="relative overflow-hidden rounded-xl bg-muted/50">
+            <AnswerVerdict verdict={verdict} />
+            <div className="relative flex flex-col gap-2 p-3 pr-16">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">正确答案</span>
+                <MathText
+                  className="font-medium text-foreground"
+                  style={scaledText(scale)}
+                >
+                  {question.answer}
+                </MathText>
+              </div>
+              <div className="flex flex-col gap-2">
+                <MathText
+                  className="leading-[1.8] text-muted-foreground"
+                  style={scaledText(scale)}
+                >
+                  {question.explanation}
+                </MathText>
+                <ContentFigures images={explanationImages} />
+              </div>
+              {question.commonErrors.length > 0 ? (
+                <ul className="flex flex-col gap-1 pt-1">
+                  {question.commonErrors.map((error) => (
+                    <li
+                      key={error.description}
+                      className="flex items-start gap-2 leading-5 text-muted-foreground"
+                      style={scaledText(scale)}
+                    >
+                      <span className="mt-1.5 size-1 shrink-0 rounded-full bg-accent-foreground/40" />
+                      <MathText className="min-w-0">{error.description}</MathText>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
             </div>
-            <MathText className="text-sm leading-6 text-muted-foreground">
-              {question.explanation}
-            </MathText>
-            {question.commonErrors.length > 0 ? (
-              <ul className="flex flex-col gap-1 pt-1">
-                {question.commonErrors.map((error) => (
-                  <li
-                    key={error.description}
-                    className="flex items-start gap-2 text-xs leading-5 text-muted-foreground"
-                  >
-                    <span className="mt-1.5 size-1 shrink-0 rounded-full bg-accent-foreground/40" />
-                    <MathText className="min-w-0">{error.description}</MathText>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
           </div>
         ) : null}
 
         <div className="flex items-center justify-end gap-2">
           {isChoice && phase === "answering" ? (
-            <Button size="sm" disabled={!selected} onClick={submit}>
+            <Button size="sm" disabled={!selected} onClick={submit} className="px-6">
               提交
             </Button>
           ) : null}
