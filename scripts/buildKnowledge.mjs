@@ -44,6 +44,28 @@ function readDocument(file) {
  * node would leak authoring-only detail into the bundle and make the output
  * schema drift every time the source grows a field.
  */
+function pickImage(image) {
+  return {
+    type: image.type,
+    kind: image.kind ?? defaultKind(image),
+    content: image.content,
+    position: image.position ?? "stem",
+    caption: image.caption,
+    alt: image.alt,
+    width: image.width,
+  };
+}
+
+// Authors are not required to spell out `kind`; the mime sniff below keeps the
+// renderer from guessing wrong when they omit it.
+function defaultKind(image) {
+  if (image.type === "formula") return "latex";
+  if (/^<\s*(svg|\?xml)/i.test(image.content)) return "svg";
+  if (image.content.startsWith("data:")) return "data_uri";
+  if (/^https?:\/\//i.test(image.content)) return "url";
+  return "path";
+}
+
 function pickKnowledgePoint(point) {
   return {
     id: point.id,
@@ -58,6 +80,7 @@ function pickKnowledgePoint(point) {
     examImportance: point.exam_importance,
     examLevels: point.exam_levels ?? [],
     commonErrors: point.common_errors ?? [],
+    images: (point.images ?? []).map(pickImage),
   };
 }
 
@@ -75,6 +98,7 @@ function pickQuestion(question) {
     })),
     answer: question.answer,
     explanation: question.explanation,
+    images: (question.images ?? []).map(pickImage),
     knowledgeTags: question.knowledge_tags ?? [],
     solutionMethods: question.solution_methods ?? [],
     commonErrors: (question.common_errors ?? []).map((error) => ({

@@ -10,12 +10,16 @@ const schemaDir = join(projectRoot, "schemas");
 const KNOWLEDGE_SCHEMA = "knowledge-point.schema.json";
 const QUESTION_SCHEMA = "question.schema.json";
 const EXAM_SOURCE_SCHEMA = "exam-source.schema.json";
+const CONTENT_IMAGE_SCHEMA = "content-image.schema.json";
 
 function loadSchema(name) {
   return JSON.parse(readFileSync(join(schemaDir, name), "utf8"));
 }
 
 const ajv = new Ajv2020({ allErrors: true, strict: false });
+// The content-image schema is referenced by both knowledge points and questions,
+// so it has to be registered before either of them compiles.
+ajv.addSchema(loadSchema(CONTENT_IMAGE_SCHEMA));
 const validateKnowledgePoint = ajv.compile(loadSchema(KNOWLEDGE_SCHEMA));
 const validateQuestion = ajv.compile(loadSchema(QUESTION_SCHEMA));
 const validateExamSource = ajv.compile(loadSchema(EXAM_SOURCE_SCHEMA));
@@ -170,6 +174,20 @@ function validateQuestions(doc, file, report) {
         throw new Error(
           `${file} 题 ${question.id} 的答案 ${question.answer} 引用了不存在的选项`,
         );
+      }
+    }
+
+    // A position pointing at a missing option would silently drop the image at
+    // render time, so it is rejected at the source instead.
+    for (const image of question.images ?? []) {
+      const position = image.position ?? "stem";
+      if (position.startsWith("option:")) {
+        const key = position.slice("option:".length);
+        if (!keys.includes(key)) {
+          throw new Error(
+            `${file} 题 ${question.id} 的图片挂载点 ${position} 指向不存在的选项`,
+          );
+        }
       }
     }
   }

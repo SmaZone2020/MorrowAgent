@@ -66,6 +66,7 @@ chapter:
 | `exam_importance` | 建议 | enum | `low` / `medium` / `high` / `critical` |
 | `exam_levels` | 建议 | enum[] | `score_free` / `basic` / `advanced` / `challenging` |
 | `common_errors` | 建议 | string[] | 描述错误机制，不写具体题目答案 |
+| `images` | 建议 | object[] | 定义示图或典型图形，写法见 `conventions.md` 第 4 节 |
 | `sources` | 建议 | object[] | `type` + `reference`，授权不明填 `license: unclear` |
 | `version` | 是 | string | 语义化版本，如 `1.0.0` |
 
@@ -108,6 +109,7 @@ chapter:
 - [ ] `prerequisites` / `related_points` 中的 ID 都在本次输出或已确认集合中，且无环。
 - [ ] 每条 `description` 脱离上下文可读懂。
 - [ ] 每个知识点都有 `difficulty_basis`，且不是主观形容词。
+- [ ] 有配图时，`images[].kind` 与 `content` 匹配，能写成 LaTeX 的没有退化成图片。
 - [ ] 所有枚举值都在允许集合内。
 - [ ] 公式合规，无裸 ASCII 公式。
 - [ ] 无编造的年份、页码、作者。

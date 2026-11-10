@@ -84,6 +84,11 @@
       "items": { "type": "string", "minLength": 6 },
       "description": "该知识点的高频错误描述，用于诊断归因，不得写成具体题目答案"
     },
+    "images": {
+      "type": "array",
+      "description": "知识点配图，主要用于说明定义、定理条件或典型图形",
+      "items": { "$ref": "https://morrow.dev/schemas/content-image.schema.json" }
+    },
     "sources": {
       "type": "array",
       "items": {

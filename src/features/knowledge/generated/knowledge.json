@@ -31,7 +31,8 @@
           "commonErrors": [
             "把导数的定义式写成缺少分式的形式",
             "在分段点直接用求导公式而不用定义"
-          ]
+          ],
+          "images": []
         },
         {
           "id": "math_higher_derivative_one_sided_derivative",
@@ -59,7 +60,8 @@
           "commonErrors": [
             "由连续性直接推断可导",
             "只算出一侧导数就断言可导"
-          ]
+          ],
+          "images": []
         },
         {
           "id": "math_higher_derivative_rules",
@@ -86,7 +88,8 @@
           "commonErrors": [
             "链式法则漏乘内层导数",
             "商的求导法则分子顺序写反"
-          ]
+          ],
+          "images": []
         },
         {
           "id": "math_higher_derivative_differential",
@@ -113,7 +116,8 @@
           "commonErrors": [
             "把微分写成函数值本身而不是线性主部",
             "忽略一元函数中可导与可微的等价性"
-          ]
+          ],
+          "images": []
         },
         {
           "id": "math_higher_derivative_high_order",
@@ -139,7 +143,8 @@
           "commonErrors": [
             "求高阶导数时漏掉常数因子",
             "把二阶导数的记号写成平方"
-          ]
+          ],
+          "images": []
         }
       ]
     },
@@ -171,7 +176,8 @@
           "commonErrors": [
             "忽略分母不为零的限制条件",
             "把多值对应误认为函数"
-          ]
+          ],
+          "images": []
         },
         {
           "id": "math_higher_limits_one_sided_limit",
@@ -198,7 +204,8 @@
           "commonErrors": [
             "忽略分段点两侧表达式不同，直接用同一侧代入",
             "误以为左极限等于右极限只是习惯约定"
-          ]
+          ],
+          "images": []
         },
         {
           "id": "math_higher_limits_limit_existence",
@@ -226,7 +233,8 @@
           "commonErrors": [
             "只验证单侧极限就断言双侧极限存在",
             "使用夹逼准则时放缩方向不一致"
-          ]
+          ],
+          "images": []
         }
       ]
     }
@@ -259,6 +267,7 @@
       ],
       "answer": "C",
       "explanation": "左极限 $\\lim_{x\\to 0^-} f(x)=1$，右极限 $\\lim_{x\\to 0^+} f(x)=0$，两侧不相等，故双侧极限不存在。",
+      "images": [],
       "knowledgeTags": [
         "math_higher_limits_one_sided_limit",
         "math_higher_limits_limit_existence"
@@ -291,6 +300,7 @@
       "options": [],
       "answer": "$-1$",
       "explanation": "左极限为 $2+a$，右极限为 $1$。极限存在要求左右极限相等，故 $2+a=1$，解得 $a=-1$。",
+      "images": [],
       "knowledgeTags": [
         "math_higher_limits_one_sided_limit",
         "math_higher_limits_limit_existence"

@@ -66,6 +66,7 @@ questions:
 | `adaptation_note` | 视情况 | string | 改编题必填，≥10 字 |
 | `solution_methods` | 建议 | string[] | 可行解法名称与要点，≥6 字/条 |
 | `common_errors` | 建议 | object[] | `error_type` + `description` |
+| `images` | 建议 | object[] | 公式 / 图像 / 截图，写法见 `conventions.md` 第 4 节 |
 | `estimated_minutes` | 建议 | int | 1–60 |
 | `version` | 是 | string | 语义化版本 |
 
@@ -124,6 +125,7 @@ questions:
 - [ ] `explanation` 与 `answer` 结论一致。
 - [ ] `knowledge_tags` 全部是已存在的知识点 ID，首个是主考点。
 - [ ] 每个干扰项都能在 `common_errors` 找到对应错误机制。
+- [ ] 有配图时，`images[].position` 指向的选项真实存在；能写成 LaTeX 的没有退化成图片。
 - [ ] 每题都有 `difficulty_basis`，写的是正确率区间而非主观判断。
 - [ ] `real_exam` / `adapted_exam` 都带 `source_exam_id`，改编题带 `adaptation_note`。
 - [ ] 公式合规，无裸 ASCII 公式。

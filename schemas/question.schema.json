@@ -54,6 +54,11 @@
         }
       }
     },
+    "images": {
+      "type": "array",
+      "description": "题干、选项与解析中引用的图片。position 决定挂载点：stem 题干、explanation 解析、option:KEY 指定选项。",
+      "items": { "$ref": "https://morrow.dev/schemas/content-image.schema.json" }
+    },
     "answer": {
       "type": "string",
       "minLength": 1,

@@ -13,6 +13,7 @@ export interface KnowledgePoint {
   examImportance: string;
   examLevels: string[];
   commonErrors: string[];
+  images: ContentImage[];
 }
 
 export interface KnowledgeChapter {
@@ -28,6 +29,21 @@ export interface QuestionOption {
   content: string;
 }
 
+export type ImageKind = "latex" | "svg" | "data_uri" | "url" | "path";
+
+/** Where an image sits: the stem, the explanation, or one specific option. */
+export type ImagePosition = "stem" | "explanation" | `option:${string}`;
+
+export interface ContentImage {
+  type: "formula" | "figure" | "screenshot" | "other";
+  kind: ImageKind;
+  content: string;
+  position: ImagePosition;
+  caption?: string;
+  alt?: string;
+  width?: number;
+}
+
 export interface Question {
   id: string;
   content: string;
@@ -38,6 +54,7 @@ export interface Question {
   options: QuestionOption[];
   answer: string;
   explanation: string;
+  images: ContentImage[];
   knowledgeTags: string[];
   solutionMethods: string[];
   commonErrors: { errorType: string; description: string }[];
@@ -73,6 +90,16 @@ export function findPoint(id: string): KnowledgePoint | undefined {
 export function questionsFor(pointId: string): Question[] {
   return questions.filter((question) =>
     question.knowledgeTags.includes(pointId),
+  );
+}
+
+/** Images attached to one anchor. Missing anchors return an empty list. */
+export function imagesAt(
+  images: ContentImage[] | undefined,
+  position: ImagePosition,
+): ContentImage[] {
+  return (images ?? []).filter(
+    (image) => (image.position ?? "stem") === position,
   );
 }
 

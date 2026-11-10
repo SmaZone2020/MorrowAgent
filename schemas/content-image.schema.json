@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morrow.dev/schemas/content-image.schema.json",
+  "title": "ContentImage",
+  "description": "题目与知识点中的配图。公式、函数图像、真题截图都以这个结构表达，content 按 kind 决定语义。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "content"],
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": ["formula", "figure", "screenshot", "other"],
+      "description": "formula：数学公式；figure：函数图像或几何图；screenshot：真题截图；other：其他插图"
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["latex", "svg", "data_uri", "url", "path"],
+      "description": "content 的载体。latex 直接渲染；svg 为内联标记；data_uri 为 base64；url 为外链；path 为知识包内相对路径"
+    },
+    "content": {
+      "type": "string",
+      "minLength": 1,
+      "description": "按 kind 解释的内容本体，不含任何包装前缀"
+    },
+    "position": {
+      "type": "string",
+      "pattern": "^(stem|explanation|option:[A-H])$",
+      "description": "挂载点：stem 题干、explanation 解析、option:KEY 指定选项；缺省为 stem"
+    },
+    "caption": {
+      "type": "string",
+      "description": "图注，供无图环境与无障碍朗读使用"
+    },
+    "alt": {
+      "type": "string",
+      "description": "替代文本，图片加载失败时显示"
+    },
+    "width": {
+      "type": "integer",
+      "minimum": 16,
+      "maximum": 4096,
+      "description": "建议显示宽度（像素），仅供排版参考"
+    }
+  }
+}
