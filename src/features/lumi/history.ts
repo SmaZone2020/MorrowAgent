@@ -61,3 +61,18 @@ export async function discardEmptyConversation(
   if (!isTauriRuntime) return;
   await invoke("chat_discard_empty", { conversationId });
 }
+
+/** Removes one turn, leaving its neighbours in place. */
+export async function deleteMessage(messageId: string): Promise<void> {
+  if (!isTauriRuntime) return;
+  await invoke("chat_delete_message", { messageId });
+}
+
+/** Removes one turn and everything after it, for an edit that rewrites a prompt. */
+export async function truncateFrom(
+  conversationId: string,
+  messageId: string,
+): Promise<void> {
+  if (!isTauriRuntime) return;
+  await invoke("chat_truncate", { conversationId, messageId });
+}

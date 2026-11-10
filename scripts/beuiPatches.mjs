@@ -246,6 +246,117 @@ const BADGE_ANCHOR = `  success: "border-emerald-500/30 bg-emerald-500/10 text-e
 const BADGE_PATCH = `  success: "border-success/30 bg-success/10 text-success",
   warning: "border-warning/30 bg-warning/10 text-warning",`;
 
+// Morrow never collects a thumbs up/down on a reply, but the transcript does
+// need a way to drop one. The feedback props stay in the interface so the
+// component keeps its upstream shape; only the rendered row changes.
+const STREAM_IMPORT_ANCHOR = `import {
+  Check,
+  ChevronDown,
+  Copy,
+  RotateCcw,
+  ThumbsDown,
+  ThumbsUp,
+} from "lucide-react";`;
+
+const STREAM_IMPORT_PATCH = `import { Check, ChevronDown, Copy, RotateCcw, Trash2 } from "lucide-react";`;
+
+const STREAM_PROPS_ANCHOR = `  onRetry?: () => void;
+  /** Optional sources shown as a compact footer disclosure after streaming. */`;
+
+const STREAM_PROPS_PATCH = `  onRetry?: () => void;
+  /** Drops the whole reply from the transcript. */
+  onDelete?: () => void;
+  /** Optional sources shown as a compact footer disclosure after streaming. */`;
+
+const STREAM_DESTRUCTURE_ANCHOR = `  onRetry,
+  sources = [],`;
+
+const STREAM_DESTRUCTURE_PATCH = `  onRetry,
+  onDelete,
+  sources = [],`;
+
+const STREAM_VISIBILITY_ANCHOR = `    showActions && !streaming && (canCopy || onRetry || complete || hasSources);`;
+
+const STREAM_VISIBILITY_PATCH = `    showActions && !streaming && (canCopy || onRetry || onDelete || hasSources);`;
+
+const STREAM_FEEDBACK_ANCHOR = `              {complete ? (
+                <>
+                  <ResponseAction
+                    label="Helpful"
+                    active={currentFeedback === "up"}
+                    onClick={() => setFeedback("up")}
+                  >
+                    <ThumbsUp className="size-3.5" />
+                  </ResponseAction>
+                  <ResponseAction
+                    label="Not helpful"
+                    active={currentFeedback === "down"}
+                    onClick={() => setFeedback("down")}
+                  >
+                    <ThumbsDown className="size-3.5" />
+                  </ResponseAction>
+                </>
+              ) : null}`;
+
+const STREAM_FEEDBACK_PATCH = `              {onDelete ? (
+                <ResponseAction label="删除消息" onClick={onDelete}>
+                  <Trash2 className="size-3.5" />
+                </ResponseAction>
+              ) : null}`;
+
+const STREAM_COPY_ANCHOR = `                  label={copied ? "Copied" : "Copy response"}`;
+
+const STREAM_COPY_PATCH = `                  label={copied ? "已复制" : "复制"}`;
+
+const STREAM_RETRY_ANCHOR = `                <ResponseAction label="Retry response" onClick={onRetry}>`;
+
+const STREAM_RETRY_PATCH = `                <ResponseAction label="重新回答" onClick={onRetry}>`;
+
+function patchStreamingResponse(source) {
+  let out = replaceOnce(
+    source,
+    STREAM_IMPORT_ANCHOR,
+    STREAM_IMPORT_PATCH,
+    "streaming-response icon import",
+  );
+  out = replaceOnce(
+    out,
+    STREAM_PROPS_ANCHOR,
+    STREAM_PROPS_PATCH,
+    "streaming-response delete prop",
+  );
+  out = replaceOnce(
+    out,
+    STREAM_DESTRUCTURE_ANCHOR,
+    STREAM_DESTRUCTURE_PATCH,
+    "streaming-response delete binding",
+  );
+  out = replaceOnce(
+    out,
+    STREAM_VISIBILITY_ANCHOR,
+    STREAM_VISIBILITY_PATCH,
+    "streaming-response action visibility",
+  );
+  out = replaceOnce(
+    out,
+    STREAM_FEEDBACK_ANCHOR,
+    STREAM_FEEDBACK_PATCH,
+    "streaming-response feedback row",
+  );
+  out = replaceOnce(
+    out,
+    STREAM_COPY_ANCHOR,
+    STREAM_COPY_PATCH,
+    "streaming-response copy label",
+  );
+  return replaceOnce(
+    out,
+    STREAM_RETRY_ANCHOR,
+    STREAM_RETRY_PATCH,
+    "streaming-response retry label",
+  );
+}
+
 // The palette is light-only and hue-free, so status colours follow the project
 // tokens instead of beUI's emerald/amber scale.
 function patchAnimatedBadge(source) {
@@ -255,6 +366,7 @@ function patchAnimatedBadge(source) {
 const patches = {
   "components/motion/animated-sidebar.tsx": patchAnimatedSidebar,
   "components/motion/animated-badge.tsx": patchAnimatedBadge,
+  "components/agents/streaming-response.tsx": patchStreamingResponse,
 };
 
 export function applyBeuiPatches(relativePath, source) {

@@ -4,6 +4,7 @@ use std::sync::Mutex;
 use rusqlite::{params, Connection};
 
 pub mod attempts;
+pub mod messages;
 pub mod migrations;
 pub mod stats;
 pub mod types;

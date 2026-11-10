@@ -1,14 +1,7 @@
 // @ts-nocheck
 "use client";
 
-import {
-  Check,
-  ChevronDown,
-  Copy,
-  RotateCcw,
-  ThumbsDown,
-  ThumbsUp,
-} from "lucide-react";
+import { Check, ChevronDown, Copy, RotateCcw, Trash2 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   type ReactNode,
@@ -39,6 +32,8 @@ export interface StreamingResponseProps {
   /** Overrides the built-in clipboard action. */
   onCopy?: () => void | Promise<void>;
   onRetry?: () => void;
+  /** Drops the whole reply from the transcript. */
+  onDelete?: () => void;
   /** Optional sources shown as a compact footer disclosure after streaming. */
   sources?: CitationItem[];
   sourcesOpen?: boolean;
@@ -95,6 +90,7 @@ export function StreamingResponse({
   copyText,
   onCopy,
   onRetry,
+  onDelete,
   sources = [],
   sourcesOpen,
   defaultSourcesOpen = false,
@@ -120,11 +116,10 @@ export function StreamingResponse({
   const currentFeedback = feedback ?? internalFeedback;
   const currentSourcesOpen = sourcesOpen ?? internalSourcesOpen;
   const streaming = status === "streaming";
-  const complete = status === "complete";
   const canCopy = Boolean(copyText || onCopy);
   const hasSources = sources.length > 0;
   const shouldShowActions =
-    showActions && !streaming && (canCopy || onRetry || complete || hasSources);
+    showActions && !streaming && (canCopy || onRetry || onDelete || hasSources);
   const sourcesContentId = `${baseId}-sources`;
   const resolvedSourcePrefix =
     sourceIdPrefix ?? `response-source-${baseId.replace(/:/g, "")}`;
@@ -187,7 +182,7 @@ export function StreamingResponse({
             <div className={cn("flex items-center gap-0.5", actionsClassName)}>
               {canCopy ? (
                 <ResponseAction
-                  label={copied ? "Copied" : "Copy response"}
+                  label={copied ? "已复制" : "复制"}
                   onClick={handleCopy}
                 >
                   {copied ? (
@@ -198,27 +193,14 @@ export function StreamingResponse({
                 </ResponseAction>
               ) : null}
               {onRetry ? (
-                <ResponseAction label="Retry response" onClick={onRetry}>
+                <ResponseAction label="重新回答" onClick={onRetry}>
                   <RotateCcw className="size-3.5" />
                 </ResponseAction>
               ) : null}
-              {complete ? (
-                <>
-                  <ResponseAction
-                    label="Helpful"
-                    active={currentFeedback === "up"}
-                    onClick={() => setFeedback("up")}
-                  >
-                    <ThumbsUp className="size-3.5" />
-                  </ResponseAction>
-                  <ResponseAction
-                    label="Not helpful"
-                    active={currentFeedback === "down"}
-                    onClick={() => setFeedback("down")}
-                  >
-                    <ThumbsDown className="size-3.5" />
-                  </ResponseAction>
-                </>
+              {onDelete ? (
+                <ResponseAction label="删除消息" onClick={onDelete}>
+                  <Trash2 className="size-3.5" />
+                </ResponseAction>
               ) : null}
               {hasSources ? (
                 <button
