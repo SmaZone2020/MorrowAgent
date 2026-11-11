@@ -1,7 +1,9 @@
-import { Fragment, type ReactNode } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 import katex from "katex";
 import "katex/dist/katex.min.css";
 import { ExternalLink } from "@/features/rich/LinkGuard";
+import { ArtifactOverlay } from "@/features/rich/ArtifactFrame";
+import { useMediaSource } from "@/features/library/media";
 
 type Inline =
   | { kind: "text"; value: string }
@@ -9,10 +11,12 @@ type Inline =
   | { kind: "strong"; children: Inline[] }
   | { kind: "em"; children: Inline[] }
   | { kind: "link"; href: string; children: Inline[] }
+  | { kind: "image"; src: string; alt: string }
   | { kind: "math"; value: string; display: boolean };
 
 const INLINE_MATH = /^(\$[^$\n]+\$|\\\(.+?\\\))/;
 const LINK = /^\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/;
+const IMAGE = /^!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/;
 const STRONG = /^(\*\*|__)(?=\S)([\s\S]*?\S)\1/;
 const EM = /^(\*|_)(?=\S)([\s\S]*?\S)\1/;
 const CODE = /^`([^`\n]+)`/;
@@ -55,6 +59,13 @@ function parseInline(source: string): Inline[] {
       continue;
     }
 
+    const image = IMAGE.exec(rest);
+    if (image) {
+      out.push({ kind: "image", alt: image[1]!, src: image[2]! });
+      rest = rest.slice(image[0].length);
+      continue;
+    }
+
     const link = LINK.exec(rest);
     if (link) {
       const href = safeHref(link[2]!);
@@ -91,7 +102,7 @@ function parseInline(source: string): Inline[] {
     }
 
     // Consume plain text up to the next thing that might start a token.
-    const marker = rest.slice(1).search(/[$`*_[\\]/);
+    const marker = rest.slice(1).search(/[$`*_![\\]/);
     const scheme = rest.slice(1).search(/https?:\/\//);
     const candidates = [marker, scheme].filter((index) => index !== -1);
     const take = candidates.length === 0 ? rest.length : Math.min(...candidates) + 1;
@@ -115,10 +126,48 @@ function renderMath(value: string, display: boolean): string {
   }
 }
 
+function InlineImage({ src, alt }: { src: string; alt: string }) {
+  const [open, setOpen] = useState(false);
+  const media = useMediaSource(src);
+  if (!media.url) {
+    return (
+      <span className="my-1 block text-sm text-muted-foreground">
+        {media.status === "loading" ? "正在读取图片…" : "图片无法显示。"}
+      </span>
+    );
+  }
+  return (
+    <>
+      <span className="my-2 block">
+        <img
+          src={media.url}
+          alt={alt}
+          onClick={() => setOpen(true)}
+          className="mx-auto h-auto max-h-[320px] w-auto max-w-full cursor-zoom-in rounded-lg"
+        />
+      </span>
+      <ArtifactOverlay
+        open={open}
+        title={alt || "图片"}
+        heading={alt || "图片"}
+        onClose={() => setOpen(false)}
+      >
+        <img
+          src={media.url}
+          alt={alt}
+          className="mx-auto h-auto max-h-[70vh] w-auto max-w-full rounded-lg"
+        />
+      </ArtifactOverlay>
+    </>
+  );
+}
+
 function render(inline: Inline, key: string): ReactNode {
   switch (inline.kind) {
     case "text":
       return <Fragment key={key}>{inline.value}</Fragment>;
+    case "image":
+      return <InlineImage key={key} src={inline.src} alt={inline.alt} />;
     case "code":
       return (
         <code

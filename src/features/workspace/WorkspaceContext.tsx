@@ -5,6 +5,7 @@ import { Button } from "@/vendor/beui/components/motion/button";
 import { EmptyState } from "@/components/EmptyState";
 import { isTauriRuntime } from "@/app/shell/windowControls";
 import { useLibrary } from "@/features/library/store";
+import { WorkspaceMediaProvider } from "@/features/library/media";
 import { indexKnowledge, toKnowledgeView } from "@/features/knowledge/view";
 import type { KnowledgeIndex } from "@/features/knowledge/view";
 
@@ -51,7 +52,9 @@ export function WorkspaceProvider({
   if (index) {
     return (
       <WorkspaceContext.Provider value={index}>
-        {children}
+        <WorkspaceMediaProvider workspaceId={workspaceId}>
+          {children}
+        </WorkspaceMediaProvider>
       </WorkspaceContext.Provider>
     );
   }

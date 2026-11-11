@@ -165,6 +165,19 @@ export async function exportPackage(
   return invoke<number>("package_export", { workspaceId, target });
 }
 
+/** One figure from a package's `media/` directory, as a data URI. */
+export async function mediaData(
+  workspaceId: string,
+  path: string,
+): Promise<string | null> {
+  if (!isTauriRuntime) return null;
+  try {
+    return await invoke<string>("package_media_data", { workspaceId, path });
+  } catch {
+    return null;
+  }
+}
+
 /** Cover bytes as a data URI; the browser preview simply has none. */
 export async function coverData(
   workspaceId: string,

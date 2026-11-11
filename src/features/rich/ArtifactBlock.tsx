@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import { ArrowDownToLine, ChevronsExpandHorizontal } from "@gravity-ui/icons";
 import { MathLabel } from "@/components/MathLabel";
+import { useMediaSource } from "@/features/library/media";
 import {
   ArtifactAction,
   ArtifactFrame,
@@ -179,19 +180,22 @@ function MindMapBlock({ source }: { source: string }) {
 function ImageBlock({ src, alt }: { src: string; alt: string }) {
   const [open, setOpen] = useState(false);
   const title = alt || "图片";
-  // Only inline and local data are drawn: a reply cannot point the app at an
-  // arbitrary remote host.
-  const allowed = /^(data:image\/|https?:\/\/)/i.test(src);
+  // A reply may carry a data URI or a remote image; a learning package instead
+  // names one of its own figures (`media/…`), which only the backend can read.
+  const media = useMediaSource(src);
+  const url = media.url;
 
-  if (!allowed) {
+  if (!url) {
     return (
-      <p className="my-2 text-sm text-muted-foreground">不支持的图片地址。</p>
+      <p className="my-2 text-sm text-muted-foreground">
+        {media.status === "loading" ? "正在读取图片…" : "图片无法显示。"}
+      </p>
     );
   }
 
   const image = (
     <img
-      src={src}
+      src={url}
       alt={alt}
       className="mx-auto h-auto max-h-[380px] w-auto max-w-full rounded-lg"
     />
@@ -206,7 +210,7 @@ function ImageBlock({ src, alt }: { src: string; alt: string }) {
               label="下载"
               onClick={() => {
                 const anchor = document.createElement("a");
-                anchor.href = src;
+                anchor.href = url;
                 anchor.download = title;
                 anchor.rel = "noopener";
                 anchor.target = "_blank";
@@ -230,7 +234,7 @@ function ImageBlock({ src, alt }: { src: string; alt: string }) {
         onClose={() => setOpen(false)}
       >
         <img
-          src={src}
+          src={url}
           alt={alt}
           className="mx-auto h-auto max-h-[70vh] w-auto max-w-full rounded-lg"
         />

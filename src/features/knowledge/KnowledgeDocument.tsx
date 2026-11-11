@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/vendor/beui/components/motion/button";
 import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
 import { Markdown } from "@/features/rich/Markdown";
+import { InlineText } from "@/features/rich/InlineText";
 import { EmptyState } from "@/components/EmptyState";
 import { findPoint, questionsFor } from "@/features/knowledge";
 import type { KnowledgeIndex, KnowledgePoint } from "@/features/knowledge";
@@ -119,7 +120,9 @@ export function KnowledgeDocument({
 
       {point.summary ? (
         <Section title="概述">
-          <p className="text-sm leading-7 text-foreground">{point.summary}</p>
+          <p className="text-sm leading-7 text-foreground">
+            <InlineText text={point.summary} />
+          </p>
         </Section>
       ) : null}
 
