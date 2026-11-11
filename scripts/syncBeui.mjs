@@ -52,6 +52,9 @@ const slugs = [
   // checkbox for several, both with the registry's press feedback and keyboard
   // handling.
   "radio",
+  // A fenced block is code, and the registry's block brings syntax colouring,
+  // fixed line numbers and copy feedback instead of a bare <pre>.
+  "code-block",
 ];
 
 function rewriteSpecifiers(source) {

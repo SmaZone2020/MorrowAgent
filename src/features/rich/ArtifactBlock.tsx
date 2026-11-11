@@ -9,6 +9,8 @@ import {
 } from "@/features/rich/ArtifactFrame";
 import { downloadSvg } from "@/features/rich/download";
 import { HtmlBlock } from "@/features/rich/HtmlBlock";
+import { CodeBlock } from "@/vendor/beui/components/agents/code-block";
+import type { AgentCodeLanguage } from "@/vendor/beui/components/agents/agent-code";
 import { sanitizeSvg } from "@/features/rich/sanitizeSvg";
 import { FunctionPlot } from "@/features/plot/FunctionPlot";
 import { parsePlotSpec } from "@/features/plot/plotSpec";
@@ -244,6 +246,40 @@ function ImageBlock({ src, alt }: { src: string; alt: string }) {
   );
 }
 
+/**
+ * The highlighter only knows six grammars, so a fence is mapped onto the
+ * nearest one instead of being rejected: `sh` is bash, `js`/`jsx`/`py` have no
+ * grammar here and fall back to plain text, which is still better than
+ * guessing at tokens that would colour the block wrong.
+ */
+const CODE_LANG: Record<string, AgentCodeLanguage> = {
+  sh: "bash",
+  shell: "bash",
+  zsh: "bash",
+  console: "bash",
+  terminal: "bash",
+  patch: "diff",
+  ts: "typescript",
+  js: "typescript",
+  javascript: "typescript",
+  jsx: "tsx",
+  jsonc: "json",
+  md: "text",
+  markdown: "text",
+  txt: "text",
+  plaintext: "text",
+  text: "text",
+  bash: "bash",
+  diff: "diff",
+  json: "json",
+  tsx: "tsx",
+  typescript: "typescript",
+};
+
+function codeLanguage(lang: string): AgentCodeLanguage {
+  return CODE_LANG[lang.toLowerCase()] ?? "text";
+}
+
 /** Routes one fenced block to the artifact that understands it. */
 export function FenceBlock({
   lang,
@@ -266,11 +302,18 @@ export function FenceBlock({
   }
   // A small layout, not an artifact: no frame, no title bar, no download.
   if (lang === "html") return <HtmlBlock source={content} />;
-  // Unknown languages are code, which is what a fence means by default.
+  // Unknown languages are code, which is what a fence means by default. The
+  // registry's block owns the line numbers, the copy button and the syntax
+  // colours, so a snippet reads like one instead of a grey wall.
   return (
-    <pre className="my-3 overflow-x-auto rounded-xl bg-muted/60 p-3 text-sm text-foreground">
-      <code className="font-mono">{content}</code>
-    </pre>
+    <CodeBlock
+      code={content}
+      language={codeLanguage(lang)}
+      maxHeight={320}
+      wrap
+      className="my-3"
+      labels={{ copy: "复制代码", copied: "已复制", writing: "生成中", ready: "完成" }}
+    />
   );
 }
 
