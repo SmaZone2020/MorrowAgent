@@ -32,6 +32,8 @@ contents:
     index: knowledge/index.yaml
   questions:
     index: questions/index.yaml
+  solutions:
+    index: solutions/index.yaml
   relations:
     index: knowledge/relations.yaml
   taxonomy:

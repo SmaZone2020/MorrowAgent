@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morrow.dev/schemas/mlps/solution.schema.json",
+  "title": "LearningPackageSolution",
+  "description": "题目解析（MLPS §9）。通过 question_id 关联题目；题目本身不依赖解析，缺解析时仍可作答。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["question_id", "schema_version", "explanation"],
+  "properties": {
+    "question_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(\\.[a-z0-9-]+)+$"
+    },
+    "schema_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$" },
+    "explanation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["summary"],
+      "properties": {
+        "summary": { "type": "string", "minLength": 1 },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["index", "content"],
+            "properties": {
+              "index": { "type": "integer", "minimum": 1 },
+              "content": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "final_answer": { "type": "string" },
+        "alternatives": {
+          "type": "array",
+          "description": "其他解法，按段落列出。",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "common_errors": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "knowledge_points": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

@@ -63,6 +63,7 @@ export function validateQuestions(ctx) {
         continue;
       }
       seen.set(question.id, file.path);
+      ctx.questionIds.add(question.id);
       total += 1;
 
       for (const pointId of question.knowledge_points) {

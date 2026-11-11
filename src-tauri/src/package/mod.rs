@@ -410,6 +410,14 @@ mod tests {
             .expect("open")
             .expect("present");
         assert_eq!(content.Stats.Questions, 15);
+        assert_eq!(content.Solutions.len(), 15);
+        let solved = content
+            .Solutions
+            .iter()
+            .find(|solution| solution.QuestionId == "calculus.limit.q.000001")
+            .expect("solution for the first limit question");
+        assert_eq!(solved.FinalAnswer, "C");
+        assert_eq!(solved.Steps.len(), 3);
 
         let _ = std::fs::remove_dir_all(work);
     }

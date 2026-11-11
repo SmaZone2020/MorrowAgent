@@ -20,6 +20,8 @@ pub struct PackageContent {
     pub Points: Vec<Point>,
     #[serde(rename = "questions")]
     pub Questions: Vec<Question>,
+    #[serde(rename = "solutions")]
+    pub Solutions: Vec<Solution>,
     #[serde(rename = "relations")]
     pub Relations: Vec<Relation>,
     #[serde(rename = "tags")]
@@ -117,6 +119,37 @@ pub struct Question {
 pub struct QuestionOption {
     #[serde(rename = "key")]
     pub Key: String,
+    #[serde(rename = "content")]
+    pub Content: String,
+}
+
+/// One worked solution, keyed by the question it explains (MLPS §9).
+///
+/// Solutions live apart from questions on purpose: a question must stay
+/// readable without one, and a later revision may add or improve a solution
+/// without touching the question file or its checksum.
+#[derive(Debug, Clone, Serialize)]
+pub struct Solution {
+    #[serde(rename = "questionId")]
+    pub QuestionId: String,
+    #[serde(rename = "summary")]
+    pub Summary: String,
+    #[serde(rename = "steps")]
+    pub Steps: Vec<SolutionStep>,
+    #[serde(rename = "finalAnswer")]
+    pub FinalAnswer: String,
+    #[serde(rename = "alternatives")]
+    pub Alternatives: Vec<String>,
+    #[serde(rename = "commonErrors")]
+    pub CommonErrors: Vec<String>,
+    #[serde(rename = "knowledgePoints")]
+    pub KnowledgePoints: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SolutionStep {
+    #[serde(rename = "index")]
+    pub Index: i64,
     #[serde(rename = "content")]
     pub Content: String,
 }
@@ -261,13 +294,61 @@ struct RawSource {
     source_id: Option<String>,
 }
 
+// --- solutions ------------------------------------------------------------
+
+#[derive(Deserialize)]
+struct SolutionIndexFile {
+    #[serde(default)]
+    files: Vec<SolutionIndexEntry>,
+}
+
+#[derive(Deserialize)]
+struct SolutionIndexEntry {
+    path: String,
+    #[serde(default)]
+    count: Option<usize>,
+}
+
+#[derive(Deserialize)]
+struct SolutionFile {
+    #[serde(default)]
+    solutions: Vec<RawSolution>,
+}
+
+#[derive(Deserialize)]
+struct RawSolution {
+    question_id: String,
+    explanation: RawExplanation,
+    #[serde(default)]
+    common_errors: Vec<String>,
+    #[serde(default)]
+    knowledge_points: Vec<String>,
+}
+
+#[derive(Deserialize)]
+struct RawExplanation {
+    #[serde(default)]
+    summary: String,
+    #[serde(default)]
+    steps: Vec<RawStep>,
+    #[serde(default)]
+    final_answer: String,
+    #[serde(default)]
+    alternatives: Vec<String>,
+}
+
+#[derive(Deserialize)]
+struct RawStep {
+    #[serde(default)]
+    index: i64,
+    content: String,
+}
+
 #[derive(Deserialize)]
 struct RelationsFile {
     #[serde(default)]
     relations: Vec<RawRelation>,
-}
-
-#[derive(Deserialize)]
+}#[derive(Deserialize)]
 struct RawRelation {
     id: String,
     from: String,
@@ -331,6 +412,11 @@ pub fn load(root: &Path, manifest: PackageManifest) -> Result<PackageContent, St
     }
 
     let questions = load_questions(&read(&manifest.Contents.Questions.Index)?, &read)?;
+    let solutions = match &manifest.Contents.Solutions {
+        Some(index) => load_solutions(&read(&index.Index)?, &read)?,
+        // A package without solutions is valid; the card simply shows no steps.
+        None => Vec::new(),
+    };
     let relations = load_relations(&read(&manifest.Contents.Relations.Index)?);
 
     Ok(PackageContent {
@@ -344,6 +430,7 @@ pub fn load(root: &Path, manifest: PackageManifest) -> Result<PackageContent, St
         Chapters: chapters,
         Points: points,
         Questions: questions,
+        Solutions: solutions,
         Relations: relations,
         Tags: load_tags(&read(&manifest.Contents.Taxonomy.Tags)?),
         Sources: load_sources(&read(&manifest.Contents.Citations.Sources)?),
@@ -452,6 +539,56 @@ fn load_questions(
         }
     }
     Ok(questions)
+}
+
+/// Reads every declared solution file.
+///
+/// A solution names its question rather than living under it, so nothing here
+/// can fail because a question is missing; a stale solution is simply never
+/// looked up. The count in the index is still checked, because a mismatch means
+/// the index and the content have drifted apart.
+fn load_solutions(
+    raw: &str,
+    read: &impl Fn(&str) -> Result<String, String>,
+) -> Result<Vec<Solution>, String> {
+    let index: SolutionIndexFile = serde_yaml::from_str(raw)
+        .map_err(|error| format!("solutions/index.yaml 解析失败：{error}"))?;
+
+    let mut solutions = Vec::new();
+    for entry in index.files {
+        check_package_path(&entry.path)?;
+        let file: SolutionFile = serde_json::from_str(&read(&entry.path)?)
+            .map_err(|error| format!("{} 解析失败：{error}", entry.path))?;
+        if let Some(count) = entry.count {
+            if count != file.solutions.len() {
+                return Err(format!(
+                    "solutions/index.yaml 宣称 {} 有 {count} 份解析，实际为 {}",
+                    entry.path,
+                    file.solutions.len()
+                ));
+            }
+        }
+        for solution in file.solutions {
+            solutions.push(Solution {
+                QuestionId: solution.question_id,
+                Summary: solution.explanation.summary,
+                Steps: solution
+                    .explanation
+                    .steps
+                    .into_iter()
+                    .map(|step| SolutionStep {
+                        Index: step.index,
+                        Content: step.content,
+                    })
+                    .collect(),
+                FinalAnswer: solution.explanation.final_answer,
+                Alternatives: solution.explanation.alternatives,
+                CommonErrors: solution.common_errors,
+                KnowledgePoints: solution.knowledge_points,
+            });
+        }
+    }
+    Ok(solutions)
 }
 
 fn load_relations(raw: &str) -> Vec<Relation> {

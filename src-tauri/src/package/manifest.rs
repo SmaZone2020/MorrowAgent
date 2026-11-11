@@ -98,6 +98,9 @@ pub struct ContentsBlock {
     pub Knowledge: IndexBlock,
     #[serde(rename = "questions")]
     pub Questions: IndexBlock,
+    /// Optional: a package may ship questions without worked solutions.
+    #[serde(rename = "solutions", default)]
+    pub Solutions: Option<IndexBlock>,
     #[serde(rename = "relations")]
     pub Relations: IndexBlock,
     #[serde(rename = "taxonomy")]
@@ -154,14 +157,22 @@ impl PackageManifest {
     /// A package whose manifest points outside itself is rejected before any of
     /// these are opened, so this list is safe to hand to `exists` checks.
     pub fn ContentPaths(&self) -> Vec<&str> {
-        vec![
+        let mut paths = vec![
             self.Contents.Knowledge.Index.as_str(),
             self.Contents.Questions.Index.as_str(),
+        ];
+        // Solutions are optional, so they join the required list only when the
+        // manifest actually declares them.
+        if let Some(solutions) = &self.Contents.Solutions {
+            paths.push(solutions.Index.as_str());
+        }
+        paths.extend([
             self.Contents.Relations.Index.as_str(),
             self.Contents.Taxonomy.Tags.as_str(),
             self.Contents.Taxonomy.ErrorTypes.as_str(),
             self.Contents.Citations.Sources.as_str(),
-        ]
+        ]);
+        paths
     }
 
     /// Draws the line between "the manifest is readable" and "the manifest

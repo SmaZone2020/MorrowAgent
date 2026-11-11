@@ -89,6 +89,13 @@
           "required": ["index"],
           "properties": { "index": { "$ref": "#/$defs/packagePath" } }
         },
+        "solutions": {
+          "type": "object",
+          "description": "题目解析的索引（MLPS §9）。可选：没有它时题目仍然可以作答，只是不显示解析。",
+          "additionalProperties": false,
+          "required": ["index"],
+          "properties": { "index": { "$ref": "#/$defs/packagePath" } }
+        },
         "relations": {
           "type": "object",
           "additionalProperties": false,
