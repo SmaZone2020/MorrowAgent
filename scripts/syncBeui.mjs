@@ -55,6 +55,9 @@ const slugs = [
   // A fenced block is code, and the registry's block brings syntax colouring,
   // fixed line numbers and copy feedback instead of a bare <pre>.
   "code-block",
+  // Picking attachments is the registry's upload workspace: drop or browse, a
+  // row per file with its size, and image thumbnails that open a preview.
+  "attachment-upload",
 ];
 
 function rewriteSpecifiers(source) {

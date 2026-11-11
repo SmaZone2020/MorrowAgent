@@ -1,20 +1,19 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Paperclip } from "@gravity-ui/icons";
 import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
 import { Button } from "@/vendor/beui/components/motion/button";
 import { Tooltip } from "@/vendor/beui/components/motion/tooltip";
+import { AttachmentUpload } from "@/vendor/beui/components/motion/attachment-upload";
 import { PromptInput } from "@/vendor/beui/components/agents/prompt-input";
 import { LumiCharacter } from "@/features/lumi/LumiCharacter";
 import { MessageList } from "@/features/lumi/MessageList";
 import { ConversationList } from "@/features/lumi/ConversationList";
-import { AttachmentTray } from "@/features/lumi/AttachmentPreview";
+import { MAX_ATTACHMENT_BYTES, MAX_ATTACHMENTS } from "@/features/lumi/attachments";
 import {
-  isSupported,
-  MAX_ATTACHMENTS,
-  readAttachment,
-} from "@/features/lumi/attachments";
-import type { MessageAttachment } from "@/features/lumi/history";
+  ATTACHMENT_ACCEPT,
+  useAttachmentDraft,
+} from "@/features/lumi/useAttachmentDraft";
 import { useConversation } from "@/features/lumi/conversation";
 import { useBoundConversation } from "@/features/lumi/useBoundConversation";
 import { useToolContext } from "@/features/lumi/useToolContext";
@@ -42,10 +41,6 @@ export function LumiPage() {
   // Uploads stay in memory only: a base64 photo is not something to write into
   // the interface-state file, and losing an unsent attachment on reload is
   // cheaper than carrying it around.
-  const [attachments, setAttachments] = useState<MessageAttachment[]>([]);
-  const [attachError, setAttachError] = useState<string | null>(null);
-  const [reading, setReading] = useState(false);
-  const fileInput = useRef<HTMLInputElement>(null);
   const configured = useProviderStatus((state) => state.configured);
   // A text-only model gets no image uploads: the file would be read, stored and
   // then dropped from the request, which is worse than refusing it up front.
@@ -55,6 +50,13 @@ export function LumiPage() {
     );
     return active?.supportsVision !== false;
   });
+  const draftAttachments = useAttachmentDraft(vision);
+  const attachments = draftAttachments.attachments;
+  // The picker is a panel above the composer, not a permanent band: it opens
+  // from the paperclip and stays open while it holds rows, so a send leaves the
+  // composer compact again.
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const showPicker = pickerOpen || draftAttachments.items.length > 0;
 
   const conversationId = useConversation((state) => state.conversationId);
   const turns = useConversation((state) => state.turns);
@@ -95,64 +97,29 @@ export function LumiPage() {
     setDraft(target.content);
     // The rewrite replaces the turn, so it starts from text again; keeping the
     // old files would silently re-send them with a different question.
-    setAttachments([]);
+    draftAttachments.clear();
     beginEdit(turnId);
   };
 
   const leaveEdit = () => {
     cancelEdit();
     setDraft("");
-    setAttachments([]);
+    draftAttachments.clear();
+    setPickerOpen(false);
   };
 
   const submit = (value: string) => {
     const text = value.trim();
     if (!text && attachments.length === 0) return;
-    if (!configured || sending || reading) return;
+    if (!configured || sending || draftAttachments.reading) return;
     // A parked quiz owns the turn: sending text now would abandon a tool call
     // with no result, which every provider rejects.
     if (pending) return;
     setDraft("");
     const files = attachments;
-    setAttachments([]);
-    setAttachError(null);
+    draftAttachments.clear();
+    setPickerOpen(false);
     void send(text, files);
-  };
-
-  const addFiles = async (files: FileList | null) => {
-    if (!files?.length) return;
-    setAttachError(null);
-    const room = MAX_ATTACHMENTS - attachments.length;
-    if (room <= 0) {
-      setAttachError(`一次最多 ${MAX_ATTACHMENTS} 个附件`);
-      return;
-    }
-
-    const picked = [...files].slice(0, room);
-    setReading(true);
-    try {
-      const read: MessageAttachment[] = [];
-      for (const file of picked) {
-        if (!isSupported(file)) {
-          setAttachError(`暂不支持 ${file.name}`);
-          continue;
-        }
-        if (!vision && file.type.startsWith("image/")) {
-          setAttachError("当前模型不支持图片，请改传文档或截图里的文字");
-          continue;
-        }
-        try {
-          read.push(await readAttachment(file));
-        } catch (error) {
-          setAttachError(
-            error instanceof Error ? error.message : `${file.name} 读取失败`,
-          );
-        }
-      }
-      if (read.length > 0) setAttachments((current) => [...current, ...read]);
-    } finally {
-      setReading(false);
-    }
   };
 
   return (
@@ -211,29 +178,57 @@ export function LumiPage() {
                   </Button>
                 </div>
               ) : null}
-              {attachError ? (
-                <p className="text-sm text-destructive">{attachError}</p>
+              {draftAttachments.error ? (
+                <p className="text-sm text-destructive">{draftAttachments.error}</p>
               ) : null}
-              <AttachmentTray
-                attachments={attachments}
-                onRemove={(id) =>
-                  setAttachments((current) =>
-                    current.filter((attachment) => attachment.id !== id),
-                  )
-                }
-              />
-              <input
-                ref={fileInput}
-                type="file"
-                multiple
-                hidden
-                accept="image/png,image/jpeg,image/webp,application/pdf,text/plain,text/markdown,text/csv,application/json,.md,.txt,.csv,.json"
-                onChange={(event) => {
-                  void addFiles(event.target.files);
-                  // Clearing lets the same file be picked again after removal.
-                  event.target.value = "";
-                }}
-              />
+              {/* The registry's upload workspace is the whole picker: it owns
+                  the drop target, the rows, the per-file retry and the image
+                  preview, so nothing here is a hand-rolled file input. */}
+              {showPicker ? (
+                <AttachmentUpload
+                  value={draftAttachments.items}
+                  onValueChange={draftAttachments.sync}
+                  onFilesAdded={draftAttachments.added}
+                  onFilesRejected={draftAttachments.rejected}
+                  onRetry={draftAttachments.retry}
+                  accept={ATTACHMENT_ACCEPT}
+                  multiple
+                  maxFiles={MAX_ATTACHMENTS}
+                  maxFileSize={MAX_ATTACHMENT_BYTES}
+                  disabled={Boolean(pending) || sending}
+                  title="拖入文件，或点击选择"
+                  description={
+                    vision
+                      ? "图片、PDF 与文本，单个不超过 24 MB"
+                      : "当前模型不支持图片，只能传 PDF 或文本"
+                  }
+                  attachmentsLabel="待发送"
+                  // The rows sit right under the drop bar, not in the registry's
+                  // own section spacing, which assumes a page of its own.
+                  className="[&>section]:mt-2"
+                  labels={{
+                    input: "选择附件",
+                    attachments: "待发送",
+                    removeAttachment: "移除附件",
+                    remove: "移除 {name}",
+                    retryUpload: "重试",
+                    retry: "重试 {name}",
+                    clickToPreview: "点击预览",
+                    preview: "预览 {name}",
+                    closePreview: "关闭预览",
+                    limitTitle: "附件已满",
+                    limitDescription: "已添加 {count} / {max} 个附件",
+                  }}
+                  classNames={{
+                    // One compact bar instead of the registry's big drop card:
+                    // this sits above a composer, not on a page of its own. The
+                    // icon is the second child; the first is the dashed border.
+                    dropzone:
+                      "min-h-0 flex-row flex-wrap items-center justify-start gap-x-3 px-4 py-2 text-left [&>span]:my-0 [&>span:nth-child(2)]:mb-0 [&>span:nth-child(2)]:size-8 [&>span:nth-child(2)]:rounded-xl [&>span:last-child]:text-sm",
+                    list: "mt-2 space-y-1.5",
+                  }}
+                />
+              ) : null}
               <PromptInput
                 value={draft}
                 onValueChange={setDraft}
@@ -247,7 +242,7 @@ export function LumiPage() {
                 aria-label="跟 Lumi 说点什么"
                 minRows={2}
                 maxRows={8}
-                loading={sending || reading}
+                loading={sending || draftAttachments.reading}
                 disabled={Boolean(pending)}
                 onSubmit={submit}
                 onStop={stop}
@@ -266,9 +261,10 @@ export function LumiPage() {
                       variant="ghost"
                       size="sm"
                       aria-label="添加附件"
-                      disabled={Boolean(pending) || sending || reading}
+                      aria-pressed={pickerOpen}
+                      disabled={Boolean(pending) || sending || draftAttachments.reading}
                       className="size-8 rounded-full p-0"
-                      onClick={() => fileInput.current?.click()}
+                      onClick={() => setPickerOpen((open) => !open)}
                     >
                       <Paperclip className="size-4" />
                     </Button>
