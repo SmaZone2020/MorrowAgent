@@ -7,14 +7,18 @@ import {
   SelectValue,
 } from "@/vendor/beui/components/motion/select";
 import {
-  ChoiceTabs,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from "@/vendor/beui/components/motion/tabs";
+import {
   SettingsGroup,
   SettingsPageShell,
   SettingsRow,
-  type ChoiceOption,
 } from "@/pages/settings/SettingsBlocks";
 import { PercentStepper } from "@/components/PercentStepper";
 import {
+  applyAppearance,
   clampScale,
   FONT_OPTIONS,
   UI_SCALE_MAX,
@@ -23,12 +27,17 @@ import {
   type ThemeMode,
 } from "@/features/appearance/appearance";
 import { useAppearance } from "@/features/appearance/useAppearance";
+import { useThemeReveal } from "@/features/appearance/useThemeReveal";
 import { usePreferences } from "@/features/settings/preferencesStore";
 
 const QUESTION_SCALE_MIN = 0.8;
 const QUESTION_SCALE_MAX = 1.6;
 
-const THEME_CHOICES: ChoiceOption<ThemeMode>[] = [
+const THEME_CHOICES: {
+  value: ThemeMode;
+  label: string;
+  icon: typeof Sun;
+}[] = [
   { value: "light", label: "浅色", icon: Sun },
   { value: "dark", label: "深色", icon: Moon },
   { value: "system", label: "跟随系统", icon: Display },
@@ -38,8 +47,18 @@ const THEME_CHOICES: ChoiceOption<ThemeMode>[] = [
 // like any other, so they live on this page instead of behind another click.
 export function GeneralSettingsPage() {
   const { appearance, update: updateAppearance } = useAppearance();
+  const reveal = useThemeReveal();
   const questionScale = usePreferences((state) => state.questionScale);
   const updatePreferences = usePreferences((state) => state.update);
+
+  // The palette has to be on the document before the view transition snapshots
+  // it, so the paint happens inside the callback and the store write follows.
+  const setTheme = (theme: ThemeMode) => {
+    reveal(() => {
+      applyAppearance({ ...appearance, theme });
+      updateAppearance({ theme });
+    });
+  };
 
   return (
     <SettingsPageShell title="首选项">
@@ -48,13 +67,24 @@ export function GeneralSettingsPage() {
           title="配色主题"
           hint="深色沿用同一色系反相；跟随系统会随系统设置实时切换。"
           control={
-            <ChoiceTabs
-              label="配色主题"
-              iconOnly
-              options={THEME_CHOICES}
+            <Tabs
               value={appearance.theme}
-              onChange={(theme) => updateAppearance({ theme })}
-            />
+              onValueChange={(theme) => setTheme(theme as ThemeMode)}
+              variant="pill"
+            >
+              <TabsList aria-label="配色主题" className="bg-card p-0.5">
+                {THEME_CHOICES.map((choice) => (
+                  <TabsTrigger
+                    key={choice.value}
+                    value={choice.value}
+                    icon={<choice.icon className="size-4" />}
+                    className="px-3 py-1"
+                  >
+                    {choice.label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
           }
         />
         <SettingsRow
