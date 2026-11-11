@@ -8,6 +8,7 @@ import {
   ArtifactOverlay,
 } from "@/features/rich/ArtifactFrame";
 import { downloadSvg } from "@/features/rich/download";
+import { HtmlBlock } from "@/features/rich/HtmlBlock";
 import { sanitizeSvg } from "@/features/rich/sanitizeSvg";
 import { FunctionPlot } from "@/features/plot/FunctionPlot";
 import { parsePlotSpec } from "@/features/plot/plotSpec";
@@ -263,6 +264,8 @@ export function FenceBlock({
   if (lang === "image" || lang === "img") {
     return <ImageBlock src={content.trim()} alt="" />;
   }
+  // A small layout, not an artifact: no frame, no title bar, no download.
+  if (lang === "html") return <HtmlBlock source={content} />;
   // Unknown languages are code, which is what a fence means by default.
   return (
     <pre className="my-3 overflow-x-auto rounded-xl bg-muted/60 p-3 text-sm text-foreground">

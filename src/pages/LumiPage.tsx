@@ -8,6 +8,7 @@ import { MessageList } from "@/features/lumi/MessageList";
 import { ConversationList } from "@/features/lumi/ConversationList";
 import { useConversation } from "@/features/lumi/conversation";
 import { useBoundConversation } from "@/features/lumi/useBoundConversation";
+import { useToolContext } from "@/features/lumi/useToolContext";
 import { greetingFor } from "@/features/lumi/greetings";
 import { useProviderStatus } from "@/features/settings/providerStatus";
 import { usePersistedState } from "@/features/uiState/usePersistedState";
@@ -46,6 +47,11 @@ export function LumiPage() {
   const beginEdit = useConversation((state) => state.beginEdit);
   const cancelEdit = useConversation((state) => state.cancelEdit);
   const editingTurnId = useConversation((state) => state.editingTurnId);
+  const pending = useConversation((state) => state.pending);
+  const answerQuiz = useConversation((state) => state.answerQuiz);
+
+  // Publishes the package to the tool layer; tools read live content.
+  useToolContext();
 
   const empty = turns.length === 0;
 
@@ -74,6 +80,9 @@ export function LumiPage() {
   const submit = (value: string) => {
     const text = value.trim();
     if (!text || !configured || sending) return;
+    // A parked quiz owns the turn: sending text now would abandon a tool call
+    // with no result, which every provider rejects.
+    if (pending) return;
     setDraft("");
     void send(text);
   };
@@ -105,6 +114,8 @@ export function LumiPage() {
         ) : (
           <MessageList
             turns={turns}
+            pending={pending}
+            onAnswerQuiz={(callId, output) => void answerQuiz(callId, output)}
             onRetry={() => void regenerate()}
             onDelete={(turnId) => {
               if (turnId === editingTurnId) leaveEdit();
@@ -136,12 +147,17 @@ export function LumiPage() {
                 value={draft}
                 onValueChange={setDraft}
                 placeholder={
-                  editingTurnId ? "修改后发送，将替换后续对话" : "跟 Lumi 说点什么"
+                  pending
+                    ? "先完成上面的题目"
+                    : editingTurnId
+                      ? "修改后发送，将替换后续对话"
+                      : "跟 Lumi 说点什么"
                 }
                 aria-label="跟 Lumi 说点什么"
                 minRows={2}
                 maxRows={8}
                 loading={sending}
+                disabled={Boolean(pending)}
                 onSubmit={submit}
                 onStop={stop}
                 className="bg-card shadow-surface"

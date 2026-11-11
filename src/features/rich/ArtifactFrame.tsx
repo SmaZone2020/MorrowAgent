@@ -3,7 +3,7 @@ import { Button } from "@/vendor/beui/components/motion/button";
 import { Modal } from "@/components/Modal";
 
 /** Inline artifacts never exceed this width, so one big figure cannot eat the reply. */
-export const ARTIFACT_MAX_WIDTH = "max-w-[600px]";
+export const ARTIFACT_MAX_WIDTH = "max-w-[450px]";
 
 /**
  * The frame every rich block sits in: a title, the drawing, and two actions —

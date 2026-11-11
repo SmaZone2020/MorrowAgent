@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/vendor/beui/components/motion/button";
-import { ArrowUturnCcwLeft, Pencil, TrashBin } from "@gravity-ui/icons";
+import { ArrowUturnCcwLeft, ListCheck, Pencil, TrashBin } from "@gravity-ui/icons";
 import {
   Message,
   MessageBubble,
@@ -12,7 +12,9 @@ import { StreamingResponse } from "@/vendor/beui/components/agents/streaming-res
 import { ReasoningText } from "@/vendor/beui/components/agents/loading-states";
 import { Markdown } from "@/features/rich/Markdown";
 import { LumiMark } from "@/features/lumi/LumiMark";
+import { QuizTurn, isQuizCall } from "@/features/lumi/QuizTurn";
 import type { ConversationTurn } from "@/features/lumi/conversation";
+import type { PendingQuiz } from "@/features/lumi/conversationCore";
 
 interface MessageListProps {
   turns: ConversationTurn[];
@@ -23,6 +25,10 @@ interface MessageListProps {
   onEdit?: (turnId: string) => void;
   /** The user turn currently loaded into the composer. */
   editingTurnId?: string | null;
+  /** The quiz the conversation is waiting on, if any. */
+  pending?: PendingQuiz | null;
+  /** Hands a finished question set back to the conversation. */
+  onAnswerQuiz?: (callId: string, output: string) => void;
 }
 
 // Phrased as work in progress rather than a spinner label: the reply really is
@@ -107,14 +113,39 @@ function TurnActions({
   );
 }
 
+/**
+ * A tool result is not something the user said, so it is not a bubble: one
+ * quiet line reports that work happened, and the substance lives in the card
+ * above it.
+ */
+function ToolTurnRow({ turn }: { turn: ConversationTurn }) {
+  const first = turn.content.split("\n")[0] ?? "";
+  return (
+    <details className="group/tool text-sm text-muted-foreground">
+      <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg px-1 py-0.5 hover:text-foreground">
+        <ListCheck className="size-4 shrink-0" />
+        <span className="min-w-0 truncate">{first || "工具已返回"}</span>
+      </summary>
+      <pre className="mt-1 max-h-64 overflow-auto rounded-lg bg-muted/50 p-2 text-sm whitespace-pre-wrap">
+        {turn.content}
+      </pre>
+    </details>
+  );
+}
+
 export function MessageList({
   turns,
   onRetry,
   onDelete,
   onEdit,
   editingTurnId = null,
+  pending = null,
+  onAnswerQuiz,
 }: MessageListProps) {
   const busy = turns.at(-1)?.pending === true;
+
+  const isWaiting = (callId: string) =>
+    pending !== null && pending.results[callId] === undefined;
 
   return (
     <MessageScroller
@@ -150,6 +181,16 @@ export function MessageList({
               )}
             </MessageContent>
           </Message>
+        ) : turn.toolCallId ? (
+          <Message key={turn.id} from="assistant" animateIn>
+            <span className="mt-0.5 grid size-7 shrink-0 place-items-center">
+              <LumiMark className="size-7 opacity-60" />
+            </span>
+            <MessageContent>
+              <ToolTurnRow turn={turn} />
+              <TurnActions onDelete={() => onDelete?.(turn.id)} />
+            </MessageContent>
+          </Message>
         ) : (
           <Message key={turn.id} from="assistant" animateIn>
             <span className="mt-0.5 grid size-7 shrink-0 place-items-center">
@@ -171,23 +212,37 @@ export function MessageList({
                   className="py-1"
                 />
               ) : (
-                <StreamingResponse
-                  status={turn.pending ? "streaming" : "complete"}
-                  copyText={turn.content}
-                  onRetry={onRetry}
-                  onDelete={onDelete ? () => onDelete(turn.id) : undefined}
-                  announce={false}
-                  className="w-full"
-                  contentClassName="text-foreground"
-                >
-                  <Markdown source={turn.content} />
-                  {turn.pending ? (
-                    <span
-                      aria-hidden="true"
-                      className="ml-0.5 inline-block h-4 w-[2px] animate-pulse bg-foreground align-middle"
-                    />
+                <>
+                  {turn.content ? (
+                    <StreamingResponse
+                      status={turn.pending ? "streaming" : "complete"}
+                      copyText={turn.content}
+                      onRetry={onRetry}
+                      onDelete={onDelete ? () => onDelete(turn.id) : undefined}
+                      announce={false}
+                      className="w-full"
+                      contentClassName="text-foreground"
+                    >
+                      <Markdown source={turn.content} />
+                      {turn.pending ? (
+                        <span
+                          aria-hidden="true"
+                          className="ml-0.5 inline-block h-4 w-[2px] animate-pulse bg-foreground align-middle"
+                        />
+                      ) : null}
+                    </StreamingResponse>
                   ) : null}
-                </StreamingResponse>
+                  {/* A quiz arrives as a tool call, so its card sits under the
+                      prose that introduced it and survives the next reply. */}
+                  {turn.toolCalls?.filter(isQuizCall).map((call) => (
+                    <QuizTurn
+                      key={call.id}
+                      call={call}
+                      pending={isWaiting(call.id)}
+                      onComplete={(callId, output) => onAnswerQuiz?.(callId, output)}
+                    />
+                  ))}
+                </>
               )}
             </MessageContent>
           </Message>
