@@ -8,8 +8,8 @@ import {
   useReducedMotion,
 } from "motion/react";
 import {
-  cloneElement,
   type ComponentPropsWithRef,
+  cloneElement,
   createContext,
   type ReactElement,
   type ReactNode,
@@ -19,13 +19,14 @@ import {
   useId,
   useState,
 } from "react";
+import { MessageSideContext } from "@/vendor/beui/components/agents/message-context";
 import {
   EASE_OUT,
   SPRING_LAYOUT,
   SPRING_SWAP,
 } from "@/vendor/beui/lib/ease";
+import { useMessages } from "@/vendor/beui/lib/i18n";
 import { cn } from "@/vendor/beui/lib/utils";
-import { MessageSideContext } from "@/vendor/beui/components/agents/message-context";
 
 export type MessageBubbleVariant =
   | "solid"
@@ -36,10 +37,19 @@ export type MessageBubbleVariant =
   | "danger";
 export type MessageBubbleAlign = "start" | "end";
 
+/** English defaults. Override per instance with `labels`, or app-wide with `LocaleProvider`. */
+export const messageBubbleMessages = {
+  showMore: "Show more",
+  showLess: "Show less",
+};
+
+export type MessageBubbleMessages = typeof messageBubbleMessages;
+
 interface MessageBubbleContextValue {
   align?: MessageBubbleAlign;
   animateIn: boolean;
   variant: MessageBubbleVariant;
+  labels?: Partial<MessageBubbleMessages>;
 }
 
 const MessageBubbleContext = createContext<MessageBubbleContextValue>({
@@ -55,6 +65,8 @@ export interface MessageBubbleProps
   align?: MessageBubbleAlign;
   /** Plays the bubble entrance once when this component mounts. */
   animateIn?: boolean;
+  /** Override any built-in string. */
+  labels?: Partial<MessageBubbleMessages>;
   children?: ReactNode;
 }
 
@@ -108,6 +120,7 @@ export function MessageBubble({
   variant = "soft",
   align,
   animateIn = false,
+  labels,
   className,
   children,
   initial,
@@ -123,7 +136,7 @@ export function MessageBubble({
 
   return (
     <MessageBubbleContext.Provider
-      value={{ align: resolvedAlign, animateIn, variant }}
+      value={{ align: resolvedAlign, animateIn, variant, labels }}
     >
       <motion.div
         data-slot="message-bubble"
@@ -228,13 +241,7 @@ export function MessageBubbleContent({
       ) : null}
       <MessageBubbleLayoutContext.Provider value={notifyLayout}>
         <motion.div
-          initial={
-            animateIn
-              ? reduce
-                ? { opacity: 0 }
-                : { opacity: 0 }
-              : false
-          }
+          initial={animateIn ? { opacity: 0 } : false}
           animate={{ opacity: 1 }}
           transition={
             reduce ? { duration: 0.12, ease: EASE_OUT } : BUBBLE_CONTENT_REVEAL
@@ -304,8 +311,8 @@ export function MessageBubbleCollapsible({
   defaultOpen = false,
   onOpenChange,
   collapsedLines = 4,
-  moreLabel = "Show more",
-  lessLabel = "Show less",
+  moreLabel,
+  lessLabel,
   contentClassName,
   triggerClassName,
   className,
@@ -315,6 +322,11 @@ export function MessageBubbleCollapsible({
   const reduce = useReducedMotion() ?? false;
   const contentId = useId();
   const notifyLayout = useContext(MessageBubbleLayoutContext);
+  const t = useMessages(
+    "messageBubble",
+    messageBubbleMessages,
+    useContext(MessageBubbleContext).labels,
+  );
   const [internalOpen, setInternalOpen] = useState(defaultOpen);
   const currentOpen = open ?? internalOpen;
 
@@ -356,7 +368,9 @@ export function MessageBubbleCollapsible({
           triggerClassName,
         )}
       >
-        <span>{currentOpen ? lessLabel : moreLabel}</span>
+        <span>{currentOpen
+            ? (lessLabel ?? t("showLess"))
+            : (moreLabel ?? t("showMore"))}</span>
         <motion.span
           aria-hidden="true"
           animate={{ rotate: currentOpen ? 180 : 0 }}

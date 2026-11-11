@@ -9,9 +9,10 @@ import {
   type ReactNode,
   useContext,
 } from "react";
-import { EASE_OUT } from "@/vendor/beui/lib/ease";
-import { cn } from "@/vendor/beui/lib/utils";
 import { MessageSideContext } from "@/vendor/beui/components/agents/message-context";
+import { EASE_OUT } from "@/vendor/beui/lib/ease";
+import { useMessages } from "@/vendor/beui/lib/i18n";
+import { cn } from "@/vendor/beui/lib/utils";
 
 export {
   MessageBubble,
@@ -19,10 +20,18 @@ export {
   MessageBubbleContent,
   MessageBubbleGroup,
 } from "@/vendor/beui/components/agents/message-bubble";
-export { MessageScroller } from "@/vendor/beui/components/agents/message-scroller";
 export type { MessageScrollerProps } from "@/vendor/beui/components/agents/message-scroller";
+export { MessageScroller } from "@/vendor/beui/components/agents/message-scroller";
 
 export type MessageFrom = "user" | "assistant";
+
+export const messageMessages = {
+  user: "user message",
+  assistant: "assistant message",
+  typing: "Responding",
+};
+
+export type MessageMessages = typeof messageMessages;
 
 interface MessageContextValue {
   from: MessageFrom;
@@ -38,6 +47,8 @@ export interface MessageProps
   /** Plays a trailing-edge pop-up once when this message row mounts. */
   animateIn?: boolean;
   children: ReactNode;
+  /** Override any built-in string. */
+  labels?: Partial<MessageMessages>;
 }
 
 export interface MessageGroupProps extends ComponentPropsWithRef<"div"> {
@@ -77,9 +88,11 @@ export function Message({
   transition,
   exit,
   style,
+  labels,
   ...props
 }: MessageProps) {
   const reduce = useReducedMotion() ?? false;
+  const t = useMessages("message", messageMessages, labels);
 
   return (
     <MessageSideContext.Provider value={from === "user" ? "end" : "start"}>
@@ -87,7 +100,7 @@ export function Message({
         <motion.article
           data-slot="message"
           data-from={from}
-          aria-label={props["aria-label"] ?? `${from} message`}
+          aria-label={props["aria-label"] ?? t(from)}
           initial={
             initial ??
             (animateIn && !reduce
@@ -238,11 +251,12 @@ export function MessageMarker({ className, ...props }: MessageMarkerProps) {
 }
 
 export function MessageTyping({
-  label = "Responding",
+  label,
   className,
   ...props
 }: MessageTypingProps) {
   const reduce = useReducedMotion() ?? false;
+  const t = useMessages("message", messageMessages);
 
   return (
     <span
@@ -250,7 +264,7 @@ export function MessageTyping({
       className={cn("inline-flex h-5 items-center gap-1", className)}
       {...props}
     >
-      <span className="sr-only">{label}</span>
+      <span className="sr-only">{label ?? t("typing")}</span>
       {[0, 1, 2].map((index) => (
         <motion.span
           key={index}

@@ -13,6 +13,20 @@ const slugs = [
   "input",
   "animated-badge",
   "tooltip",
+  // Tabs and the popover replace the hand-rolled choice row and the hover
+  // surface: both ship their own layout and gesture logic, which is exactly
+  // what a vendored component is for.
+  "tabs",
+  "popover",
+  "action-swap",
+  "theme-toggle",
+  "alert",
+  // The pen colour is a radio group over swatches; beUI's selector brings the
+  // gliding ring and native keyboard navigation, which a row of buttons cannot.
+  "color-selector",
+  // The header trail is a route, so it gets the registry's collapsing list:
+  // deep knowledge pages drop the middle segments into an overflow panel.
+  "breadcrumb",
   // Dialogs come from the same registry so every overlay shares one unfold
   // animation and one focus trap instead of a per-page portal.
   "center-morph-modal",

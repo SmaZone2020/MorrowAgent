@@ -12,7 +12,7 @@ import {
   shift,
   type VirtualElement,
 } from "@floating-ui/dom";
-import { type RefObject, useCallback, useLayoutEffect, useRef } from "react";
+import { type RefObject, useCallback, useLayoutEffect, useMemo, useRef } from "react";
 
 export type TooltipSide = "top" | "right" | "bottom" | "left";
 export type TooltipAlign = "start" | "center" | "end";
@@ -232,5 +232,5 @@ export function useTooltipPointer(anchor: TooltipAnchor | null, followCursor: bo
     };
   }, [anchor, followCursor]);
 
-  return { cursor, onMove };
+  return useMemo(() => ({ cursor, onMove }), []);
 }

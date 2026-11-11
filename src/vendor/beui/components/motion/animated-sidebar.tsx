@@ -34,6 +34,7 @@ import {
   SPRING_LAYOUT,
   SPRING_PRESS,
 } from "@/vendor/beui/lib/ease";
+import { useMessages } from "@/vendor/beui/lib/i18n";
 import { cn } from "@/vendor/beui/lib/utils";
 
 type SidebarState = "expanded" | "collapsed";
@@ -148,6 +149,15 @@ function useIsMobile() {
   );
 }
 
+/** English defaults. Override per instance with `labels`, or app-wide with `LocaleProvider`. */
+export const animatedSidebarMessages = {
+  label: "Sidebar",
+  toggle: "Toggle sidebar",
+  close: "Close sidebar",
+};
+
+export type AnimatedSidebarMessages = typeof animatedSidebarMessages;
+
 interface AnimatedSidebarContextValue {
   isMobile: boolean;
   layoutId: string;
@@ -159,6 +169,7 @@ interface AnimatedSidebarContextValue {
   state: SidebarState;
   toggleSidebar: () => void;
   triggerRef: React.RefObject<HTMLButtonElement | null>;
+  t: ReturnType<typeof useMessages<AnimatedSidebarMessages>>;
 }
 
 const AnimatedSidebarContext =
@@ -208,6 +219,8 @@ export interface AnimatedSidebarProviderProps
   defaultOpenMobile?: boolean;
   onOpenMobileChange?: (open: boolean) => void;
   style?: SidebarProviderStyle;
+  /** Override any built-in string. */
+  labels?: Partial<AnimatedSidebarMessages>;
 }
 
 export function AnimatedSidebarProvider({
@@ -220,8 +233,10 @@ export function AnimatedSidebarProvider({
   onOpenMobileChange,
   className,
   style,
+  labels,
   ...props
 }: AnimatedSidebarProviderProps) {
+  const t = useMessages("animatedSidebar", animatedSidebarMessages, labels);
   const [internalOpen, setInternalOpen] = useState(defaultOpen);
   const [internalOpenMobile, setInternalOpenMobile] =
     useState(defaultOpenMobile);
@@ -281,6 +296,7 @@ export function AnimatedSidebarProvider({
         state: desktopOpen ? "expanded" : "collapsed",
         toggleSidebar,
         triggerRef,
+        t,
       }}
     >
       <div
@@ -389,7 +405,7 @@ function MobileSidebar({
     >
       <motion.button
         type="button"
-        aria-label="Close sidebar"
+        aria-label={context.t("close")}
         tabIndex={context.openMobile ? 0 : -1}
         initial={false}
         animate={{ opacity: context.openMobile ? 1 : 0 }}
@@ -504,7 +520,7 @@ export const AnimatedSidebar = forwardRef<HTMLElement, AnimatedSidebarProps>(
       side = "left",
       variant = "sidebar",
       collapsible = "icon",
-      ariaLabel = "Sidebar",
+      ariaLabel: ariaLabelProp,
       children,
       className,
       panelClassName,
@@ -514,6 +530,7 @@ export const AnimatedSidebar = forwardRef<HTMLElement, AnimatedSidebarProps>(
     forwardedRef,
   ) {
     const context = useAnimatedSidebar();
+    const ariaLabel = ariaLabelProp ?? context.t("label");
     const collapsed = collapsible !== "none" && !context.open;
     const offcanvas = collapsed && collapsible === "offcanvas";
     const width = offcanvas
@@ -610,7 +627,7 @@ export const AnimatedSidebarTrigger = forwardRef<
         else if (forwardedRef) forwardedRef.current = node;
       }}
       type={type}
-      aria-label={props["aria-label"] ?? "Toggle sidebar"}
+      aria-label={props["aria-label"] ?? context.t("toggle")}
       aria-expanded={expanded}
       data-slot="sidebar-trigger"
       data-state={expanded ? "expanded" : "collapsed"}
@@ -644,7 +661,7 @@ export const AnimatedSidebarClose = forwardRef<
       {...props}
       ref={forwardedRef}
       type={type}
-      aria-label={props["aria-label"] ?? "Close sidebar"}
+      aria-label={props["aria-label"] ?? context.t("close")}
       onClick={(event) => {
         onClick?.(event);
         if (event.defaultPrevented) return;
@@ -679,8 +696,8 @@ export const AnimatedSidebarRail = forwardRef<
       ref={forwardedRef}
       type={type}
       data-side={panel.side}
-      aria-label={props["aria-label"] ?? "Toggle sidebar"}
-      title="Toggle sidebar"
+      aria-label={props["aria-label"] ?? context.t("toggle")}
+      title={context.t("toggle")}
       tabIndex={-1}
       onClick={(event) => {
         onClick?.(event);

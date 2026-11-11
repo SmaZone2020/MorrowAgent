@@ -279,17 +279,37 @@ const STREAM_VISIBILITY_ANCHOR = `    showActions && !streaming && (canCopy || o
 
 const STREAM_VISIBILITY_PATCH = `    showActions && !streaming && (canCopy || onRetry || onDelete || hasSources);`;
 
+const STREAM_MESSAGES_ANCHOR = `export const streamingResponseMessages = {
+  copy: "Copy response",
+  copied: "Copied",
+  retry: "Retry response",
+  helpful: "Helpful",
+  notHelpful: "Not helpful",
+  source: "{count} source",
+  sources: "{count} sources",
+};`;
+
+const STREAM_MESSAGES_PATCH = `export const streamingResponseMessages = {
+  copy: "复制",
+  copied: "已复制",
+  retry: "重新回答",
+  helpful: "有帮助",
+  notHelpful: "没帮助",
+  source: "{count} 条来源",
+  sources: "{count} 条来源",
+};`;
+
 const STREAM_FEEDBACK_ANCHOR = `              {complete ? (
                 <>
                   <ResponseAction
-                    label="Helpful"
+                    label={t("helpful")}
                     active={currentFeedback === "up"}
                     onClick={() => setFeedback("up")}
                   >
                     <ThumbsUp className="size-3.5" />
                   </ResponseAction>
                   <ResponseAction
-                    label="Not helpful"
+                    label={t("notHelpful")}
                     active={currentFeedback === "down"}
                     onClick={() => setFeedback("down")}
                   >
@@ -303,14 +323,6 @@ const STREAM_FEEDBACK_PATCH = `              {onDelete ? (
                   <Trash2 className="size-3.5" />
                 </ResponseAction>
               ) : null}`;
-
-const STREAM_COPY_ANCHOR = `                  label={copied ? "Copied" : "Copy response"}`;
-
-const STREAM_COPY_PATCH = `                  label={copied ? "已复制" : "复制"}`;
-
-const STREAM_RETRY_ANCHOR = `                <ResponseAction label="Retry response" onClick={onRetry}>`;
-
-const STREAM_RETRY_PATCH = `                <ResponseAction label="重新回答" onClick={onRetry}>`;
 
 function patchStreamingResponse(source) {
   let out = replaceOnce(
@@ -343,17 +355,13 @@ function patchStreamingResponse(source) {
     STREAM_FEEDBACK_PATCH,
     "streaming-response feedback row",
   );
-  out = replaceOnce(
-    out,
-    STREAM_COPY_ANCHOR,
-    STREAM_COPY_PATCH,
-    "streaming-response copy label",
-  );
+  // Upstream moved the action labels into a message table, so the Chinese copy
+  // lives there now instead of on each call site.
   return replaceOnce(
     out,
-    STREAM_RETRY_ANCHOR,
-    STREAM_RETRY_PATCH,
-    "streaming-response retry label",
+    STREAM_MESSAGES_ANCHOR,
+    STREAM_MESSAGES_PATCH,
+    "streaming-response labels",
   );
 }
 

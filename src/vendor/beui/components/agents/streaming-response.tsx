@@ -11,17 +11,31 @@ import {
   useRef,
   useState,
 } from "react";
+import { AgentDisclosure } from "@/vendor/beui/components/agents/agent-disclosure";
 import {
   type CitationItem,
   CitationList,
   CitationStack,
 } from "@/vendor/beui/components/agents/citations";
-import { AgentDisclosure } from "@/vendor/beui/components/agents/agent-disclosure";
 import { EASE_OUT, SPRING_PRESS, SPRING_SWAP } from "@/vendor/beui/lib/ease";
+import { useMessages } from "@/vendor/beui/lib/i18n";
 import { cn } from "@/vendor/beui/lib/utils";
 
 export type StreamingResponseStatus = "streaming" | "complete" | "error";
 export type StreamingResponseFeedback = "up" | "down" | null;
+
+/** English defaults. Override per instance with `labels`, or app-wide with `LocaleProvider`. */
+export const streamingResponseMessages = {
+  copy: "复制",
+  copied: "已复制",
+  retry: "重新回答",
+  helpful: "有帮助",
+  notHelpful: "没帮助",
+  source: "{count} 条来源",
+  sources: "{count} 条来源",
+};
+
+export type StreamingResponseMessages = typeof streamingResponseMessages;
 
 export interface StreamingResponseProps {
   /** Rendered response content. Pass plain text or the output of a Markdown renderer. */
@@ -47,6 +61,8 @@ export interface StreamingResponseProps {
   announce?: boolean;
   /** Hides the built-in completion actions without changing response status. */
   showActions?: boolean;
+  /** Override any built-in string. `{count}` fills `source` (one) and `sources` (many). */
+  labels?: Partial<StreamingResponseMessages>;
   className?: string;
   contentClassName?: string;
   actionsClassName?: string;
@@ -54,11 +70,12 @@ export interface StreamingResponseProps {
 
 function ResponseAction({
   label,
-  active = false,
+  active,
   onClick,
   children,
 }: {
   label: string;
+  /** Set for toggle actions; exposed as `aria-pressed`. */
   active?: boolean;
   onClick: () => void;
   children: ReactNode;
@@ -70,7 +87,7 @@ function ResponseAction({
       type="button"
       aria-label={label}
       title={label}
-      aria-pressed={label === "Helpful" || label === "Not helpful" ? active : undefined}
+      aria-pressed={active}
       onClick={onClick}
       whileTap={reduce ? undefined : { scale: 0.9 }}
       transition={SPRING_PRESS}
@@ -101,10 +118,12 @@ export function StreamingResponse({
   onFeedbackChange,
   announce = true,
   showActions = true,
+  labels,
   className,
   contentClassName,
   actionsClassName,
 }: StreamingResponseProps) {
+  const t = useMessages("streamingResponse", streamingResponseMessages, labels);
   const reduce = useReducedMotion() ?? false;
   const baseId = useId();
   const [copied, setCopied] = useState(false);
@@ -116,6 +135,7 @@ export function StreamingResponse({
   const currentFeedback = feedback ?? internalFeedback;
   const currentSourcesOpen = sourcesOpen ?? internalSourcesOpen;
   const streaming = status === "streaming";
+  const complete = status === "complete";
   const canCopy = Boolean(copyText || onCopy);
   const hasSources = sources.length > 0;
   const shouldShowActions =
@@ -182,7 +202,7 @@ export function StreamingResponse({
             <div className={cn("flex items-center gap-0.5", actionsClassName)}>
               {canCopy ? (
                 <ResponseAction
-                  label={copied ? "已复制" : "复制"}
+                  label={copied ? t("copied") : t("copy")}
                   onClick={handleCopy}
                 >
                   {copied ? (
@@ -193,7 +213,7 @@ export function StreamingResponse({
                 </ResponseAction>
               ) : null}
               {onRetry ? (
-                <ResponseAction label="重新回答" onClick={onRetry}>
+                <ResponseAction label={t("retry")} onClick={onRetry}>
                   <RotateCcw className="size-3.5" />
                 </ResponseAction>
               ) : null}
@@ -212,7 +232,9 @@ export function StreamingResponse({
                 >
                   <CitationStack citations={sources} />
                   <span className="tabular-nums">
-                    {sources.length} {sources.length === 1 ? "source" : "sources"}
+                    {t(sources.length === 1 ? "source" : "sources", {
+                      count: sources.length,
+                    })}
                   </span>
                   <motion.span
                     aria-hidden="true"

@@ -27,7 +27,20 @@ import {
   SelectTrigger,
 } from "@/vendor/beui/components/motion/select";
 import { SPRING_SWAP } from "@/vendor/beui/lib/ease";
+import { useMessages } from "@/vendor/beui/lib/i18n";
 import { cn } from "@/vendor/beui/lib/utils";
+
+/** English defaults. Override per instance with `labels`, or app-wide with `LocaleProvider`. */
+export const promptInputMessages = {
+  placeholder: "Ask the agent to do something…",
+  label: "Prompt",
+  addToPrompt: "Add to prompt",
+  chooseModel: "Choose model",
+  send: "Send prompt",
+  stop: "Stop generating",
+};
+
+export type PromptInputMessages = typeof promptInputMessages;
 
 export interface PromptModel {
   value: string;
@@ -63,6 +76,8 @@ export interface PromptInputProps extends Omit<
   minRows?: number;
   maxRows?: number;
   leadingAction?: ReactNode;
+  /** Override any built-in string. */
+  labels?: Partial<PromptInputMessages>;
   className?: string;
 }
 
@@ -82,13 +97,15 @@ export function PromptInput({
   minRows = 2,
   maxRows = 8,
   leadingAction,
+  labels,
   className,
   disabled,
-  placeholder = "Ask the agent to do something…",
-  "aria-label": ariaLabel = "Prompt",
+  placeholder,
+  "aria-label": ariaLabel,
   onKeyDown,
   ...textareaProps
 }: PromptInputProps) {
+  const t = useMessages("promptInput", promptInputMessages, labels);
   const reduce = useReducedMotion() ?? false;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const measurementRef = useRef<HTMLDivElement>(null);
@@ -184,8 +201,8 @@ export function PromptInput({
         ref={textareaRef}
         value={currentValue}
         disabled={disabled}
-        placeholder={placeholder}
-        aria-label={ariaLabel}
+        placeholder={placeholder ?? t("placeholder")}
+        aria-label={ariaLabel ?? t("label")}
         rows={minRows}
         {...textareaProps}
         onChange={(event) => setValue(event.target.value)}
@@ -202,7 +219,7 @@ export function PromptInput({
                 variant="ghost"
                 size="icon"
                 disabled={disabled || loading}
-                aria-label="Add to prompt"
+                aria-label={t("addToPrompt")}
                 className="size-8 rounded-full"
               >
                 <motion.span
@@ -269,7 +286,7 @@ export function PromptInput({
                   </span>
                 ) : null}
                 <span className="truncate text-muted-foreground">
-                  {currentModel?.label ?? "Choose model"}
+                  {currentModel?.label ?? t("chooseModel")}
                 </span>
               </span>
             </SelectTrigger>
@@ -301,7 +318,7 @@ export function PromptInput({
           type={loading ? "button" : "submit"}
           size="icon"
           disabled={loading ? !onStop : !canSubmit}
-          aria-label={loading ? "Stop generating" : "Send prompt"}
+          aria-label={loading ? t("stop") : t("send")}
           onClick={loading ? onStop : undefined}
           className="ml-auto size-8 rounded-full"
         >

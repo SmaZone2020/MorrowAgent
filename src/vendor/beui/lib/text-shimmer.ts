@@ -1,7 +1,7 @@
 // @ts-nocheck
 import type { CSSProperties } from "react";
 
-// The reduced-motion rule travels with the component. app/globals.css calms CSS
+// The reduced-motion rule travels with the component. The site's globals.css calms CSS
 // animation globally, but the registry bundles imports only, so an installed
 // copy never receives that reset.
 //

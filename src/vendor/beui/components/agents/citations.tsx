@@ -12,7 +12,15 @@ import {
 import { AgentDisclosure } from "@/vendor/beui/components/agents/agent-disclosure";
 import { EASE_OUT, SPRING_LAYOUT, SPRING_SWAP } from "@/vendor/beui/lib/ease";
 import { useFavicon } from "@/vendor/beui/lib/hooks/use-favicon";
+import { useMessages } from "@/vendor/beui/lib/i18n";
 import { cn } from "@/vendor/beui/lib/utils";
+
+export const citationsMessages = {
+  title: "Sources",
+  viewCitation: "View citation {index}",
+};
+
+export type CitationsMessages = typeof citationsMessages;
 
 export interface CitationItem {
   id: string;
@@ -34,6 +42,8 @@ export interface CitationsProps {
   onOpenChange?: (open: boolean) => void;
   idPrefix?: string;
   className?: string;
+  /** Override any built-in string. */
+  labels?: Partial<CitationsMessages>;
 }
 
 export interface CitationProps {
@@ -72,10 +82,11 @@ export function Citation({
   label,
   className,
 }: CitationProps) {
+  const t = useMessages("citations", citationsMessages);
   return (
     <a
       href={`#${citationTargetId(idPrefix, citationId)}`}
-      aria-label={label ?? `View citation ${index}`}
+      aria-label={label ?? t("viewCitation", { index })}
       className={cn(
         "mx-0.5 inline-flex min-w-4 -translate-y-0.5 items-center justify-center rounded-md bg-muted/60 px-1 py-0.5 text-[10px] font-semibold leading-none text-muted-foreground no-underline outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring",
         className,
@@ -245,13 +256,15 @@ export function CitationList({
 
 export function Citations({
   citations,
-  title = "Sources",
+  title,
   open,
   defaultOpen = false,
   onOpenChange,
   idPrefix,
   className,
+  labels,
 }: CitationsProps) {
+  const t = useMessages("citations", citationsMessages, labels);
   const reduce = useReducedMotion() ?? false;
   const baseId = useId();
   const contentId = `${baseId}-content`;
@@ -277,7 +290,7 @@ export function Citations({
         className="group -ml-1 flex min-h-8 items-center gap-2 rounded-lg px-1 text-left text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
       >
         <BookOpenText className="size-4" />
-        <span className="font-medium">{title}</span>
+        <span className="font-medium">{title ?? t("title")}</span>
         <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold tabular-nums">
           {citations.length}
         </span>
