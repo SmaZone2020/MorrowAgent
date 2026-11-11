@@ -315,6 +315,7 @@ mod tests {
                     Role: "user".to_string(),
                     Content: "hi".to_string(),
                     CreatedAt: Some(1),
+                    Attachments: Vec::new(),
                 },
             )
             .expect("append");
@@ -340,6 +341,7 @@ mod tests {
                     Role: "user".to_string(),
                     Content: "hi".to_string(),
                     CreatedAt: Some(1),
+                    Attachments: Vec::new(),
                 },
             )
             .expect("append");
@@ -352,6 +354,7 @@ mod tests {
                     Role: "user".to_string(),
                     Content: "hello".to_string(),
                     CreatedAt: Some(2),
+                    Attachments: Vec::new(),
                 },
             )
             .expect("append");

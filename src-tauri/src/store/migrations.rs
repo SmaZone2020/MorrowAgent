@@ -65,4 +65,10 @@ pub const MIGRATIONS: &[&str] = &[
     ALTER TABLE conversations ADD COLUMN workspace_id TEXT NOT NULL DEFAULT '';
     ALTER TABLE answer_attempts ADD COLUMN workspace_id TEXT NOT NULL DEFAULT '';
     "#,
+    // 4 — files a turn carried. Stored as JSON so the column stays opaque to
+    // SQL: a turn's attachments are read as one list or not at all, and an
+    // older build that does not know about them still sees the text.
+    r#"
+    ALTER TABLE messages ADD COLUMN attachments TEXT NOT NULL DEFAULT '[]';
+    "#,
 ];

@@ -11,7 +11,9 @@ pub mod types;
 pub mod workspaces;
 
 pub use attempts::{PointStats, StoredAttempt};
-pub use types::{ConversationSummary, NewAttempt, NewMessage, StoreStats, StoredMessage};
+pub use types::{
+    ConversationSummary, MessageAttachment, NewAttempt, NewMessage, StoreStats, StoredMessage,
+};
 pub use workspaces::{NewWorkspace, Workspace};
 
 /// The database handle shared by every command. SQLite serialises writes
@@ -28,6 +30,20 @@ fn now() -> i64 {
         .duration_since(UNIX_EPOCH)
         .map(|elapsed| elapsed.as_millis() as i64)
         .unwrap_or(0)
+}
+
+/// Attachments go into a text column as JSON. A malformed blob reads back as
+/// "no attachments" rather than failing the whole transcript: a lost thumbnail
+/// must not cost the user their conversation.
+fn attachments_json(attachments: &[MessageAttachment]) -> String {
+    if attachments.is_empty() {
+        return "[]".to_string();
+    }
+    serde_json::to_string(attachments).unwrap_or_else(|_| "[]".to_string())
+}
+
+fn parse_attachments(raw: String) -> Vec<MessageAttachment> {
+    serde_json::from_str(&raw).unwrap_or_default()
 }
 
 pub fn open(path: &Path) -> Result<Store, String> {
@@ -108,15 +124,17 @@ impl Store {
 
         connection
             .execute(
-                "INSERT INTO messages (id, conversation_id, seq, role, content, created_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                "INSERT INTO messages
+                   (id, conversation_id, seq, role, content, created_at, attachments)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
                 params![
                     message.Id,
                     conversation_id,
                     seq,
                     message.Role,
                     message.Content,
-                    created_at
+                    created_at,
+                    attachments_json(&message.Attachments)
                 ],
             )
             .map_err(|error| format!("写入消息失败：{}", error))?;
@@ -139,6 +157,7 @@ impl Store {
             Role: message.Role,
             Content: message.Content,
             CreatedAt: created_at,
+            Attachments: message.Attachments,
         })
     }
 
@@ -146,7 +165,7 @@ impl Store {
         let connection = self.lock()?;
         let mut statement = connection
             .prepare(
-                "SELECT id, conversation_id, role, content, created_at
+                "SELECT id, conversation_id, role, content, created_at, attachments
                  FROM messages WHERE conversation_id = ?1 ORDER BY seq ASC",
             )
             .map_err(|error| format!("查询消息失败：{}", error))?;
@@ -159,6 +178,7 @@ impl Store {
                     Role: row.get(2)?,
                     Content: row.get(3)?,
                     CreatedAt: row.get(4)?,
+                    Attachments: parse_attachments(row.get::<_, String>(5)?),
                 })
             })
             .map_err(|error| format!("读取消息失败：{}", error))?;
@@ -306,7 +326,7 @@ impl Store {
 
 #[cfg(test)]
 mod tests {
-    use super::{open, NewMessage};
+    use super::{open, MessageAttachment, NewMessage};
     use std::sync::atomic::{AtomicU32, Ordering};
 
     // Each test gets its own file: the pid alone would let two tests in the
@@ -330,6 +350,7 @@ mod tests {
             Role: role.to_string(),
             Content: content.to_string(),
             CreatedAt: Some(1_700_000_000_000),
+            Attachments: Vec::new(),
         }
     }
 
@@ -410,6 +431,66 @@ mod tests {
         let conversations = store.conversations("w1", 10).expect("load");
         assert_eq!(conversations.len(), 1);
         assert_eq!(conversations[0].Id, "used");
+
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn attachments_survive_a_reload() {
+        let (path, store) = temp_store();
+
+        store
+            .append(
+                "c1",
+                "w1",
+                NewMessage {
+                    Id: "m1".to_string(),
+                    Role: "user".to_string(),
+                    Content: "这道题怎么做".to_string(),
+                    CreatedAt: Some(1_700_000_000_000),
+                    Attachments: vec![
+                        MessageAttachment {
+                            Id: "a1".to_string(),
+                            Kind: "image".to_string(),
+                            Name: "page.png".to_string(),
+                            MimeType: "image/png".to_string(),
+                            Size: 1234,
+                            Data: "aGVsbG8=".to_string(),
+                            Text: String::new(),
+                        },
+                        MessageAttachment {
+                            Id: "a2".to_string(),
+                            Kind: "document".to_string(),
+                            Name: "notes.md".to_string(),
+                            MimeType: "text/markdown".to_string(),
+                            Size: 20,
+                            Data: String::new(),
+                            Text: "导数定义".to_string(),
+                        },
+                    ],
+                },
+            )
+            .expect("append");
+
+        let stored = store.messages("c1").expect("messages load");
+        let attachments = &stored[0].Attachments;
+        assert_eq!(attachments.len(), 2);
+        assert_eq!(attachments[0].Kind, "image");
+        assert_eq!(attachments[0].MimeType, "image/png");
+        assert_eq!(attachments[0].Data, "aGVsbG8=");
+        assert_eq!(attachments[1].Text, "导数定义");
+
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn a_turn_without_attachments_reads_back_empty() {
+        let (path, store) = temp_store();
+        store
+            .append("c1", "w1", message("m1", "user", "hello"))
+            .expect("append");
+
+        assert!(store.messages("c1").expect("load")[0].Attachments.is_empty());
 
         let _ = std::fs::remove_file(path);
     }

@@ -12,6 +12,35 @@ pub struct StoredMessage {
     pub Content: String,
     #[serde(rename = "createdAt")]
     pub CreatedAt: i64,
+    /// Files the user attached to this turn, in the order they picked them.
+    #[serde(rename = "attachments")]
+    pub Attachments: Vec<MessageAttachment>,
+}
+
+/// One file attached to a turn.
+///
+/// An image keeps its bytes (`Data`); a document keeps the text extracted from
+/// it (`Text`). Splitting the two here means a reload can redraw a thumbnail
+/// without re-reading the file, and the transcript still carries what the model
+/// actually saw.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct MessageAttachment {
+    #[serde(rename = "id")]
+    pub Id: String,
+    #[serde(rename = "kind")]
+    pub Kind: String,
+    #[serde(rename = "name")]
+    pub Name: String,
+    #[serde(rename = "mimeType", default)]
+    pub MimeType: String,
+    #[serde(rename = "size", default)]
+    pub Size: i64,
+    /// Base64 image bytes, empty for documents.
+    #[serde(rename = "data", default)]
+    pub Data: String,
+    /// Text pulled out of a PDF or a plain-text file.
+    #[serde(rename = "text", default)]
+    pub Text: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -24,6 +53,8 @@ pub struct NewMessage {
     pub Content: String,
     #[serde(rename = "createdAt", default)]
     pub CreatedAt: Option<i64>,
+    #[serde(rename = "attachments", default)]
+    pub Attachments: Vec<MessageAttachment>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

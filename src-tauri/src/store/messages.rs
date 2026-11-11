@@ -160,6 +160,7 @@ mod tests {
             Role: role.to_string(),
             Content: content.to_string(),
             CreatedAt: Some(1_700_000_000_000),
+            Attachments: Vec::new(),
         }
     }
 
