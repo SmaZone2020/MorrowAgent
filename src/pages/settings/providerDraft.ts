@@ -10,6 +10,8 @@ export interface DraftProvider {
   baseUrl: string;
   protocol: NonNullable<StoredProviderProfile["protocol"]>;
   models: string[];
+  /** Absent means yes; the editor always writes an explicit value. */
+  supportsVision?: boolean;
 }
 
 export interface ProviderDraft {
@@ -27,5 +29,6 @@ export function stripKey(profile: StoredProviderProfile): DraftProvider {
     baseUrl: profile.baseUrl,
     protocol: profile.protocol ?? "openai-chat",
     models: profile.models,
+    supportsVision: profile.supportsVision !== false,
   };
 }

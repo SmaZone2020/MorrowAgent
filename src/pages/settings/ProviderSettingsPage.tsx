@@ -102,6 +102,7 @@ export function ProviderSettingsPage() {
             baseUrl: values.baseUrl,
             protocol: values.protocol,
             models: [],
+            supportsVision: true,
           },
         ],
         // The first provider has nothing to be active against yet.

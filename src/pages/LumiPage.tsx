@@ -136,6 +136,10 @@ export function LumiPage() {
           setAttachError(`暂不支持 ${file.name}`);
           continue;
         }
+        if (!vision && file.type.startsWith("image/")) {
+          setAttachError("当前模型不支持图片，请改传文档或截图里的文字");
+          continue;
+        }
         try {
           read.push(await readAttachment(file));
         } catch (error) {
