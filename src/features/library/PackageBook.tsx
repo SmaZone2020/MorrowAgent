@@ -130,7 +130,7 @@ export function PackageBook({
  */
 export function EmptyShelf() {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 px-6 py-14">
+    <div className="flex flex-col items-center justify-center gap-3 px-6 py-14 -mt-24">
       <LumiMood state="confused" surface="page" className="size-28" />
       <div className="flex items-center gap-1">
         <span className="text-sm font-medium text-foreground">暂无书籍</span>

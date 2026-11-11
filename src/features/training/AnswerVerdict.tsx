@@ -24,14 +24,14 @@ export function AnswerVerdict({ verdict }: { verdict: Verdict }) {
     <span
       role="img"
       aria-label={label}
-      className="pointer-events-none absolute top-1/2 right-0 flex -translate-y-1/2 translate-x-1/2 rotate-[-10deg] items-center justify-center"
+      className="pointer-events-none absolute top-4/5 right-6 flex -translate-y-1/2 translate-x-1/2 rotate-[-10deg] items-center justify-center"
       style={{ color }}
     >
       <span
-        className="flex size-24 items-center justify-center rounded-full border-[3px] p-2 opacity-70"
+        className="flex size-24 items-center justify-center rounded-full opacity-70"
         style={{ borderColor: "currentColor" }}
       >
-        <Icon className="size-14" />
+        <Icon className="size-[250px]" />
       </span>
     </span>
   );

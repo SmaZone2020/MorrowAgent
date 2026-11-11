@@ -7,6 +7,7 @@ import {
   type Workspace,
 } from "@/features/library/api";
 import { readScope, writeScope } from "@/features/uiState";
+import { shelfScope } from "@/features/uiState/scope";
 
 /**
  * The shelf and the active workspace.
@@ -83,9 +84,9 @@ export const useLibrary = create<LibraryState>((set, get) => ({
 
 /** Which workspace the user was last inside, restored on the next launch. */
 export function rememberWorkspace(workspaceId: string | null) {
-  writeScope("library:lastWorkspaceId", workspaceId);
+  writeScope(shelfScope("lastWorkspaceId"), workspaceId);
 }
 
 export function lastWorkspaceId(): string | null {
-  return readScope<string | null>("library:lastWorkspaceId", null);
+  return readScope<string | null>(shelfScope("lastWorkspaceId"), null);
 }

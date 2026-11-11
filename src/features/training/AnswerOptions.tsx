@@ -73,11 +73,11 @@ export function AnswerOptions({
           >
             <span
               className={[
-                "mt-0.5 grid size-6 shrink-0 place-items-center rounded-md text-xs font-semibold tabular-nums transition-colors",
+                "mt-0.5 grid size-7 shrink-0 place-items-center rounded-md text-sm font-semibold tabular-nums transition-colors",
                 chosen
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted/70 text-muted-foreground",
-                verdict === "answer" ? "bg-success text-card" : "",
+                verdict === "answer" ? "bg-success text-card text-white" : "",
                 verdict === "miss" ? "bg-destructive text-card" : "",
               ].join(" ")}
             >

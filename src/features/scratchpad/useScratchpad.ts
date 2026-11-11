@@ -16,6 +16,7 @@ import {
   readScope,
   writeScope,
 } from "@/features/uiState/store";
+import { appScope } from "@/features/uiState/scope";
 
 export interface ScratchpadHandlers {
   pointerDown: (event: React.PointerEvent<HTMLCanvasElement>) => void;
@@ -52,14 +53,14 @@ export function useScratchpad(persistKey?: string): ScratchpadApi {
   // The nib width is a tool setting, not a property of one pad, so every pad on
   // screen follows the same choice.
   const [width, setWidth] = useState<InkWidth>(() =>
-    normalizeWidth(readScope<number>("drill.inkWidth", 1)),
+    normalizeWidth(readScope<number>(appScope("inkWidth"), 1)),
   );
   const widthRef = useRef(width);
   widthRef.current = width;
 
   const chooseWidth = useCallback((next: InkWidth) => {
     setWidth(next);
-    writeScope("drill.inkWidth", next);
+    writeScope(appScope("inkWidth"), next);
   }, []);
   const drawingRef = useRef<Stroke | null>(null);
   const strokesRef = useRef<Stroke[]>([]);

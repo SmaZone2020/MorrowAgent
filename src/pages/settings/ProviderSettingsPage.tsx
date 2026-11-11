@@ -237,7 +237,6 @@ export function ProviderSettingsPage() {
       action={
         <Button
           size="sm"
-          variant="secondary"
           className="text-sm"
           onClick={() => setCreating(true)}
         >

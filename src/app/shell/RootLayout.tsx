@@ -10,6 +10,7 @@ import { useProviderStatus } from "@/features/settings/providerStatus";
 import { usePreferences } from "@/features/settings/preferencesStore";
 import { useAppearance } from "@/features/appearance/useAppearance";
 import { usePersistedState } from "@/features/uiState/usePersistedState";
+import { appScope } from "@/features/uiState/scope";
 import { flushUiState, loadUiState } from "@/features/uiState/store";
 
 // The sidebar provider wraps the title bar too, because the sidebar toggle now
@@ -23,7 +24,7 @@ export function RootLayout() {
   const hydratePreferences = usePreferences((state) => state.hydrate);
   // A collapsed rail is a deliberate layout choice, so it outlives the session.
   const [sidebarOpen, setSidebarOpen] = usePersistedState(
-    "sidebar.open",
+    appScope("sidebar.open"),
     true,
   );
   // Mounted here, not in settings: appearance has to stay applied on every page.

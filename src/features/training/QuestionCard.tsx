@@ -15,6 +15,8 @@ import { imagesAt, type Question } from "@/features/knowledge";
 import { ScratchpadPanel } from "@/features/scratchpad/Scratchpad";
 import { scaledText } from "@/features/training/textScale";
 import { usePreferences } from "@/features/settings/preferencesStore";
+import { useWorkspaceId } from "@/features/workspace/WorkspaceContext";
+import { workspaceScope } from "@/features/uiState/scope";
 
 type Phase = "answering" | "submitted";
 
@@ -57,6 +59,7 @@ export function QuestionCard({
   // Only the question body follows the reader's text scale; the surrounding
   // chrome keeps its size so the page does not reflow wholesale.
   const scale = usePreferences((state) => state.questionScale);
+  const workspaceId = useWorkspaceId();
 
   const isChoice = question.options.length > 0;
   const correct = selected === question.answer;
@@ -116,7 +119,10 @@ export function QuestionCard({
           // A board question has nothing to click, so the working surface takes
           // the place of the options instead of being a separate tool the user
           // has to find.
-          <ScratchpadPanel height={240} persistKey={`drill.ink.${question.id}`} />
+          <ScratchpadPanel
+            height={240}
+            persistKey={workspaceScope(workspaceId, `drill.ink.${question.id}`)}
+          />
         )}
 
         {revealExplanation ? (
@@ -161,7 +167,7 @@ export function QuestionCard({
 
         <div className="flex items-center justify-end gap-2">
           {isChoice && phase === "answering" ? (
-            <Button size="sm" disabled={!selected} onClick={submit} className="px-6">
+            <Button disabled={!selected} onClick={submit} className="px-6">
               提交
             </Button>
           ) : null}
@@ -179,7 +185,7 @@ export function QuestionCard({
           ) : null}
           {phase === "submitted" || showExplanation ? (
             onNext ? (
-              <Button size="sm" variant="secondary" onClick={onNext}>
+              <Button className="px-6" onClick={onNext}>
                 下一题
               </Button>
             ) : null
