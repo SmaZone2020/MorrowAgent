@@ -333,6 +333,32 @@ fn workspace_remove(
     state.orphan_workspace(&workspace_id)
 }
 
+/// Covers are the only file a package can hand back as raw bytes, so the
+/// extension is an allowlist rather than a guess: anything else would let a
+/// caller read arbitrary package files through this command.
+const COVER_MIME: [(&str, &str); 5] = [
+    (".png", "image/png"),
+    (".jpg", "image/jpeg"),
+    (".jpeg", "image/jpeg"),
+    (".webp", "image/webp"),
+    (".avif", "image/avif"),
+];
+
+/// A cover is a thumbnail, not a payload: anything bigger is a mistake in the
+/// package and would only bloat the base64 reply.
+const COVER_MAX_BYTES: u64 = 8 * 1024 * 1024;
+
+/// Resolves the MIME type for a cover path, or rejects the file. Kept separate
+/// from the command so the allowlist can be tested without a Tauri app handle.
+fn cover_mime(cover_path: &str) -> Result<&'static str, String> {
+    let lower = cover_path.to_ascii_lowercase();
+    COVER_MIME
+        .iter()
+        .find(|(extension, _)| lower.ends_with(extension))
+        .map(|(_, mime)| *mime)
+        .ok_or_else(|| "封面必须是 png、jpg、webp 或 avif 图片".to_string())
+}
+
 /// Reads a cover image out of an installed workspace. The path is relative to
 /// the package root and re-validated here: the frontend supplies it, so an
 /// absolute path would otherwise be a file read of the user's choosing.
@@ -349,16 +375,21 @@ fn package_cover_data(
         return Err("学习包内容已被移除".to_string());
     }
 
+    let mime = cover_mime(&cover_path)?;
+
     let root = std::path::Path::new(&workspace.RootPath);
     let full = package::paths::safe_join(root, &cover_path)?;
+    let size = std::fs::metadata(&full)
+        .map_err(|error| format!("无法读取封面：{error}"))?
+        .len();
+    if size > COVER_MAX_BYTES {
+        return Err(format!(
+            "封面超过 {} MB",
+            COVER_MAX_BYTES / 1024 / 1024
+        ));
+    }
+
     let bytes = std::fs::read(&full).map_err(|error| format!("无法读取封面：{error}"))?;
-    let mime = if cover_path.ends_with(".png") {
-        "image/png"
-    } else if cover_path.ends_with(".webp") {
-        "image/webp"
-    } else {
-        "image/jpeg"
-    };
     Ok(format!("data:{mime};base64,{}", base64(&bytes)))
 }
 
@@ -385,6 +416,29 @@ fn base64(bytes: &[u8]) -> String {
         });
     }
     out
+}
+
+#[cfg(test)]
+mod cover_tests {
+    use super::{cover_mime, COVER_MAX_BYTES};
+
+    #[test]
+    fn only_image_extensions_are_accepted() {
+        assert_eq!(cover_mime("media/covers/a.png").ok(), Some("image/png"));
+        assert_eq!(cover_mime("media/covers/a.JPG").ok(), Some("image/jpeg"));
+        assert_eq!(cover_mime("media/covers/a.webp").ok(), Some("image/webp"));
+        assert_eq!(cover_mime("media/covers/a.avif").ok(), Some("image/avif"));
+        // A manifest is not a picture, and neither is a bare name.
+        assert!(cover_mime("manifest.yaml").is_err());
+        assert!(cover_mime("knowledge/index.yaml").is_err());
+        assert!(cover_mime("media/covers/cover").is_err());
+    }
+
+    #[test]
+    fn the_size_cap_is_a_sane_thumbnail_limit() {
+        assert!(COVER_MAX_BYTES >= 1024 * 1024);
+        assert!(COVER_MAX_BYTES <= 32 * 1024 * 1024);
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
