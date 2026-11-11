@@ -161,8 +161,22 @@ export function MessageList({
       className="min-h-0 flex-1"
       contentClassName="flex flex-col gap-5 py-2 pr-2"
     >
-      {turns.map((turn) =>
-        turn.role === "user" ? (
+      {turns.map((turn, index) => {
+        // One avatar per run of assistant turns. A reply, its tool results and
+        // the follow-up all belong to the same speaker, so drawing Lumi for
+        // each row turned one answer into a column of faces.
+        const previous = turns[index - 1];
+        const continuesRun =
+          turn.role === "assistant" && previous?.role === "assistant";
+        const mark = continuesRun ? (
+          <span aria-hidden="true" className="mt-0.5 size-7 shrink-0" />
+        ) : (
+          <span className="mt-0.5 grid size-7 shrink-0 place-items-center">
+            <LumiMark className="size-7" />
+          </span>
+        );
+
+        return turn.role === "user" ? (
           <Message key={turn.id} from="user" animateIn>
             <MessageContent>
               <MessageBubble
@@ -187,20 +201,26 @@ export function MessageList({
             </MessageContent>
           </Message>
         ) : turn.toolCallId ? (
-          <Message key={turn.id} from="assistant" animateIn>
-            <span className="mt-0.5 grid size-7 shrink-0 place-items-center">
-              <LumiMark className="size-7 opacity-60" />
-            </span>
+          <Message
+            key={turn.id}
+            from="assistant"
+            animateIn
+            className={continuesRun ? "-mt-2" : undefined}
+          >
+            {mark}
             <MessageContent>
               <ToolTurnRow turn={turn} />
               <TurnActions onDelete={() => onDelete?.(turn.id)} />
             </MessageContent>
           </Message>
         ) : (
-          <Message key={turn.id} from="assistant" animateIn>
-            <span className="mt-0.5 grid size-7 shrink-0 place-items-center">
-              <LumiMark className="size-7" />
-            </span>
+          <Message
+            key={turn.id}
+            from="assistant"
+            animateIn
+            className={continuesRun ? "-mt-2" : undefined}
+          >
+            {mark}
             <MessageContent>
               {turn.error ? (
                 <>
@@ -250,15 +270,17 @@ export function MessageList({
                       key={call.id}
                       call={call}
                       pending={isWaiting(call.id)}
-                      onComplete={(callId, output) => onAnswerQuiz?.(callId, output)}
+                      onComplete={(callId, output) =>
+                        onAnswerQuiz?.(callId, output)
+                      }
                     />
                   ))}
                 </>
               )}
             </MessageContent>
           </Message>
-        ),
-      )}
+        );
+      })}
     </MessageScroller>
   );
 }
