@@ -305,11 +305,10 @@ pub fn install(staging: &Path, packages_root: &Path) -> Result<InstallResult, St
     }
 
     let content = content::load(&target, manifest)?;
-    let cover = content
-        .Manifest
-        .CoverFile
-        .as_ref()
-        .map(|file| target.join(file).to_string_lossy().to_string());
+    // The cover is stored as the package-relative path the manifest declares,
+    // not as an absolute one: the read command re-joins it under the workspace
+    // root so a moved package does not strand its own cover.
+    let cover = content.Manifest.CoverFile.clone();
 
     Ok(InstallResult {
         Stats: content.Stats,
