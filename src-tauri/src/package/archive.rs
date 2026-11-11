@@ -77,23 +77,24 @@ pub fn extract(archive: &Path, dest: &Path) -> Result<ExtractReport, String> {
     let mut written: u64 = 0;
     reader
         .for_each_entries(|entry, stream| {
-            let name = entry.name();
-            let relative = name.trim_end_matches('/');
+            // Same normalisation as `list_entries`: a Windows-packed archive
+            // stores backslashes, and the path gate only accepts forward ones.
+            let relative = entry.name().replace('\\', "/").trim_end_matches('/').to_string();
             if relative.is_empty() {
                 return Ok(true);
             }
 
-            if let Err(message) = check_package_path(relative) {
+            if let Err(message) = check_package_path(&relative) {
                 return Err(fail(message));
             }
-            let target = dest.join(relative);
+            let target = dest.join(&relative);
 
             if entry.is_directory() {
                 std::fs::create_dir_all(&target).map_err(|error| fail(error.to_string()))?;
                 return Ok(true);
             }
 
-            check_extension(relative).map_err(fail)?;
+            check_extension(&relative).map_err(fail)?;
             if let Some(parent) = target.parent() {
                 std::fs::create_dir_all(parent).map_err(|error| fail(error.to_string()))?;
             }
@@ -131,24 +132,28 @@ pub struct ListedEntry {
 
 /// Reads the header only: no content is decoded, so this is safe to call on a
 /// file the user just picked before anything is written.
+///
+/// This reads `archive().files` instead of iterating the decoder: iteration is
+/// organised per compression block, and a solid archive (the shape every
+/// third-party packer produces) has exactly one block, so any attempt to skip
+/// work inside the callback would skip every remaining entry with it.
 pub fn list_entries(archive: &Path) -> Result<Vec<ListedEntry>, String> {
-    let mut reader = ArchiveReader::open(archive, Password::empty())
+    let reader = ArchiveReader::open(archive, Password::empty())
         .map_err(|error| format!("不是合法的 7z 容器：{error}"))?;
 
-    let mut listed = Vec::new();
-    reader
-        .for_each_entries(|entry, _stream| {
-            listed.push(ListedEntry {
-                Name: entry.name().to_string(),
-                Size: entry.size(),
-                IsDirectory: entry.is_directory(),
-            });
-            // Skip the block: the bytes are not needed for a listing.
-            Ok(false)
+    Ok(reader
+        .archive()
+        .files
+        .iter()
+        .map(|entry| ListedEntry {
+            // 7z headers carry the separator the packer used, which on Windows
+            // is a backslash; every check downstream compares POSIX paths, so
+            // the slash is fixed once, at the door.
+            Name: entry.name().replace('\\', "/"),
+            Size: entry.size(),
+            IsDirectory: entry.is_directory(),
         })
-        .map_err(|error| format!("读取学习包目录失败：{error}"))?;
-
-    Ok(listed)
+        .collect())
 }
 
 /// Packs a directory into a 7z container. Entries are stored non-solid so the

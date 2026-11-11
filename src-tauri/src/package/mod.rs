@@ -409,8 +409,17 @@ mod tests {
         let content = open(std::path::Path::new(&installed.RootPath))
             .expect("open")
             .expect("present");
-        assert_eq!(content.Stats.Questions, 15);
-        assert_eq!(content.Solutions.len(), 15);
+        assert_eq!(content.Stats.Questions, 33);
+        assert_eq!(content.Solutions.len(), 33);
+        // The first chapter is the one place where every point has a question,
+        // so the diagnostic paper has something to ask from the start.
+        let covered: std::collections::HashSet<&str> = content
+            .Questions
+            .iter()
+            .filter_map(|question| question.KnowledgePoints.first())
+            .map(String::as_str)
+            .collect();
+        assert!(covered.contains("calculus.book.ch01.continuity"));
         let solved = content
             .Solutions
             .iter()

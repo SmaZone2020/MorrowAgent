@@ -2,11 +2,15 @@
 // camelCase, so the snake_case lint does not apply to this crate.
 #![allow(non_snake_case)]
 
-mod package;
 mod prefs;
 mod provider;
 mod store;
 mod ui_state;
+
+// Public so the shipped-archive integration test can drive the same importer
+// the UI uses; unit tests build their own archives and never see the entry
+// shape a third-party packer produces.
+pub mod package;
 
 use package::ValidationReport;
 use provider::secret::{self, ProviderBook};
