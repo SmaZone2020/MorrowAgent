@@ -32,9 +32,10 @@
               "open_license",
               "licensed",
               "permission_required",
+              "local_only",
               "unknown"
             ],
-            "description": "授权状态未知时填 unknown，不得默认按公开分发处理。"
+            "description": "授权状态未知时填 unknown，不得默认按公开分发处理。local_only 表示用户自持、仅限本机使用的资料：原文可以进入本地学习包，但该包不得公开分发。"
           },
           "attribution": { "type": "string", "maxLength": 400 }
         }
