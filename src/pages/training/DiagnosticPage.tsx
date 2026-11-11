@@ -78,11 +78,15 @@ export function DiagnosticPage() {
             </p>
 
             {plan.missing.length > 0 ? (
-              <p className="text-sm text-muted-foreground">
-                以下知识点还没有题目，本次不测：
+              <p className="text-sm leading-6 text-muted-foreground">
+                {plan.missing.length} 个知识点还没有题目，本次不测：
                 {plan.missing
+                  .slice(0, 6)
                   .map((id) => findPoint(index, id)?.name ?? id)
                   .join("、")}
+                {plan.missing.length > 6
+                  ? ` 等 ${plan.missing.length} 个`
+                  : ""}
               </p>
             ) : null}
 
