@@ -1,4 +1,10 @@
 import type { ToolDef } from "@/features/settings/aiBridge";
+import {
+  LEVEL_LABEL,
+  levelOf,
+  masteryOf,
+  weakestFirst,
+} from "@/features/training/mastery";
 
 /**
  * Tools the model may call, and how this client answers them.
@@ -19,6 +25,8 @@ export interface ToolContext {
     content: string;
     questionType: string;
     answer: string;
+    /** 1–5, as the package declares it. */
+    difficulty: number;
   }[];
   /** Per-point tallies, keyed by knowledge point id. */
   stats: Map<string, { attempts: number; correct: number; lastAttemptAt: number }>;
@@ -192,39 +200,51 @@ export const TOOLS: ToolHandler[] = [
         if (!stats) {
           return {
             status: "ok",
-            output: `${pointId}${point ? `（${point.name}）` : ""}：还没有作答记录。`,
+            output: `${pointId}${point ? `（${point.name}）` : ""}：还没有作答记录，掌握度未知。`,
           };
         }
-        const accuracy = stats.attempts
-          ? Math.round((stats.correct / stats.attempts) * 100)
-          : 0;
+        const mastery = masteryOf({
+          pointId,
+          attempts: stats.attempts,
+          correct: stats.correct,
+          lastAttemptAt: stats.lastAttemptAt,
+        });
         return {
           status: "ok",
-          output: `${pointId}${point ? `（${point.name}）` : ""}：作答 ${stats.attempts} 次，正确 ${stats.correct} 次，正确率 ${accuracy}%。`,
+          output: `${pointId}${point ? `（${point.name}）` : ""}：作答 ${mastery.attempts} 次，正确 ${mastery.correct} 次，掌握度 ${mastery.score}%（${LEVEL_LABEL[levelOf(mastery)]}，置信度 ${Math.round(mastery.confidence * 100)}%）。`,
         };
       }
 
       const limit = count(args.limit, 5, 20);
-      const ranked = [...context.stats.entries()]
-        .filter(([, stats]) => stats.attempts > 0)
-        .map(([id, stats]) => ({
-          id,
-          name: context.findPoint(id)?.name ?? id,
-          accuracy: stats.correct / stats.attempts,
-          attempts: stats.attempts,
-        }))
-        .sort((a, b) => a.accuracy - b.accuracy || b.attempts - a.attempts)
-        .slice(0, limit);
-      if (ranked.length === 0) {
-        return { status: "ok", output: "还没有任何作答记录。" };
+      // Every point joins the ranking, not just the answered ones: a point with
+      // no attempt is the biggest unknown, and the model should offer to test
+      // it rather than assume the student is fine there.
+      const ranked = weakestFirst(
+        context.points.map((point) => {
+          const stats = context.stats.get(point.id);
+          return masteryOf({
+            pointId: point.id,
+            attempts: stats?.attempts ?? 0,
+            correct: stats?.correct ?? 0,
+            lastAttemptAt: stats?.lastAttemptAt ?? 0,
+          });
+        }),
+      ).slice(0, limit);
+      if (ranked.every((entry) => entry.attempts === 0)) {
+        return {
+          status: "ok",
+          output: "还没有任何作答记录。可以建议先做一份诊断卷，或针对上面列出的知识点出几道题试试。",
+        };
       }
       return {
         status: "ok",
         output: ranked
-          .map(
-            (entry) =>
-              `${entry.id}｜${entry.name}｜${Math.round(entry.accuracy * 100)}%（${entry.attempts} 次）`,
-          )
+          .map((entry) => {
+            const name = context.findPoint(entry.pointId)?.name ?? entry.pointId;
+            return entry.attempts === 0
+              ? `${entry.pointId}｜${name}｜未测`
+              : `${entry.pointId}｜${name}｜${entry.score}%（${entry.attempts} 次，${LEVEL_LABEL[levelOf(entry)]}）`;
+          })
           .join("\n"),
       };
     },

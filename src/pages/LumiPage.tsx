@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Paperclip } from "@gravity-ui/icons";
 import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
 import { Button } from "@/vendor/beui/components/motion/button";
@@ -19,9 +19,11 @@ import { useBoundConversation } from "@/features/lumi/useBoundConversation";
 import { useToolContext } from "@/features/lumi/useToolContext";
 import { greetingFor } from "@/features/lumi/greetings";
 import { useProviderStatus } from "@/features/settings/providerStatus";
+import { useHasAttempts } from "@/features/training/useHasAttempts";
 import { usePersistedState } from "@/features/uiState/usePersistedState";
 import { useWorkspaceId } from "@/features/workspace/WorkspaceContext";
 import { workspaceScope } from "@/features/uiState/scope";
+import { workspacePath } from "@/app/navigation";
 
 export function LumiPage() {
   // Binds the shared store to this package before anything is read, so a
@@ -29,6 +31,7 @@ export function LumiPage() {
   useBoundConversation(useConversation);
 
   const workspaceId = useWorkspaceId();
+  const navigate = useNavigate();
   const [greeting, setGreeting] = useState(() => greetingFor());
   const [draft, setDraft] = usePersistedState(
     workspaceScope(workspaceId, "lumi.draft"),
@@ -75,6 +78,9 @@ export function LumiPage() {
 
   // Publishes the package to the tool layer; tools read live content.
   useToolContext();
+
+  // A package nobody has answered in is the one that needs the diagnostic.
+  const hasAttempts = useHasAttempts(workspaceId);
 
   const empty = turns.length === 0;
 
@@ -177,6 +183,20 @@ export function LumiPage() {
             <p className="max-w-md text-center text-lg text-muted-foreground">
               {greeting}
             </p>
+            {/* A learner with nothing on record cannot be helped precisely, so
+                the diagnostic is offered once, right where they land. */}
+            {hasAttempts === false ? (
+              <Button
+                size="sm"
+                variant="secondary"
+                className="text-sm"
+                onClick={() =>
+                  navigate(workspacePath(workspaceId, "/diagnostic"))
+                }
+              >
+                先做一份诊断卷
+              </Button>
+            ) : null}
           </div>
         ) : (
           <MessageList

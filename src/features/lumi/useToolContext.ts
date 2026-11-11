@@ -37,7 +37,7 @@ export function useToolContext() {
           content: question.content,
           questionType: question.questionType,
           answer: question.answer,
-          difficulty: 3,
+          difficulty: question.difficulty,
         })),
       stats: attemptSnapshot(workspaceId).stats,
       wrong: attemptSnapshot(workspaceId).wrong,
