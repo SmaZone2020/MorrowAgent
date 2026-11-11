@@ -54,7 +54,7 @@ export function ContentFigure({ image }: { image: ContentImage }) {
     <figure className="flex flex-col items-center gap-1 py-1">
       {body}
       {image.caption ? (
-        <figcaption className="text-xs text-muted-foreground">
+        <figcaption className="text-sm text-muted-foreground">
           <MathText>{image.caption}</MathText>
         </figcaption>
       ) : null}

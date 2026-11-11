@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { MathLabel } from "@/components/MathLabel";
 import type { PlotSpec } from "@/features/plot/plotSpec";
 import type { ExpressionScope } from "@/features/plot/expression";
 
@@ -102,7 +103,7 @@ export function FunctionPlot({ spec }: { spec: PlotSpec }) {
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         role="img"
         aria-label={spec.title || "函数图像"}
-        className="h-auto w-full rounded-xl bg-card"
+        className="mx-auto h-auto max-h-[60vh] w-full rounded-xl bg-card"
       >
         <rect x="0" y="0" width={WIDTH} height={HEIGHT} fill="none" />
 
@@ -191,13 +192,15 @@ export function FunctionPlot({ spec }: { spec: PlotSpec }) {
       {spec.curves.length > 1 || spec.curves[0]?.label !== spec.curves[0]?.expr ? (
         <div className="flex flex-wrap items-center gap-3">
           {spec.curves.map((curve, index) => (
-            <span key={curve.expr} className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <span key={curve.expr} className="flex items-center gap-1.5 text-sm">
               <span
                 aria-hidden="true"
                 className="inline-block h-0.5 w-4 rounded-full"
                 style={{ backgroundColor: CURVE_COLORS[index % CURVE_COLORS.length] }}
               />
-              {curve.label}
+              <MathLabel className="text-muted-foreground">
+                {curve.label}
+              </MathLabel>
             </span>
           ))}
         </div>

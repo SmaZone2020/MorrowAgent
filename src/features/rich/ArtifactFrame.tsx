@@ -3,7 +3,7 @@ import { Button } from "@/vendor/beui/components/motion/button";
 import { Modal } from "@/components/Modal";
 
 /** Inline artifacts never exceed this width, so one big figure cannot eat the reply. */
-export const ARTIFACT_MAX_WIDTH = "max-w-[450px]";
+export const ARTIFACT_MAX_WIDTH = "max-w-[600px]";
 
 /**
  * The frame every rich block sits in: a title, the drawing, and two actions —
@@ -15,7 +15,8 @@ export function ArtifactFrame({
   actions,
   children,
 }: {
-  title: string;
+  /** Already-rendered heading, so a LaTeX title can pass typeset maths. */
+  title: ReactNode;
   actions: ReactNode;
   children: ReactNode;
 }) {
@@ -66,11 +67,15 @@ export function ArtifactAction({
 export function ArtifactOverlay({
   open,
   title,
+  heading,
   onClose,
   children,
 }: {
   open: boolean;
+  /** Plain-text name, used as the accessible label and the close-button target. */
   title: string;
+  /** Typeset version of the same heading, when it carries maths. */
+  heading?: ReactNode;
   onClose: () => void;
   children: ReactNode;
 }) {
@@ -81,6 +86,7 @@ export function ArtifactOverlay({
         if (!next) onClose();
       }}
       title={title}
+      heading={heading}
       width="xl"
       bodyClassName="max-h-[75vh]"
     >

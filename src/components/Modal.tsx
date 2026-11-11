@@ -20,6 +20,7 @@ export function Modal({
   open,
   onOpenChange,
   title,
+  heading,
   children,
   footer,
   width = "md",
@@ -29,6 +30,8 @@ export function Modal({
   onOpenChange: (open: boolean) => void;
   /** Doubles as the accessible name, so it must be the visible heading. */
   title: string;
+  /** Rich version of the heading, when the title is not plain text. */
+  heading?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
   width?: keyof typeof WIDTH;
@@ -44,7 +47,7 @@ export function Modal({
           {/* Right padding clears the modal's own close button. */}
           <div className="border-b border-border/70 px-5 py-3.5 pr-14">
             <h2 className="truncate text-base font-semibold text-foreground">
-              {title}
+              {heading ?? title}
             </h2>
           </div>
           <div

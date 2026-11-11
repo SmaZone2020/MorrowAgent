@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import { ArrowDownToLine, ChevronsExpandHorizontal } from "@gravity-ui/icons";
+import { MathLabel } from "@/components/MathLabel";
 import {
   ArtifactAction,
   ArtifactFrame,
@@ -38,16 +39,20 @@ function Frame({
   body,
   full,
 }: {
+  /** Plain name, used for the download filename and the dialog's aria-label. */
   title: string;
   onSave: () => void;
   body: ReactNode;
   full: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  // A model-written title often carries maths (`y = e^(-k·x²)`), so the visible
+  // heading is typeset while the plain string stays behind for aria and files.
+  const heading = <MathLabel>{title}</MathLabel>;
   return (
     <>
       <ArtifactFrame
-        title={title}
+        title={heading}
         actions={
           <>
             <ArtifactAction label="下载" onClick={onSave}>
@@ -64,6 +69,7 @@ function Frame({
       <ArtifactOverlay
         open={open}
         title={title}
+        heading={heading}
         onClose={() => setOpen(false)}
       >
         {full}
@@ -220,6 +226,7 @@ function ImageBlock({ src, alt }: { src: string; alt: string }) {
       <ArtifactOverlay
         open={open}
         title={title}
+        heading={<MathLabel>{title}</MathLabel>}
         onClose={() => setOpen(false)}
       >
         <img
