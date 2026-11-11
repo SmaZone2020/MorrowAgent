@@ -1,5 +1,5 @@
 import type { ComponentType, SVGProps } from "react";
-import { BookOpen, ChartLine, GraduationCap, Persons, Target } from "@gravity-ui/icons";
+import { BookOpen, ChartLine, GraduationCap, LayoutHeaderCells, Persons, Target } from "@gravity-ui/icons";
 import { LumiMark } from "@/features/lumi/LumiMark";
 
 export type NavigationIcon = ComponentType<SVGProps<SVGSVGElement>>;
@@ -16,6 +16,11 @@ export interface NavigationItem {
   label: string;
   path: string;
   icon: NavigationIcon;
+  /**
+   * The package's own home. Its `path` is the workspace root, which is a prefix
+   * of every other entry, so it must match exactly instead of by prefix.
+   */
+  home?: boolean;
   children?: NavigationSubItem[];
 }
 
@@ -34,6 +39,13 @@ export const workspaceNavigation: NavigationGroup[] = [
     key: "workspace",
     label: "学习区",
     items: [
+      {
+        key: "dashboard",
+        label: "仪表盘",
+        path: "",
+        icon: LayoutHeaderCells,
+        home: true,
+      },
       { key: "lumi", label: "Lumi AI", path: "/lumi", icon: LumiMark },
       { key: "knowledge", label: "知识库", path: "/knowledge", icon: BookOpen },
       { key: "diagnostic", label: "诊断测评", path: "/diagnostic", icon: Target },

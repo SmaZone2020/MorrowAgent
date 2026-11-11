@@ -11,7 +11,7 @@ import {
   findTool,
   parseArguments,
   QUIZ_TOOL,
-  TOOL_DEFS,
+  toolDefs,
   type ToolContext,
 } from "@/features/lumi/tools";
 
@@ -20,7 +20,8 @@ export const MAX_TOOL_ROUNDS = 4;
 
 export interface LoopDeps {
   systemPrompt: string;
-  offersTools: boolean;
+  /** Names of the tools this surface offers; empty means none. */
+  toolNames: string[];
   context: () => ToolContext | null;
   /** Reads the live transcript; the loop must not capture a stale snapshot. */
   turns: () => ConversationTurn[];
@@ -154,7 +155,7 @@ export function createLoop(deps: LoopDeps) {
         signal,
         maxTokens: prefs.maxTokens,
         temperature: prefs.temperature,
-        tools: deps.offersTools ? TOOL_DEFS : undefined,
+        tools: deps.toolNames.length > 0 ? toolDefs(deps.toolNames) : undefined,
         onProgress: (partial) => {
           // Switching conversations aborts the request, but a delta already in
           // flight must not land in the conversation that is now on screen.

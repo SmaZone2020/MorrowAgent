@@ -66,9 +66,29 @@ export function entryPath(entry: FlatNavigationEntry): string {
   return entry.child?.path ?? entry.item.path;
 }
 
-export function matchesPath(entry: FlatNavigationEntry, pathname: string): boolean {
-  const target = entryPath(entry);
+/**
+ * A package's home has the workspace root as its path, which prefixes every
+ * other page; it therefore only matches exactly. Every other entry owns its
+ * subtree.
+ */
+function matchesItem(item: NavigationItem, pathname: string): boolean {
+  const target = item.path;
+  if (item.home) {
+    return pathname.replace(/\/+$/, "") === target;
+  }
   return pathname === target || pathname.startsWith(`${target}/`);
+}
+
+export function isItemActive(item: NavigationItem, pathname: string): boolean {
+  return matchesItem(item, pathname);
+}
+
+export function matchesPath(entry: FlatNavigationEntry, pathname: string): boolean {
+  if (entry.child) {
+    const target = entry.child.path;
+    return pathname === target || pathname.startsWith(`${target}/`);
+  }
+  return matchesItem(entry.item, pathname);
 }
 
 export function resolveActiveEntry(

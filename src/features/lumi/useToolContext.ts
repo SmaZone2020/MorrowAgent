@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useKnowledge } from "@/features/workspace/WorkspaceContext";
-import { findPoint, questionsFor } from "@/features/knowledge";
+import { findPoint, findQuestion, questionsFor } from "@/features/knowledge";
 import { attemptSnapshot, refreshAttempts } from "@/features/training/attemptCache";
 import { setToolContextSource } from "@/features/lumi/toolContext";
 import type { ToolContext } from "@/features/lumi/tools";
@@ -13,7 +13,7 @@ import type { ToolContext } from "@/features/lumi/tools";
  * conversation store free of React context while still answering from the live
  * package rather than a copy taken at mount.
  */
-export function useToolContext() {
+export function useToolContext(owner: string) {
   const index = useKnowledge();
   const workspaceId = index.view.workspaceId;
 
@@ -31,6 +31,19 @@ export function useToolContext() {
         const point = findPoint(index, pointId);
         return point ? { name: point.name, summary: point.summary } : undefined;
       },
+      findQuestion: (questionId) => {
+        const question = findQuestion(index, questionId);
+        return question
+          ? {
+              id: question.id,
+              content: question.content,
+              questionType: question.questionType,
+              options: question.options,
+              difficulty: question.difficulty,
+              knowledgeTags: question.knowledgeTags,
+            }
+          : undefined;
+      },
       questionsForPoint: (pointId) =>
         questionsFor(index, pointId).map((question) => ({
           id: question.id,
@@ -43,7 +56,7 @@ export function useToolContext() {
       wrong: attemptSnapshot(workspaceId).wrong,
     });
 
-    setToolContextSource(read);
-    return () => setToolContextSource(null);
-  }, [index, workspaceId]);
+    setToolContextSource(owner, read);
+    return () => setToolContextSource(owner, null);
+  }, [index, owner, workspaceId]);
 }

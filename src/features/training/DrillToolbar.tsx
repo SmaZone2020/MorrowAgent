@@ -68,7 +68,12 @@ export function DrillToolbar({
             setActive((current) => (current === "lumi" ? null : "lumi"))
           }
         >
-          <LumiMark className="size-4" />
+          {/* The pressed state paints the button with `--primary`, so the mark
+              switches to the on-primary pair instead of keeping the ink token. */}
+          <LumiMark
+            className="size-4"
+            tone={active === "lumi" ? "onPrimary" : "ink"}
+          />
         </ToolButton>
         <ToolButton
           label="草稿纸"

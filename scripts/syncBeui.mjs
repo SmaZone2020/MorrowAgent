@@ -27,6 +27,9 @@ const slugs = [
   // The header trail is a route, so it gets the registry's collapsing list:
   // deep knowledge pages drop the middle segments into an overflow panel.
   "breadcrumb",
+  // Switching packages is a searchable list of installed ones, which is what
+  // the registry's combobox is: filter, keyboard stepping and a morphing panel.
+  "combobox",
   // Dialogs come from the same registry so every overlay shares one unfold
   // animation and one focus trap instead of a per-page portal.
   "center-morph-modal",

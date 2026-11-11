@@ -2,6 +2,7 @@ import { createHashRouter, Navigate } from "react-router-dom";
 import { RootLayout } from "@/app/shell/RootLayout";
 import { WorkspaceRoute } from "@/app/shell/WorkspaceRoute";
 import { LibraryPage } from "@/pages/LibraryPage";
+import { WorkspaceDashboardPage } from "@/pages/WorkspaceDashboardPage";
 import { LumiPage } from "@/pages/LumiPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 import { SettingsLayout } from "@/pages/settings/SettingsLayout";
@@ -38,7 +39,7 @@ export const router = createHashRouter([
         path: "w/:workspaceId",
         element: <WorkspaceRoute />,
         children: [
-          { index: true, element: <Navigate to="lumi" replace /> },
+          { index: true, element: <WorkspaceDashboardPage /> },
           { path: "lumi", element: <LumiPage /> },
           { path: "knowledge", element: <KnowledgePage /> },
           { path: "drill", element: <DrillPage /> },

@@ -6,6 +6,7 @@ import { ArrowRotateLeft } from "@gravity-ui/icons";
 import { MessageList } from "@/features/lumi/MessageList";
 import { LumiMark } from "@/features/lumi/LumiMark";
 import { useBoundConversation } from "@/features/lumi/useBoundConversation";
+import { useToolContext } from "@/features/lumi/useToolContext";
 import { useDrillConversation } from "@/features/training/drillConversation";
 import { usePersistedState } from "@/features/uiState";
 import { useWorkspaceId } from "@/features/workspace/WorkspaceContext";
@@ -13,21 +14,16 @@ import { workspaceScope } from "@/features/uiState/scope";
 import type { Question } from "@/features/knowledge";
 
 /**
- * The question on screen, formatted as the opening line of the composer.
+ * The question on screen, referenced by id instead of pasted in.
  *
- * The rail answers questions about one card, so the card has to travel with the
- * first message; the model has no other view of the page. It lands in the
- * composer rather than being sent silently, so the user can trim it down or add
- * their own attempt before anything is spent.
+ * The rail answers questions about one card, but the whole stem is a screenful
+ * of text that the user did not write: seeding the composer with it makes every
+ * question look like a long quote. A `@id` reference is short, unambiguous, and
+ * resolvable through the `read_question` tool, so the model still sees the real
+ * stem without the user having to paste it.
  */
 function questionSeed(question: Question): string {
-  const options = question.options
-    .map((option) => `${option.key}. ${option.content}`)
-    .join("\n");
-  return [`关于这道题：${question.content}`, options, "", "我的问题是："]
-    .join("\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trimEnd();
+  return [`关于 @${question.id}`, "", "我的问题是："].join("\n");
 }
 
 /**
@@ -39,6 +35,9 @@ function questionSeed(question: Question): string {
  */
 export function DrillLumiPanel({ question }: { question?: Question }) {
   useBoundConversation(useDrillConversation);
+  // The rail's composer carries only `@<id>`, so the model needs the package
+  // readable here too — otherwise it would answer from the id alone.
+  useToolContext("drill");
 
   const workspaceId = useWorkspaceId();
   const turns = useDrillConversation((state) => state.turns);
@@ -124,7 +123,11 @@ export function DrillLumiPanel({ question }: { question?: Question }) {
         )}
       </div>
 
-      <div className="min-h-0 flex-1">
+      {/* A flex column, not a bare `flex-1`: the scroller sizes itself with
+          `h-full`, which needs a parent that actually gives it a height. Without
+          the flex context the rail grows to fit the transcript and never
+          scrolls. */}
+      <div className="flex min-h-0 flex-1 flex-col">
         {turns.length > 0 ? (
           <MessageList
             turns={turns}

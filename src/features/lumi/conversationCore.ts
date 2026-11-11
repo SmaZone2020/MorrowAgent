@@ -95,8 +95,11 @@ export interface ConversationStoreOptions {
    * prefix is what keeps the drill's transcripts out of the Lumi page's list.
    */
   idPrefix?: string;
-  /** Tools this surface offers. The drill rail has none. */
-  tools?: boolean;
+  /**
+   * Tools this surface offers. The drill rail gets only the read tools it can
+   * resolve; it never poses questions of its own.
+   */
+  tools?: string[];
   /** Reads the package so a tool answer comes from real content. */
   context?: () => ToolContext | null;
 }
@@ -116,7 +119,7 @@ export function createConversationStore({
   scope,
   systemPrompt,
   idPrefix = "conv",
-  tools: offersTools = false,
+  tools: toolNames = [],
   context,
 }: ConversationStoreOptions) {
   let controller: AbortController | null = null;
@@ -158,7 +161,7 @@ export function createConversationStore({
       stop,
       request: createLoop({
         systemPrompt,
-        offersTools,
+        toolNames,
         context: () => context?.() ?? null,
         turns: () => get().turns,
         conversationId: () => get().conversationId,

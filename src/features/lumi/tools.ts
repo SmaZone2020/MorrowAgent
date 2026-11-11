@@ -20,6 +20,17 @@ export interface ToolContext {
   points: { id: string; name: string; summary: string }[];
   /** Point metadata by id. */
   findPoint: (pointId: string) => { name: string; summary: string } | undefined;
+  /** One question by id, for resolving `@<id>` references. */
+  findQuestion: (questionId: string) =>
+    | {
+        id: string;
+        content: string;
+        questionType: string;
+        options: { key: string; content: string }[];
+        difficulty: number;
+        knowledgeTags: string[];
+      }
+    | undefined;
   questionsForPoint: (pointId: string) => {
     id: string;
     content: string;
@@ -251,6 +262,47 @@ export const TOOLS: ToolHandler[] = [
   },
   {
     definition: {
+      name: "read_question",
+      description:
+        "按题目 ID 读取题目原文、选项、题型与关联知识点。用户在消息里用 @题目ID 引用某道题时，先用它拿到题干，再作答；不要凭空猜测题目内容。",
+      parameters: {
+        type: "object",
+        required: ["questionId"],
+        properties: {
+          questionId: {
+            type: "string",
+            description: "题目 ID，例如 calculus.book.ch01.function.q.000001。",
+          },
+        },
+      },
+    },
+    run: (args, context) => {
+      const questionId = text(args.questionId).replace(/^@/, "");
+      if (!questionId) return { status: "error", output: "questionId 不能为空。" };
+      const question = context.findQuestion(questionId);
+      if (!question) {
+        return { status: "ok", output: `没有找到题目 ${questionId}。` };
+      }
+      const options = question.options
+        .map((option) => `${option.key}. ${option.content}`)
+        .join("\n");
+      return {
+        status: "ok",
+        output: [
+          `${question.id}｜${question.questionType}｜难度 ${question.difficulty}`,
+          question.content,
+          options,
+          question.knowledgeTags.length > 0
+            ? `知识点：${question.knowledgeTags.join("、")}`
+            : "",
+        ]
+          .filter(Boolean)
+          .join("\n"),
+      };
+    },
+  },
+  {
+    definition: {
       name: "list_wrong_questions",
       description: "列出错题本里最近做错的题，包含题目原文与对应知识点，用于有针对性地补讲或重做。",
       parameters: {
@@ -283,5 +335,16 @@ export function findTool(name: string): ToolHandler | undefined {
   return TOOLS.find((tool) => tool.definition.name === name);
 }
 
-/** The definitions sent with every request that offers tools. */
-export const TOOL_DEFS: ToolDef[] = TOOLS.map((tool) => tool.definition);
+/** Every tool name, for a surface that offers the full set. */
+export const ALL_TOOL_NAMES = TOOLS.map((tool) => tool.definition.name);
+
+/**
+ * The definitions to send with a request. A surface lists only what it can
+ * actually resolve: the drill rail has the package loaded, but it has no
+ * business posing questions, so it gets a narrower set than the Lumi page.
+ */
+export function toolDefs(names: string[]): ToolDef[] {
+  return TOOLS.filter((tool) => names.includes(tool.definition.name)).map(
+    (tool) => tool.definition,
+  );
+}

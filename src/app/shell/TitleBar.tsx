@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { AnimatedSidebarTrigger } from "@/vendor/beui/components/motion/animated-sidebar";
-import { LayoutSideContentLeft } from "@gravity-ui/icons";
+import { House, LayoutSideContentLeft } from "@gravity-ui/icons";
 import { resolveShellLayer } from "@/app/shell/navHelpers";
 import {
   closeWindow,
@@ -19,10 +19,17 @@ const CONTROL_SIZE = "size-9";
 // is what gives the trigger its context. The shelf and settings are single
 // pages with no rail, so the toggle is disabled there instead of being
 // removed: the bar keeps its shape and the button returns inside a package.
+//
+// The home button sits to its left. Inside a package it is the shortest way
+// back to the shelf, which is otherwise only reachable through the breadcrumb;
+// on the shelf itself there is nowhere to go, so it is disabled rather than
+// hidden.
 export function TitleBar() {
   const { pathname } = useLocation();
-  const sidebarToggleDisabled =
-    resolveShellLayer(pathname).kind !== "workspace";
+  const navigate = useNavigate();
+  const layer = resolveShellLayer(pathname);
+  const sidebarToggleDisabled = layer.kind !== "workspace";
+  const homeDisabled = layer.kind === "shelf";
   const [maximized, setMaximized] = useState(false);
 
   useEffect(() => {
@@ -61,6 +68,17 @@ export function TitleBar() {
         >
           Morrow Agent
         </span>
+        <button
+          type="button"
+          data-tauri-drag-region="false"
+          aria-label="返回书架"
+          title={homeDisabled ? "已经在书架" : "返回书架"}
+          disabled={homeDisabled}
+          onClick={() => navigate("/")}
+          className="ml-1 inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+        >
+          <House aria-hidden="true" className="size-4.5" />
+        </button>
         <AnimatedSidebarTrigger
           aria-label="收起或展开侧边栏"
           disabled={sidebarToggleDisabled}

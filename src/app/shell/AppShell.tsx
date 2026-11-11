@@ -21,11 +21,13 @@ import type { NavigationItem } from "@/app/navigation";
 import {
   describeLocation,
   flattenNavigation,
+  isItemActive,
   navigationFor,
   resolveActiveEntry,
   resolveShellLayer,
 } from "@/app/shell/navHelpers";
 import { Breadcrumb } from "@/app/shell/Breadcrumb";
+import { PackageSwitcher } from "@/app/shell/PackageSwitcher";
 import { AppStatusFooter } from "@/app/shell/AppStatusFooter";
 import { RailFlyout } from "@/app/shell/RailFlyout";
 import { usePersistedState } from "@/features/uiState/usePersistedState";
@@ -97,9 +99,12 @@ export function AppShell() {
         className="min-h-0"
         panelClassName="h-full border-border"
       >
-        <AnimatedSidebarHeader className="md:hidden">
-          <div className="flex min-h-11 items-center justify-end px-1">
-            <AnimatedSidebarClose className="text-muted-foreground hover:bg-muted">
+        <AnimatedSidebarHeader className="gap-1 px-2 pt-2 pb-1 group-data-[state=collapsed]/sidebar:px-2 group-data-[state=collapsed]/sidebar:hidden">
+          <div className="flex items-center gap-1">
+            <div className="min-w-0 flex-1">
+              <PackageSwitcher workspaceId={layer.workspaceId} />
+            </div>
+            <AnimatedSidebarClose className="text-muted-foreground hover:bg-muted md:hidden">
               <Xmark className="size-4" />
             </AnimatedSidebarClose>
           </div>
@@ -117,8 +122,7 @@ export function AppShell() {
                     const childActive = item.children?.some(
                       (child) => location.pathname === child.path,
                     );
-                    const selfActive =
-                      !item.children && location.pathname.startsWith(item.path);
+                    const selfActive = !item.children && isItemActive(item, location.pathname);
                     return (
                       <AnimatedSidebarMenuItem
                         key={item.key}
@@ -184,7 +188,11 @@ export function AppShell() {
       ) : null}
 
       <AnimatedSidebarInset className="min-h-0">
-        <Breadcrumb workspaceId={layer.workspaceId} title={description.title} />
+        <Breadcrumb
+          workspaceId={layer.workspaceId}
+          title={description.title}
+          atHome={activeEntry?.item.home === true}
+        />
 
         <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto">
           <Outlet />
