@@ -136,10 +136,11 @@ dist
 .pnp.*
 /ref
 
-# Source material: exam PDFs are large and redistributing them is a licensing
-# question we have not settled, so they stay out of the repository. The same
-# applies to the learning packages built from them, and to the packed archives.
-/data/pdf
+# Source material: exam PDFs, textbook scans and the YAML/JSON extracted from
+# them are large, and redistributing most of them is a licensing question we have
+# not settled. The same applies to the learning packages built from them and to
+# the packed archives, so all of it stays out of the repository.
+/data
 /knowledge
 /packages
 /dist-packages
