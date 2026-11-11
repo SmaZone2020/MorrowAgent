@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Button } from "@/vendor/beui/components/motion/button";
-import { ArrowUturnCcwLeft, CircleExclamation, ListCheck, Pencil, TrashBin } from "@gravity-ui/icons";
+import { ArrowUturnCcwLeft, CircleExclamation, Pencil, TrashBin } from "@gravity-ui/icons";
 import {
   Message,
+  MessageAvatar,
   MessageBubble,
   MessageBubbleContent,
   MessageContent,
@@ -10,6 +11,10 @@ import {
 import { MessageScroller } from "@/vendor/beui/components/agents/message-scroller";
 import { StreamingResponse } from "@/vendor/beui/components/agents/streaming-response";
 import { ReasoningText } from "@/vendor/beui/components/agents/loading-states";
+import {
+  ToolResult,
+  ToolResultOutput,
+} from "@/vendor/beui/components/agents/tool-result";
 import { Markdown } from "@/features/rich/Markdown";
 import { LumiMark } from "@/features/lumi/LumiMark";
 import { TurnAttachments } from "@/features/lumi/AttachmentPreview";
@@ -114,23 +119,37 @@ function TurnActions({
   );
 }
 
+/** How each tool reads in the result row's title slot. */
+const TOOL_LABEL: Record<string, string> = {
+  search_knowledge: "检索知识点",
+  get_mastery: "查看掌握度",
+  read_question: "读取题目",
+  list_wrong_questions: "查看错题本",
+};
+
 /**
  * A tool result is not something the user said, so it is not a bubble: one
  * quiet line reports that work happened, and the substance lives in the card
  * above it.
  */
-function ToolTurnRow({ turn }: { turn: ConversationTurn }) {
-  const first = turn.content.split("\n")[0] ?? "";
+function ToolTurnRow({
+  turn,
+  name,
+}: {
+  turn: ConversationTurn;
+  name: string;
+}) {
   return (
-    <details className="group/tool text-sm text-muted-foreground">
-      <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg px-1 py-0.5 hover:text-foreground">
-        <ListCheck className="size-4 shrink-0" />
-        <span className="min-w-0 truncate">{first || "工具已返回"}</span>
-      </summary>
-      <pre className="mt-1 max-h-64 overflow-auto rounded-lg bg-muted/50 p-2 text-sm whitespace-pre-wrap">
-        {turn.content}
-      </pre>
-    </details>
+    <ToolResult
+      tool={name}
+      title={TOOL_LABEL[name] ?? "工具调用"}
+      status="success"
+      kind="custom"
+      copyText={turn.content}
+      className="text-foreground"
+    >
+      <ToolResultOutput language="text">{turn.content}</ToolResultOutput>
+    </ToolResult>
   );
 }
 
@@ -168,12 +187,20 @@ export function MessageList({
         const previous = turns[index - 1];
         const continuesRun =
           turn.role === "assistant" && previous?.role === "assistant";
+        // `toolCallId` only names the call; the tool's own name lives on the
+        // assistant turn that asked for it, which is the nearest row above.
+        const callName = turn.toolCallId
+          ? [...turns.slice(0, index)]
+              .reverse()
+              .flatMap((entry) => entry.toolCalls ?? [])
+              .find((call) => call.id === turn.toolCallId)?.name ?? ""
+          : "";
         const mark = continuesRun ? (
-          <span aria-hidden="true" className="mt-0.5 size-7 shrink-0" />
+          <MessageAvatar placeholder />
         ) : (
-          <span className="mt-0.5 grid size-7 shrink-0 place-items-center">
+          <MessageAvatar className="bg-transparent">
             <LumiMark className="size-7" />
-          </span>
+          </MessageAvatar>
         );
 
         return turn.role === "user" ? (
@@ -209,7 +236,7 @@ export function MessageList({
           >
             {mark}
             <MessageContent>
-              <ToolTurnRow turn={turn} />
+              <ToolTurnRow turn={turn} name={callName} />
               <TurnActions onDelete={() => onDelete?.(turn.id)} />
             </MessageContent>
           </Message>

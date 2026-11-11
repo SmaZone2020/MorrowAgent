@@ -1,11 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/vendor/beui/components/motion/button";
 import {
+  CARD_TARGET_CLASS,
   Card,
+  CardAction,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/vendor/beui/components/motion/card";
+import { Checkbox } from "@/vendor/beui/components/motion/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/vendor/beui/components/motion/radio";
 import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
 import { ChevronLeft, ChevronRight } from "@gravity-ui/icons";
 import { MathText } from "@/components/MathText";
@@ -32,6 +37,139 @@ interface QuizBlockProps {
   onConfirm: (question: QuizQuestion, answer: QuizAnswer) => void;
   /** Called once, after the last question in the set is marked. */
   onComplete: () => void;
+}
+
+/**
+ * A plain-text reading of an option, for the control's accessible name. The
+ * visible copy stays typeset, but a checkbox named `$\frac{1}{2}$` would be
+ * announced as backslashes.
+ */
+function plainOption(content: string): string {
+  return content
+    .replace(/\$+/g, "")
+    .replace(/\\[a-zA-Z]+/g, " ")
+    .replace(/[{}]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * The options of one question.
+ *
+ * Each option is a card: the whole row is the hit area (`CARD_TARGET_CLASS`
+ * stretches the control over it), the key and the typeset content sit in the
+ * header, and the per-option reasoning only appears once the question is
+ * marked — showing it early would give the answer away.
+ *
+ * A single answer gets the registry's radio group, so arrow keys move between
+ * options and one tab stop reaches the set; several answers get checkboxes.
+ */
+function ChoiceList({
+  question,
+  selected,
+  submitted,
+  frozen,
+  scale,
+  onToggle,
+}: {
+  question: QuizQuestion;
+  selected: string[];
+  submitted: boolean;
+  frozen: boolean;
+  scale: number;
+  onToggle: (key: string) => void;
+}) {
+  const single = question.type !== "multiple_choice";
+
+  const cards = question.options.map((option) => {
+    const chosen = selected.includes(option.key);
+    const isAnswer = question.answer.includes(option.key);
+    const control = single ? (
+      <RadioGroupItem
+        value={option.key}
+        disabled={frozen}
+        aria-label={`${option.key}. ${plainOption(option.content)}`}
+        className={CARD_TARGET_CLASS}
+      />
+    ) : (
+      <Checkbox
+        checked={chosen}
+        disabled={frozen}
+        onCheckedChange={() => onToggle(option.key)}
+        aria-label={`${option.key}. ${plainOption(option.content)}`}
+        className={CARD_TARGET_CLASS}
+      />
+    );
+
+    return (
+      <Card
+        key={option.key}
+        size="compact"
+        interactive={!frozen}
+        selected={chosen && !submitted}
+        className={[
+          "justify-center",
+          submitted
+            ? isAnswer
+              ? "border-success/60 bg-success/10"
+              : chosen
+                ? "border-destructive/50 bg-destructive/8"
+                : "border-border/70"
+            : chosen
+              ? "border-primary/70 bg-primary/10"
+              : "border-border/70",
+        ].join(" ")}
+      >
+        <CardHeader>
+          <CardTitle className="flex min-w-0 items-start gap-2.5">
+            <span
+              className={[
+                "mt-0.5 grid size-6 shrink-0 place-items-center rounded-md text-sm font-semibold tabular-nums transition-colors",
+                submitted && isAnswer
+                  ? "bg-success text-white"
+                  : submitted && chosen
+                    ? "bg-destructive text-card"
+                    : chosen
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground",
+              ].join(" ")}
+            >
+              {option.key}
+            </span>
+            <MathText
+              className="min-w-0 whitespace-normal font-normal"
+              style={scaledText(scale)}
+            >
+              {option.content}
+            </MathText>
+          </CardTitle>
+          {submitted && option.explanation ? (
+            <CardDescription>
+              <MathText className="text-muted-foreground">
+                {option.explanation}
+              </MathText>
+            </CardDescription>
+          ) : null}
+          <CardAction>{control}</CardAction>
+        </CardHeader>
+      </Card>
+    );
+  });
+
+  const layout = `grid gap-2 ${question.options.length > 2 ? "sm:grid-cols-2" : ""}`;
+
+  return single ? (
+    <RadioGroup
+      value={selected[0] ?? ""}
+      onValueChange={(key) => onToggle(key)}
+      aria-label="选择一项"
+      className={layout}
+    >
+      {cards}
+    </RadioGroup>
+  ) : (
+    <div className={layout}>{cards}</div>
+  );
 }
 
 /** One question, from blank to marked. */
@@ -131,60 +269,14 @@ function QuizCard({
             <ScratchpadPanel height={220} />
           )
         ) : choice ? (
-          <div className={`grid gap-2 ${question.options.length > 2 ? "sm:grid-cols-2" : ""}`}>
-            {question.options.map((option) => {
-              const chosen = selected.includes(option.key);
-              const isAnswer = question.answer.includes(option.key);
-              return (
-                <Button
-                  key={option.key}
-                  aria-pressed={chosen}
-                  variant="ghost"
-                  onClick={() => toggle(option.key)}
-                  className={[
-                    "h-auto w-full items-start justify-start gap-3 rounded-xl border px-3.5 py-3 text-left transition-colors duration-150",
-                    submitted
-                      ? isAnswer
-                        ? "border-success/60 bg-success/10"
-                        : chosen
-                          ? "border-destructive/50 bg-destructive/8"
-                          : "border-border/70 bg-card"
-                      : chosen
-                        ? "border-primary/70 bg-primary/10"
-                        : "border-border/70 bg-card hover:border-border-strong hover:bg-muted/60",
-                    submitted ? "cursor-default" : "cursor-pointer",
-                  ].join(" ")}
-                >
-                  <span
-                    className={[
-                      "mt-0.5 grid size-7 shrink-0 place-items-center rounded-md text-sm font-semibold tabular-nums transition-colors",
-                      submitted && isAnswer
-                        ? "bg-success text-white"
-                        : submitted && chosen
-                          ? "bg-destructive text-card"
-                          : chosen
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted/70 text-muted-foreground",
-                    ].join(" ")}
-                  >
-                    {option.key}
-                  </span>
-                  <span className="flex min-w-0 flex-col gap-2" style={scaledText(scale)}>
-                    <MathText className="mt-[3px] whitespace-normal text-foreground">
-                      {option.content}
-                    </MathText>
-                    {/* The per-option reasoning is the point of this card, and
-                        showing it early would give the answer away. */}
-                    {submitted && option.explanation ? (
-                      <MathText className="text-muted-foreground">
-                        {option.explanation}
-                      </MathText>
-                    ) : null}
-                  </span>
-                </Button>
-              );
-            })}
-          </div>
+          <ChoiceList
+            question={question}
+            selected={selected}
+            submitted={submitted}
+            frozen={frozen}
+            scale={scale}
+            onToggle={toggle}
+          />
         ) : (
           <div className="flex flex-col gap-2">
             <textarea

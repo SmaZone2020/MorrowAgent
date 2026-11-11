@@ -45,6 +45,13 @@ const slugs = [
   "message-scroller",
   "prompt-input",
   "streaming-response",
+  // A tool call is not a chat bubble: the registry's tool result is the row
+  // that reports the run and folds its output away behind one disclosure.
+  "tool-result",
+  // The quiz is a choice control, not a row of buttons: radio for one answer,
+  // checkbox for several, both with the registry's press feedback and keyboard
+  // handling.
+  "radio",
 ];
 
 function rewriteSpecifiers(source) {
