@@ -4,6 +4,7 @@ import {
   encodeTurn,
   shouldPersist,
   toHistory,
+  turnContent,
   type ConversationTurn,
 } from "@/features/lumi/conversationTurn";
 
@@ -22,6 +23,7 @@ const row = (id: string, role: "user" | "assistant", content: string) => ({
   role,
   content,
   createdAt: 0,
+  attachments: [],
 });
 
 describe("encodeTurn / decodeTurn", () => {
@@ -107,5 +109,65 @@ describe("toHistory", () => {
       { id: "t2", role: "assistant", content: "x", error: "超时" },
     ];
     expect(toHistory(turns, "")).toHaveLength(1);
+  });
+});
+
+describe("attachments", () => {
+  const image = {
+    id: "a1",
+    kind: "image" as const,
+    name: "page.png",
+    mimeType: "image/png",
+    size: 10,
+    data: "aGVsbG8=",
+    text: "",
+  };
+  const document = {
+    id: "a2",
+    kind: "document" as const,
+    name: "notes.md",
+    mimeType: "text/markdown",
+    size: 20,
+    data: "",
+    text: "导数定义",
+  };
+
+  it("sends an image as parts so a vision model can see it", () => {
+    const body = turnContent({ ...user("t1", "这题怎么做"), attachments: [image] });
+    expect(Array.isArray(body)).toBe(true);
+    const parts = body as { type: string; text?: string }[];
+    expect(parts[0]).toEqual({ type: "text", text: "这题怎么做" });
+    expect(parts[1]).toMatchObject({ type: "image", mimeType: "image/png" });
+  });
+
+  it("inlines a document as text, so a text-only model still gets it", () => {
+    const body = turnContent({ ...user("t1", "看下笔记"), attachments: [document] });
+    expect(typeof body).toBe("string");
+    expect(body).toContain('<document name="notes.md">');
+    expect(body).toContain("导数定义");
+  });
+
+  it("keeps the question when the pictures are dropped for a retry", () => {
+    const turns = [user("t1", "这题怎么做")];
+    turns[0]!.attachments = [image, document];
+    const history = toHistory(turns, "", { dropImages: true });
+    expect(typeof history[0]?.content).toBe("string");
+    expect(history[0]?.content).toContain("这题怎么做");
+    expect(history[0]?.content).toContain("导数定义");
+  });
+
+  it("round trips attachments and the degradation note", () => {
+    const turn: ConversationTurn = {
+      ...user("t1", "这题怎么做"),
+      attachments: [image],
+      note: "这个模型不支持图片",
+    };
+    const restored = decodeTurn(row("t1", "user", encodeTurn(turn)));
+    expect(restored.attachments).toEqual([image]);
+    expect(restored.note).toBe("这个模型不支持图片");
+  });
+
+  it("persists an upload that carries no words", () => {
+    expect(shouldPersist({ ...user("t1", ""), attachments: [image] })).toBe(true);
   });
 });

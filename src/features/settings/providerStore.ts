@@ -11,6 +11,11 @@ export interface StoredProviderProfile {
   /** Defaults to `openai-chat` when absent, which keeps old blobs readable. */
   protocol?: Protocol;
   models: string[];
+  /**
+   * Whether the active model accepts images. Absent means yes, which is what a
+   * profile saved before this flag existed expects.
+   */
+  supportsVision?: boolean;
 }
 
 /** Everything the user configured, plus the one model currently in use. */

@@ -19,6 +19,15 @@ pub struct StoredProviderProfile {
     /// Models known for this provider, filled by "拉取模型" or typed by hand.
     #[serde(rename = "models", default)]
     pub Models: Vec<String>,
+    /// Whether the active model accepts images. Defaults to true so a saved
+    /// profile from before this flag existed keeps sending screenshots; the
+    /// user turns it off for a text-only model, and then nothing is uploaded.
+    #[serde(rename = "supportsVision", default = "default_true")]
+    pub SupportsVision: bool,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 /// Every provider the user has added, plus the single model in use (D-076).
@@ -90,6 +99,7 @@ fn migrate_legacy(legacy: LegacyProvider) -> ProviderBook {
         } else {
             vec![legacy.Model.clone()]
         },
+        SupportsVision: true,
     };
     ProviderBook {
         ActiveModel: Some(legacy.Model),

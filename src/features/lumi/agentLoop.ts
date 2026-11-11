@@ -2,7 +2,11 @@ import { activeProvider } from "@/features/settings/providerStatus";
 import { usePreferences } from "@/features/settings/preferencesStore";
 import { streamChat } from "@/features/settings/aiStream";
 import type { ChatMessage, ToolCall } from "@/features/settings/aiBridge";
-import { toHistory, type ConversationTurn } from "@/features/lumi/conversationTurn";
+import {
+  toHistory,
+  turnHasImage,
+  type ConversationTurn,
+} from "@/features/lumi/conversationTurn";
 import {
   findTool,
   parseArguments,
@@ -133,16 +137,23 @@ export function createLoop(deps: LoopDeps) {
       return;
     }
 
-    const history: ChatMessage[] = [
-      { role: "system", content: deps.systemPrompt },
-      ...toHistory(deps.turns(), replyTurn.id),
-    ];
+    const signal = deps.abortSignal();
+    const prefs = usePreferences.getState();
 
-    try {
-      const answer = await streamChat(config, history, {
-        signal: deps.abortSignal(),
-        maxTokens: usePreferences.getState().maxTokens,
-        temperature: usePreferences.getState().temperature,
+    /**
+     * One attempt. `dropImages` exists because a provider that cannot read an
+     * image answers 400 instead of ignoring it, and losing the whole turn over
+     * an attached screenshot would be worse than answering the text.
+     */
+    const attempt = (dropImages: boolean) => {
+      const history: ChatMessage[] = [
+        { role: "system", content: deps.systemPrompt },
+        ...toHistory(deps.turns(), replyTurn.id, { dropImages }),
+      ];
+      return streamChat(config, history, {
+        signal,
+        maxTokens: prefs.maxTokens,
+        temperature: prefs.temperature,
         tools: deps.offersTools ? TOOL_DEFS : undefined,
         onProgress: (partial) => {
           // Switching conversations aborts the request, but a delta already in
@@ -151,10 +162,36 @@ export function createLoop(deps: LoopDeps) {
           deps.patchReply(replyTurn.id, { content: partial });
         },
       });
+    };
+
+    try {
+      // Whether this request would carry pictures is decided by the transcript,
+      // not by the reply turn: the images sit on the user turn that was sent.
+      const historyTurns = deps
+        .turns()
+        .filter((turn) => !turn.error && turn.id !== replyTurn.id);
+      const hasImages = historyTurns.some(turnHasImage);
+      const canSendImages = hasImages && config.supportsVision;
+      let degraded = hasImages && !config.supportsVision;
+
+      let answer;
+      try {
+        answer = await attempt(!canSendImages);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "";
+        // A 400 on a request that carried pictures usually means the model has
+        // no vision after all; retrying once without them is worth the round.
+        if (!canSendImages || !message.includes("400")) throw error;
+        degraded = true;
+        answer = await attempt(true);
+      }
       if (deps.conversationId() !== conversationId) return;
 
       const final = answer.text || "";
       const calls = answer.toolCalls;
+      const note = degraded
+        ? "这个模型不支持图片，本次只发送了文字与文档内容。"
+        : undefined;
       // The calls are part of the turn: they are written with it so a reload
       // shows the same questions instead of a reply with nothing underneath.
       const settled: ConversationTurn = {
@@ -162,18 +199,20 @@ export function createLoop(deps: LoopDeps) {
         content: final,
         pending: false,
         toolCalls: calls.length > 0 ? calls : undefined,
+        note,
       };
       deps.patchReply(replyTurn.id, {
         content: final,
         pending: false,
         toolCalls: calls.length > 0 ? calls : undefined,
+        note,
       });
 
       if (calls.length > 0) {
         deps.persist(workspaceId, conversationId, settled);
         deps.refreshList();
         await handleToolCalls(settled, calls, depth);
-      } else if (final) {
+      } else if (final || note) {
         deps.persist(workspaceId, conversationId, settled);
         deps.refreshList();
       }

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/vendor/beui/components/motion/button";
-import { ArrowUturnCcwLeft, ListCheck, Pencil, TrashBin } from "@gravity-ui/icons";
+import { ArrowUturnCcwLeft, CircleExclamation, ListCheck, Pencil, TrashBin } from "@gravity-ui/icons";
 import {
   Message,
   MessageBubble,
@@ -12,6 +12,7 @@ import { StreamingResponse } from "@/vendor/beui/components/agents/streaming-res
 import { ReasoningText } from "@/vendor/beui/components/agents/loading-states";
 import { Markdown } from "@/features/rich/Markdown";
 import { LumiMark } from "@/features/lumi/LumiMark";
+import { TurnAttachments } from "@/features/lumi/AttachmentPreview";
 import { QuizTurn, isQuizCall } from "@/features/lumi/QuizTurn";
 import type { ConversationTurn } from "@/features/lumi/conversation";
 import type { PendingQuiz } from "@/features/lumi/conversationCore";
@@ -169,6 +170,7 @@ export function MessageList({
                   editingTurnId === turn.id ? "ring-2 ring-ring/50" : undefined
                 }
               >
+                <TurnAttachments attachments={turn.attachments ?? []} />
                 <MessageBubbleContent className="whitespace-pre-wrap">
                   {turn.content}
                 </MessageBubbleContent>
@@ -213,6 +215,12 @@ export function MessageList({
                 />
               ) : (
                 <>
+                  {turn.note ? (
+                    <p className="mb-1.5 flex items-center gap-1.5 text-sm text-muted-foreground">
+                      <CircleExclamation className="size-3.5 shrink-0" />
+                      {turn.note}
+                    </p>
+                  ) : null}
                   {turn.content ? (
                     <StreamingResponse
                       status={turn.pending ? "streaming" : "complete"}

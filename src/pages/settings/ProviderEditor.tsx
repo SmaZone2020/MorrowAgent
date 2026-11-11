@@ -1,6 +1,7 @@
 import { Input } from "@/vendor/beui/components/motion/input";
 import { Button } from "@/vendor/beui/components/motion/button";
 import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
+import { Switch } from "@/vendor/beui/components/motion/switch";
 import { InfoHint } from "@/components/InfoHint";
 import {
   Select,
@@ -131,6 +132,18 @@ export function ProviderEditor({
             </SelectContent>
           </Select>
         ) : null}
+      </div>
+
+      <div className="flex items-center justify-between gap-6">
+        <span className="flex items-center gap-1 text-sm font-medium text-foreground">
+          支持视觉
+          <InfoHint label="关闭后不再上传图片；文档仍会抽取文字发送。" />
+        </span>
+        <Switch
+          checked={profile.supportsVision !== false}
+          onCheckedChange={(supportsVision) => onChange({ supportsVision })}
+          ariaLabel="支持视觉"
+        />
       </div>
     </div>
   );

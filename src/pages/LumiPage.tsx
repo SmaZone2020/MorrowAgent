@@ -1,11 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { Paperclip } from "@gravity-ui/icons";
 import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
 import { Button } from "@/vendor/beui/components/motion/button";
 import { PromptInput } from "@/vendor/beui/components/agents/prompt-input";
 import { LumiCharacter } from "@/features/lumi/LumiCharacter";
 import { MessageList } from "@/features/lumi/MessageList";
 import { ConversationList } from "@/features/lumi/ConversationList";
+import { AttachmentTray } from "@/features/lumi/AttachmentPreview";
+import {
+  isSupported,
+  MAX_ATTACHMENTS,
+  readAttachment,
+} from "@/features/lumi/attachments";
+import type { MessageAttachment } from "@/features/lumi/history";
 import { useConversation } from "@/features/lumi/conversation";
 import { useBoundConversation } from "@/features/lumi/useBoundConversation";
 import { useToolContext } from "@/features/lumi/useToolContext";
@@ -30,7 +38,22 @@ export function LumiPage() {
     workspaceScope(workspaceId, "lumi.listOpen"),
     true,
   );
+  // Uploads stay in memory only: a base64 photo is not something to write into
+  // the interface-state file, and losing an unsent attachment on reload is
+  // cheaper than carrying it around.
+  const [attachments, setAttachments] = useState<MessageAttachment[]>([]);
+  const [attachError, setAttachError] = useState<string | null>(null);
+  const [reading, setReading] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
   const configured = useProviderStatus((state) => state.configured);
+  // A text-only model gets no image uploads: the file would be read, stored and
+  // then dropped from the request, which is worse than refusing it up front.
+  const vision = useProviderStatus((state) => {
+    const active = state.providers.find(
+      (provider) => provider.id === state.activeProviderId,
+    );
+    return active?.supportsVision !== false;
+  });
 
   const conversationId = useConversation((state) => state.conversationId);
   const turns = useConversation((state) => state.turns);
@@ -69,22 +92,62 @@ export function LumiPage() {
     const target = turns.find((turn) => turn.id === turnId);
     if (!target) return;
     setDraft(target.content);
+    // The rewrite replaces the turn, so it starts from text again; keeping the
+    // old files would silently re-send them with a different question.
+    setAttachments([]);
     beginEdit(turnId);
   };
 
   const leaveEdit = () => {
     cancelEdit();
     setDraft("");
+    setAttachments([]);
   };
 
   const submit = (value: string) => {
     const text = value.trim();
-    if (!text || !configured || sending) return;
+    if (!text && attachments.length === 0) return;
+    if (!configured || sending || reading) return;
     // A parked quiz owns the turn: sending text now would abandon a tool call
     // with no result, which every provider rejects.
     if (pending) return;
     setDraft("");
-    void send(text);
+    const files = attachments;
+    setAttachments([]);
+    setAttachError(null);
+    void send(text, files);
+  };
+
+  const addFiles = async (files: FileList | null) => {
+    if (!files?.length) return;
+    setAttachError(null);
+    const room = MAX_ATTACHMENTS - attachments.length;
+    if (room <= 0) {
+      setAttachError(`一次最多 ${MAX_ATTACHMENTS} 个附件`);
+      return;
+    }
+
+    const picked = [...files].slice(0, room);
+    setReading(true);
+    try {
+      const read: MessageAttachment[] = [];
+      for (const file of picked) {
+        if (!isSupported(file)) {
+          setAttachError(`暂不支持 ${file.name}`);
+          continue;
+        }
+        try {
+          read.push(await readAttachment(file));
+        } catch (error) {
+          setAttachError(
+            error instanceof Error ? error.message : `${file.name} 读取失败`,
+          );
+        }
+      }
+      if (read.length > 0) setAttachments((current) => [...current, ...read]);
+    } finally {
+      setReading(false);
+    }
   };
 
   return (
@@ -143,6 +206,29 @@ export function LumiPage() {
                   </Button>
                 </div>
               ) : null}
+              {attachError ? (
+                <p className="text-sm text-destructive">{attachError}</p>
+              ) : null}
+              <AttachmentTray
+                attachments={attachments}
+                onRemove={(id) =>
+                  setAttachments((current) =>
+                    current.filter((attachment) => attachment.id !== id),
+                  )
+                }
+              />
+              <input
+                ref={fileInput}
+                type="file"
+                multiple
+                hidden
+                accept="image/png,image/jpeg,image/webp,application/pdf,text/plain,text/markdown,text/csv,application/json,.md,.txt,.csv,.json"
+                onChange={(event) => {
+                  void addFiles(event.target.files);
+                  // Clearing lets the same file be picked again after removal.
+                  event.target.value = "";
+                }}
+              />
               <PromptInput
                 value={draft}
                 onValueChange={setDraft}
@@ -156,11 +242,25 @@ export function LumiPage() {
                 aria-label="跟 Lumi 说点什么"
                 minRows={2}
                 maxRows={8}
-                loading={sending}
+                loading={sending || reading}
                 disabled={Boolean(pending)}
                 onSubmit={submit}
                 onStop={stop}
                 className="bg-card shadow-surface"
+                leadingAction={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    aria-label="添加附件"
+                    title={vision ? "添加图片或文档" : "当前模型不支持图片，只能添加文档"}
+                    disabled={Boolean(pending) || sending || reading}
+                    className="size-8 rounded-full p-0"
+                    onClick={() => fileInput.current?.click()}
+                  >
+                    <Paperclip className="size-4" />
+                  </Button>
+                }
               />
             </div>
           ) : (

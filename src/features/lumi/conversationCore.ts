@@ -3,6 +3,7 @@ import type { ToolCall } from "@/features/settings/aiBridge";
 import {
   appendMessage,
   type ConversationSummary,
+  type MessageAttachment,
 } from "@/features/lumi/history";
 import {
   encodeTurn,
@@ -67,7 +68,7 @@ export interface ConversationState {
   startNew: () => Promise<void>;
   rename: (conversationId: string, title: string) => Promise<void>;
   remove: (conversationId: string) => Promise<void>;
-  send: (message: string) => Promise<void>;
+  send: (message: string, attachments?: MessageAttachment[]) => Promise<void>;
   /** Resolves one parked quiz call with what the user did. */
   answerQuiz: (callId: string, output: string) => Promise<void>;
   /** Abandons the parked call so the composer is usable again. */
@@ -136,6 +137,9 @@ export function createConversationStore({
         id: turn.id,
         role: turn.role,
         content: encodeTurn(turn),
+        // The column is the cheap way to redraw a chip; the encoded marker also
+        // carries them so an edit keeps the picture with the question.
+        attachments: turn.attachments,
       }).catch(() => undefined);
     };
 

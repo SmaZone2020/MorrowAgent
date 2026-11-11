@@ -9,9 +9,10 @@ import {
 import { readDebugProvider } from "@/features/settings/debugProvider";
 import type { Protocol } from "@/features/settings/aiBridge";
 
-/** A saved profile with its protocol resolved to a concrete value. */
+/** A saved profile with its protocol and vision flag resolved to concrete values. */
 export interface ProviderProfile extends StoredProviderProfile {
   protocol: Protocol;
+  supportsVision: boolean;
 }
 
 /** What a request needs: one endpoint, one key, one model. */
@@ -21,6 +22,8 @@ export interface ActiveProviderConfig {
   apiKey: string;
   model: string;
   protocol: Protocol;
+  /** False when the model cannot read images; uploads are then refused early. */
+  supportsVision: boolean;
 }
 
 interface ProviderStatus {
@@ -39,7 +42,11 @@ interface ProviderStatus {
 }
 
 function withProtocol(provider: StoredProviderProfile): ProviderProfile {
-  return { ...provider, protocol: provider.protocol ?? "openai-chat" };
+  return {
+    ...provider,
+    protocol: provider.protocol ?? "openai-chat",
+    supportsVision: provider.supportsVision !== false,
+  };
 }
 
 function debugProfile(): ProviderProfile | null {
@@ -52,6 +59,7 @@ function debugProfile(): ProviderProfile | null {
     apiKey: debug.apiKey,
     protocol: "openai-chat",
     models: [debug.model],
+    supportsVision: true,
   };
 }
 
@@ -130,5 +138,6 @@ export function activeProvider(): ActiveProviderConfig | null {
     apiKey: profile.apiKey,
     model: activeModel,
     protocol: profile.protocol,
+    supportsVision: profile.supportsVision,
   };
 }

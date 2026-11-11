@@ -1,12 +1,26 @@
 import { invoke } from "@tauri-apps/api/core";
 import { isTauriRuntime } from "@/app/shell/windowControls";
 
+/** One file attached to a turn: image bytes, or text pulled from a document. */
+export interface MessageAttachment {
+  id: string;
+  kind: "image" | "document";
+  name: string;
+  mimeType: string;
+  size: number;
+  /** Base64 without the `data:` prefix; empty for documents. */
+  data: string;
+  /** Extracted text; empty for images. */
+  text: string;
+}
+
 export interface StoredMessage {
   id: string;
   conversationId: string;
   role: "user" | "assistant" | string;
   content: string;
   createdAt: number;
+  attachments: MessageAttachment[];
 }
 
 export interface ConversationSummary {
@@ -21,10 +35,19 @@ export interface ConversationSummary {
 export async function appendMessage(
   workspaceId: string,
   conversationId: string,
-  message: { id: string; role: string; content: string },
+  message: {
+    id: string;
+    role: string;
+    content: string;
+    attachments?: MessageAttachment[];
+  },
 ): Promise<void> {
   if (!isTauriRuntime) return;
-  await invoke("chat_append", { workspaceId, conversationId, message });
+  await invoke("chat_append", {
+    workspaceId,
+    conversationId,
+    message: { ...message, attachments: message.attachments ?? [] },
+  });
 }
 
 export async function loadMessages(

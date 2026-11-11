@@ -3,6 +3,7 @@ import {
   discardEmptyConversation,
 } from "@/features/lumi/history";
 import type { ConversationTurn } from "@/features/lumi/conversationTurn";
+import type { MessageAttachment } from "@/features/lumi/history";
 import { prepareEdit } from "@/features/lumi/conversationHistoryOps";
 import { nextId, pendingKey, rememberedKey } from "@/features/lumi/conversationKeys";
 import type { ConversationRuntime } from "@/features/lumi/conversationRuntime";
@@ -18,10 +19,11 @@ export function createTurnActions(runtime: ConversationRuntime) {
   const { get, set, scope, idPrefix, persist, request, stop } = runtime;
 
   return {
-    send: async (message: string) => {
+    send: async (message: string, attachments: MessageAttachment[] = []) => {
       const text = message.trim();
       const workspaceId = get().workspaceId;
-      if (!text || get().sending || !workspaceId) return;
+      // An upload alone is a valid turn: the question is the picture.
+      if ((!text && attachments.length === 0) || get().sending || !workspaceId) return;
       // A parked quiz owns the turn: sending a chat message instead would
       // leave a tool call with no result, which every provider rejects.
       if (get().pending) return;
@@ -38,6 +40,7 @@ export function createTurnActions(runtime: ConversationRuntime) {
         id: nextId("turn"),
         role: "user",
         content: text,
+        attachments: attachments.length > 0 ? attachments : undefined,
       };
       const replyTurn: ConversationTurn = {
         id: nextId("turn"),
