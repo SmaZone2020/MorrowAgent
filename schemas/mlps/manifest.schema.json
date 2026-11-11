@@ -45,8 +45,13 @@
         },
         "tags": {
           "type": "array",
-          "description": "书架上用于筛选与说明的标签 ID，必须同时登记在 taxonomy/tags.yaml。标签名可以改，ID 不得改。",
-          "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$" },
+          "description": "书架上展示的标签，直接写给人看的名称（可以中文），不必登记在 taxonomy/tags.yaml。用于筛选的机器标签请写进 targets。",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 24,
+            "pattern": "^[^\\s].*[^\\s]$|^[^\\s]$"
+          },
           "minItems": 1,
           "maxItems": 12,
           "uniqueItems": true

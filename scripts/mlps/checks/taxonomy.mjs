@@ -5,9 +5,13 @@ import { formatErrors } from "../schemas.mjs";
 
 /**
  * Tags and error types are the shared vocabulary: a point or question may only
- * use a tag that is registered here, and a package's own `package.tags` must be
- * a subset of it. That keeps the shelf filter from offering a tag with nothing
- * behind it.
+ * use a tag that is registered here, and a package's `targets` must be a subset
+ * of it, so the shelf filter never offers a tag with nothing behind it.
+ *
+ * `package.tags` is deliberately not part of that vocabulary: it is display
+ * text for the shelf, so an author can write 专升本 or 陕西 without inventing an
+ * ASCII id for it. The machine-readable half of the same idea lives in
+ * `package.targets`.
  */
 export function validateTaxonomy(ctx) {
   const { root, validators, manifest } = ctx;
@@ -47,11 +51,6 @@ export function validateTaxonomy(ctx) {
     errorIds.add(type.id);
   }
 
-  for (const tag of manifest.package.tags ?? []) {
-    if (!tagIds.has(tag)) {
-      ctx.error(`manifest 的 package.tags 引用了未登记的标签 ${tag}`);
-    }
-  }
   for (const tag of manifest.package.targets ?? []) {
     if (!tagIds.has(tag)) {
       ctx.error(`manifest 的 package.targets 引用了未登记的标签 ${tag}`);

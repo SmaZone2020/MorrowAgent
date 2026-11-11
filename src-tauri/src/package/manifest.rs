@@ -203,6 +203,19 @@ impl PackageManifest {
         if self.Package.Tags.is_empty() {
             errors.push("package.tags 为空，书架无法归类".to_string());
         }
+        // Display text, not an identifier: a length bound is the only rule, so
+        // an author can write 专升本 without inventing an ASCII id for it.
+        for tag in &self.Package.Tags {
+            let length = tag.trim().chars().count();
+            if length == 0 || length > 24 {
+                errors.push(format!("package.tags 里的 “{tag}” 应为 1–24 个字"));
+            }
+        }
+        for target in &self.Package.Targets {
+            if !is_tag_id(target) {
+                errors.push(format!("package.targets 里的 {target} 不是合法标签 ID"));
+            }
+        }
         if !is_semver(&self.Compatibility.MinAppVersion) {
             errors.push(format!(
                 "compatibility.min_app_version {} 不是 x.y.z 形式",
@@ -303,6 +316,20 @@ fn is_accent(value: &str) -> bool {
         && value[1..].chars().all(|character| character.is_ascii_hexdigit())
 }
 
+/// A machine-readable tag id: lower-case ASCII, digits, dot, dash, underscore.
+/// Only `targets` uses this shape; `package.tags` is display text.
+pub fn is_tag_id(value: &str) -> bool {
+    !value.is_empty()
+        && value.starts_with(|character: char| character.is_ascii_lowercase() || character.is_ascii_digit())
+        && value.chars().all(|character| {
+            character.is_ascii_lowercase()
+                || character.is_ascii_digit()
+                || character == '.'
+                || character == '-'
+                || character == '_'
+        })
+}
+
 /// Numeric comparison, so `1.10.0` outranks `1.9.0`. Returns `Ordering` values
 /// as -1 / 0 / 1 to keep the call sites terse.
 pub fn compare_versions(left: &str, right: &str) -> i32 {
@@ -325,7 +352,7 @@ pub fn compare_versions(left: &str, right: &str) -> i32 {
 
 #[cfg(test)]
 mod tests {
-    use super::{compare_versions, is_package_id, is_semver, PackageManifest};
+    use super::{compare_versions, is_package_id, is_semver, is_tag_id, PackageManifest};
 
     #[test]
     fn ids_need_two_lower_case_segments() {
@@ -352,8 +379,62 @@ mod tests {
         let manifest: PackageManifest = serde_yaml::from_str(&raw).expect("manifest parses");
         assert!(manifest.Check().is_empty(), "{:?}", manifest.Check());
         assert_eq!(manifest.Package.Id, "cn.morrow.calculus.shaanxi-upgrade");
-        assert!(manifest.Package.Tags.contains(&"calculus".to_string()));
+        // Shelf labels are display text, so they may be written in Chinese;
+        // the filterable half of the same idea lives in `targets`.
+        assert!(manifest.Package.Tags.contains(&"陕西".to_string()));
+        assert!(manifest.Package.Targets.contains(&"college-entrance-upgrade".to_string()));
         assert_eq!(manifest.Summary().Accent.as_deref(), Some("#2f6f5e"));
+    }
+
+    #[test]
+    fn tags_are_display_text_but_targets_are_ids() {
+        assert!(is_tag_id("college-entrance-upgrade"));
+        assert!(is_tag_id("ch01.limit_computation"));
+        assert!(!is_tag_id("专升本"));
+        assert!(!is_tag_id("Upper"));
+        assert!(!is_tag_id(""));
+
+        let raw = r#"format:
+  name: morrow-learning-package
+  version: "1.0"
+package:
+  id: cn.morrow.test
+  name: 测试
+  version: 1.0.0
+  subject: mathematics
+  language: zh-CN
+  targets: [专升本]
+  tags: [高等数学]
+author:
+  name: Morrow
+compatibility:
+  min_app_version: 0.1.0
+contents:
+  knowledge:
+    index: knowledge/index.yaml
+  questions:
+    index: questions/index.yaml
+  relations:
+    index: knowledge/relations.yaml
+  taxonomy:
+    tags: taxonomy/tags.yaml
+    error_types: taxonomy/error-types.yaml
+  citations:
+    sources: citations/sources.yaml
+integrity:
+  algorithm: sha256
+  file: checksums.sha256
+"#;
+        let manifest: PackageManifest = serde_yaml::from_str(raw).expect("parses");
+        let problems = manifest.Check();
+        assert!(
+            problems.iter().any(|problem| problem.contains("package.targets")),
+            "a Chinese target is an id error, got {problems:?}"
+        );
+        assert!(
+            !problems.iter().any(|problem| problem.contains("package.tags")),
+            "a Chinese tag is display text, got {problems:?}"
+        );
     }
 
     #[test]

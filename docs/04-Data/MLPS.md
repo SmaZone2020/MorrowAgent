@@ -198,6 +198,8 @@ format:  name: morrow-learning-package  version: "1.0"package:  id: cn.morrow.ca
 | package.subject     | string | 学科分类 ID                     |
 | package.sub_subject | string | 子学科 ID                      |
 | package.language    | string | BCP 47 语言标识                 |
+| package.targets     | string[] | 机器标签 ID，必须登记在 `taxonomy/tags.yaml` |
+| package.tags        | string[] | 书架展示标签，直接写中文等可读名称，无需登记 |
 | author              | object | 作者信息                        |
 | compatibility       | object | 软件兼容要求                      |
 | contents            | object | 内容入口                        |
