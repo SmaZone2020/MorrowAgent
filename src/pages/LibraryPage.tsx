@@ -68,7 +68,11 @@ export function LibraryPage() {
         {!loaded ? (
           <p className="text-sm text-muted-foreground">正在读取书架</p>
         ) : workspaces.length === 0 ? (
-          <EmptyShelf />
+          // Vertically centred with a small downward bias: an empty shelf reads
+          // as a place, not as a message stuck under the heading.
+          <div className="flex min-h-full flex-col justify-center pt-16">
+            <EmptyShelf />
+          </div>
         ) : (
           <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {workspaces.map((workspace) => (

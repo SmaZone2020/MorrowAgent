@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { Button } from "@/vendor/beui/components/motion/button";
 import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
 import { Panel } from "@/components/Panel";
+import { EmptyState } from "@/components/EmptyState";
 import { QuestionCard } from "@/features/training/QuestionCard";
 import { DrillToolbar } from "@/features/training/DrillToolbar";
 import { recordAttempt } from "@/features/training/attempts";
@@ -265,17 +266,16 @@ export function DrillPage() {
         </>
       ) : (
         <Panel title={point ? point.name : "专项训练"}>
-          <AnimatedBadge
-            status="neutral"
-            size="sm"
-            contentKey={questionId ? "offline" : "empty"}
-          >
-            {questionId
-              ? "已下线"
-              : pointId
-                ? "该知识点暂无题目"
-                : "这个学习包暂无题目"}
-          </AnimatedBadge>
+          <EmptyState
+            mood={questionId ? "bored" : "confused"}
+            title={
+              questionId
+                ? "这道题已不在当前知识包中"
+                : pointId
+                  ? "该知识点暂无题目"
+                  : "这个学习包暂无题目"
+            }
+          />
         </Panel>
       )}
 

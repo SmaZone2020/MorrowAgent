@@ -58,11 +58,12 @@ export function ProfilePage() {
         }
       >
         {!isTauriRuntime ? (
-          <EmptyState title="浏览器预览中不读取本地作答记录" />
+          <EmptyState mood="thinking" title="浏览器预览中不读取本地作答记录" />
         ) : !loaded ? (
           <p className="py-4 text-sm text-muted-foreground">读取中</p>
         ) : stats.length === 0 ? (
           <EmptyState
+            mood="curious"
             title="还没有作答记录"
             action={
               <Button

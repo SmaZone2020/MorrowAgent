@@ -10,6 +10,8 @@ export function NotFoundPage() {
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 p-5 sm:p-7">
       <h1 className="text-xl font-semibold tracking-tight text-foreground">404</h1>
       <EmptyState
+        mood="confused"
+        surface="page"
         title="页面不存在"
         action={
           <Button variant="secondary" size="sm" onClick={() => navigate("/")}>

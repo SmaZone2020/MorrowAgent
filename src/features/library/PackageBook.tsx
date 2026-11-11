@@ -5,6 +5,7 @@ import { Tooltip } from "@/vendor/beui/components/motion/tooltip";
 import { Ellipsis } from "@gravity-ui/icons";
 import { cn } from "@/vendor/beui/lib/utils";
 import { InfoHint } from "@/components/InfoHint";
+import { LumiMood } from "@/features/lumi/LumiMood";
 import { coverData, type Workspace } from "@/features/library/api";
 
 /** A cover is decorative: no cover, a broken cover and a slow cover all fall back. */
@@ -124,12 +125,13 @@ export function PackageBook({
 }
 
 /**
- * An empty shelf states the fact, not a paragraph: the explanation lives in the
- * question mark beside the label so the page keeps a single line of text.
+ * An empty shelf states the fact, not a paragraph: Lumi asks the question with
+ * its face, the label answers it, and the details live behind the question mark.
  */
 export function EmptyShelf() {
   return (
-    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border px-6 py-14">
+    <div className="flex flex-col items-center justify-center gap-3 px-6 py-14">
+      <LumiMood state="confused" surface="page" className="size-28" />
       <div className="flex items-center gap-1">
         <span className="text-sm font-medium text-foreground">暂无书籍</span>
         <InfoHint

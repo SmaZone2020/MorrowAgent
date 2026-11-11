@@ -4,8 +4,8 @@ import { Button } from "@/vendor/beui/components/motion/button";
 import {
   SettingsGroup,
   SettingsPageShell,
-  SettingsRow,
 } from "@/pages/settings/SettingsBlocks";
+import { EmptyState } from "@/components/EmptyState";
 import { ProviderRow } from "@/pages/settings/ProviderRow";
 import { ProviderCreateDialog } from "@/pages/settings/ProviderCreateDialog";
 import { ProviderEditDialog } from "@/pages/settings/ProviderEditDialog";
@@ -248,16 +248,16 @@ export function ProviderSettingsPage() {
     >
       <SettingsGroup>
         {profiles.length === 0 ? (
-          <SettingsRow
+          <EmptyState
+            mood="curious"
             title="还没有供应商"
-            hint="添加供应商后先拉取模型，再在列表里选择要用的模型；改动会自动保存。"
-            control={
+            action={
               <Button
                 size="sm"
-                variant="secondary"
                 className="text-sm"
                 onClick={() => setCreating(true)}
               >
+                <Plus className="size-4" />
                 添加供应商
               </Button>
             }

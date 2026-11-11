@@ -77,11 +77,12 @@ export function WrongBookPage() {
         }
       >
         {!isTauriRuntime ? (
-          <EmptyState title="浏览器预览中不读取本地作答记录" />
+          <EmptyState mood="thinking" title="浏览器预览中不读取本地作答记录" />
         ) : !loaded ? (
           <p className="py-4 text-sm text-muted-foreground">读取中</p>
         ) : attempts.length === 0 ? (
           <EmptyState
+            mood="proud"
             title="没有错题"
             action={
               <Button

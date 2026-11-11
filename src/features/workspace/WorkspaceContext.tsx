@@ -69,6 +69,8 @@ export function WorkspaceProvider({
     <div className="grid h-full place-items-center p-8">
       {reason ? (
         <EmptyState
+          mood="confused"
+          surface="page"
           title={reason}
           action={
             <Button
@@ -82,7 +84,7 @@ export function WorkspaceProvider({
           }
         />
       ) : (
-        <p className="text-sm text-muted-foreground">正在读取学习包</p>
+        <EmptyState mood="thinking" surface="page" title="正在读取学习包" />
       )}
     </div>
   );

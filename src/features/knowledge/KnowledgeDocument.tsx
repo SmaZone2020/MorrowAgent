@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/vendor/beui/components/motion/button";
 import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
 import { Markdown } from "@/features/rich/Markdown";
+import { EmptyState } from "@/components/EmptyState";
 import { findPoint, questionsFor } from "@/features/knowledge";
 import type { KnowledgeIndex, KnowledgePoint } from "@/features/knowledge";
 import { workspacePath } from "@/app/navigation";
@@ -62,9 +63,7 @@ export function KnowledgeDocument({
   if (!point) {
     return (
       <div className="flex h-full items-center justify-center p-8">
-        <p className="text-sm text-muted-foreground">
-          从左侧目录选择一个知识点。
-        </p>
+        <EmptyState mood="curious" surface="page" title="从左侧目录选择一个知识点" />
       </div>
     );
   }
