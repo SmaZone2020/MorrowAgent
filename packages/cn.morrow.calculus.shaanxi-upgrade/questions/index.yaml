@@ -3,3 +3,7 @@ files:
     chapter: calculus.chapter.function-and-limit
     count: 15
     schema_version: "1.0"
+  - path: questions/generated/ch01.json
+    chapter: calculus.book.ch01
+    count: 18
+    schema_version: "1.0"
