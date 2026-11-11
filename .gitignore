@@ -137,5 +137,9 @@ dist
 /ref
 
 # Source material: exam PDFs are large and redistributing them is a licensing
-# question we have not settled, so they stay out of the repository.
-/data
+# question we have not settled, so they stay out of the repository. The same
+# applies to the learning packages built from them, and to the packed archives.
+/data/pdf
+/knowledge
+/packages
+/dist-packages
