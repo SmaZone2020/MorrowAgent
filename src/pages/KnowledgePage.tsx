@@ -89,9 +89,12 @@ export function KnowledgePage() {
 
       <div
         ref={scrollRef}
+        // The reading pane is the one place where text is the content, so it
+        // opts back into selection (see the `[data-selectable]` rule).
+        data-selectable=""
         className="scrollbar-thin min-h-0 min-w-0 flex-1 overflow-y-auto"
       >
-        <div className="mx-auto w-full max-w-3xl">
+        <div className="mx-auto w-full">
           <KnowledgeDocument
             index={index}
             pointId={selectedId}

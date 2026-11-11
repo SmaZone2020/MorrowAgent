@@ -73,9 +73,28 @@
   }
 }
 
-.none-select {
+* {
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
+
+  -webkit-user-drag: none;
+}
+
+/*
+ * Text the reader may want to copy back out: Lumi's replies and the knowledge
+ * base. Everything else stays unselectable so dragging a window or a card never
+ * paints a blue block, but a rule inside `@layer utilities` would lose to the
+ * unlayered `*` above, so this one is deliberately unlayered and scoped by an
+ * attribute instead of a class.
+ */
+[data-selectable],
+[data-selectable] * {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+
+  -webkit-user-drag: auto;
 }

@@ -150,6 +150,9 @@ export function MessageList({
 
   return (
     <MessageScroller
+      // Text in the transcript is content, not chrome, so the subtree opts back
+      // into selection (see the `[data-selectable]` rule in globals.css).
+      data-selectable
       label="与 Lumi 的对话"
       busy={busy}
       followOutput
