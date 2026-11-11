@@ -1,36 +1,199 @@
 chapters:
-  - id: calculus.chapter.function-and-limit
-    name: 函数与极限
+  - id: calculus.book.ch01
+    name: "第一章 函数与极限"
     order: 0
-    summary: 从函数概念出发，建立极限的直观与判定方法。
+    points:
+      - id: calculus.book.ch01.function
+        file: knowledge/concepts/ch01-11-function.md
+      - id: calculus.book.ch01.sequence-limit
+        file: knowledge/concepts/ch01-12-sequence-limit.md
+      - id: calculus.book.ch01.function-limit
+        file: knowledge/concepts/ch01-13-function-limit.md
+      - id: calculus.book.ch01.infinitesimal
+        file: knowledge/concepts/ch01-14-infinitesimal.md
+      - id: calculus.book.ch01.limit-computation
+        file: knowledge/concepts/ch01-15-limit-computation.md
+      - id: calculus.book.ch01.limit-criteria
+        file: knowledge/concepts/ch01-16-limit-criteria.md
+      - id: calculus.book.ch01.infinitesimal-comparison
+        file: knowledge/concepts/ch01-17-infinitesimal-comparison.md
+      - id: calculus.book.ch01.continuity
+        file: knowledge/concepts/ch01-18-continuity.md
+      - id: calculus.book.ch01.closed-interval-continuity
+        file: knowledge/concepts/ch01-19-closed-interval-continuity.md
+  - id: calculus.book.ch02
+    name: "第二章 导数与微分"
+    order: 1
+    points:
+      - id: calculus.book.ch02.derivative-concept
+        file: knowledge/concepts/ch02-21-derivative-concept.md
+      - id: calculus.book.ch02.derivative-rules
+        file: knowledge/concepts/ch02-22-derivative-rules.md
+      - id: calculus.book.ch02.higher-derivative
+        file: knowledge/concepts/ch02-23-higher-derivative.md
+      - id: calculus.book.ch02.implicit-derivative
+        file: knowledge/concepts/ch02-24-implicit-derivative.md
+      - id: calculus.book.ch02.differential
+        file: knowledge/concepts/ch02-25-differential.md
+  - id: calculus.book.ch03
+    name: "第三章 微分中值定理及其应用"
+    order: 2
+    points:
+      - id: calculus.book.ch03.mean-value-theorem
+        file: knowledge/concepts/ch03-31-mean-value-theorem.md
+      - id: calculus.book.ch03.taylor
+        file: knowledge/concepts/ch03-32-taylor.md
+      - id: calculus.book.ch03.indeterminate-form
+        file: knowledge/concepts/ch03-33-indeterminate-form.md
+      - id: calculus.book.ch03.monotonicity-extremum
+        file: knowledge/concepts/ch03-34-monotonicity-extremum.md
+      - id: calculus.book.ch03.concavity-curve
+        file: knowledge/concepts/ch03-35-concavity-curve.md
+  - id: calculus.book.ch04
+    name: "第四章 不定积分"
+    order: 3
+    points:
+      - id: calculus.book.ch04.indefinite-integral
+        file: knowledge/concepts/ch04-41-indefinite-integral.md
+      - id: calculus.book.ch04.substitution-parts
+        file: knowledge/concepts/ch04-42-substitution-parts.md
+      - id: calculus.book.ch04.rational-integral
+        file: knowledge/concepts/ch04-43-rational-integral.md
+  - id: calculus.book.ch05
+    name: "第五章 定积分及其应用"
+    order: 4
+    points:
+      - id: calculus.book.ch05.definite-integral
+        file: knowledge/concepts/ch05-51-definite-integral.md
+      - id: calculus.book.ch05.fundamental-theorem
+        file: knowledge/concepts/ch05-52-fundamental-theorem.md
+      - id: calculus.book.ch05.improper-integral
+        file: knowledge/concepts/ch05-53-improper-integral.md
+      - id: calculus.book.ch05.definite-integral-application
+        file: knowledge/concepts/ch05-54-definite-integral-application.md
+  - id: calculus.book.ch06
+    name: "第六章 微分方程"
+    order: 5
+    points:
+      - id: calculus.book.ch06.ode-basics
+        file: knowledge/concepts/ch06-61-ode-basics.md
+      - id: calculus.book.ch06.separable-ode
+        file: knowledge/concepts/ch06-62-separable-ode.md
+      - id: calculus.book.ch06.homogeneous-ode
+        file: knowledge/concepts/ch06-63-homogeneous-ode.md
+      - id: calculus.book.ch06.first-order-linear-ode
+        file: knowledge/concepts/ch06-64-first-order-linear-ode.md
+      - id: calculus.book.ch06.reducible-ode
+        file: knowledge/concepts/ch06-65-reducible-ode.md
+      - id: calculus.book.ch06.higher-linear-ode
+        file: knowledge/concepts/ch06-66-higher-linear-ode.md
+      - id: calculus.book.ch06.constant-coefficient-homogeneous
+        file: knowledge/concepts/ch06-67-constant-coefficient-homogeneous.md
+      - id: calculus.book.ch06.constant-coefficient-nonhomogeneous
+        file: knowledge/concepts/ch06-68-constant-coefficient-nonhomogeneous.md
+      - id: calculus.book.ch06.euler-equation
+        file: knowledge/concepts/ch06-69-euler-equation.md
+  - id: calculus.book.ch07
+    name: "第七章 无穷级数"
+    order: 6
+    points:
+      - id: calculus.book.ch07.series-concepts
+        file: knowledge/concepts/ch07-71-series-concepts.md
+      - id: calculus.book.ch07.series-tests
+        file: knowledge/concepts/ch07-72-series-tests.md
+      - id: calculus.book.ch07.power-series
+        file: knowledge/concepts/ch07-73-power-series.md
+      - id: calculus.book.ch07.power-series-expansion
+        file: knowledge/concepts/ch07-74-power-series-expansion.md
+      - id: calculus.book.ch07.fourier-series
+        file: knowledge/concepts/ch07-75-fourier-series.md
+  - id: calculus.book.ch08
+    name: "第八章 多元函数微分法及其应用"
+    order: 7
+    points:
+      - id: calculus.book.ch08.multivariable-basics
+        file: knowledge/concepts/ch08-81-multivariable-basics.md
+      - id: calculus.book.ch08.partial-derivative
+        file: knowledge/concepts/ch08-82-partial-derivative.md
+      - id: calculus.book.ch08.total-differential
+        file: knowledge/concepts/ch08-83-total-differential.md
+      - id: calculus.book.ch08.composite-derivative
+        file: knowledge/concepts/ch08-84-composite-derivative.md
+      - id: calculus.book.ch08.implicit-multivariable
+        file: knowledge/concepts/ch08-85-implicit-multivariable.md
+      - id: calculus.book.ch08.geometric-application
+        file: knowledge/concepts/ch08-86-geometric-application.md
+      - id: calculus.book.ch08.directional-derivative
+        file: knowledge/concepts/ch08-87-directional-derivative.md
+      - id: calculus.book.ch08.multivariable-extremum
+        file: knowledge/concepts/ch08-88-multivariable-extremum.md
+  - id: calculus.book.ch09
+    name: "第九章 重积分"
+    order: 8
+    points:
+      - id: calculus.book.ch09.double-integral
+        file: knowledge/concepts/ch09-91-double-integral.md
+      - id: calculus.book.ch09.double-integral-computation
+        file: knowledge/concepts/ch09-92-double-integral-computation.md
+      - id: calculus.book.ch09.triple-integral
+        file: knowledge/concepts/ch09-93-triple-integral.md
+      - id: calculus.book.ch09.multiple-integral-application
+        file: knowledge/concepts/ch09-94-multiple-integral-application.md
+  - id: calculus.book.ch10
+    name: "第十章 曲线积分与曲面积分"
+    order: 9
+    points:
+      - id: calculus.book.ch10.line-integral-first
+        file: knowledge/concepts/ch10-101-line-integral-first.md
+      - id: calculus.book.ch10.line-integral-second
+        file: knowledge/concepts/ch10-102-line-integral-second.md
+      - id: calculus.book.ch10.green-formula
+        file: knowledge/concepts/ch10-103-green-formula.md
+      - id: calculus.book.ch10.surface-integral-first
+        file: knowledge/concepts/ch10-104-surface-integral-first.md
+      - id: calculus.book.ch10.surface-integral-second
+        file: knowledge/concepts/ch10-105-surface-integral-second.md
+      - id: calculus.book.ch10.gauss-formula
+        file: knowledge/concepts/ch10-106-gauss-formula.md
+      - id: calculus.book.ch10.stokes-formula
+        file: knowledge/concepts/ch10-107-stokes-formula.md
+  - id: calculus.book.reference
+    name: "附录 公式与考点"
+    order: 12
+    points:
+      - id: calculus.book.reference.formulas
+        file: knowledge/concepts/reference-formulas.md
+      - id: calculus.book.reference.exam-points
+        file: knowledge/concepts/reference-exam-points.md
+      - id: calculus.book.reference.series-convergence
+        file: knowledge/concepts/reference-series-convergence.md
+      - id: calculus.book.reference.vector-algebra
+        file: knowledge/concepts/reference-vector-algebra.md
+      - id: calculus.book.reference.analytic-geometry
+        file: knowledge/concepts/reference-analytic-geometry.md
+  - id: calculus.chapter.function-and-limit
+    name: "精讲 · 函数与极限"
+    order: 10
+    summary: "从函数概念出发，建立极限的直观与判定方法。"
     points:
       - id: calculus.function
         file: knowledge/concepts/function.md
-        order: 0
       - id: calculus.limit.one-sided
         file: knowledge/concepts/limit-one-sided.md
-        order: 1
       - id: calculus.limit
         file: knowledge/concepts/limit.md
-        order: 2
-
   - id: calculus.chapter.derivative
-    name: 导数与微分
-    order: 1
-    summary: 从差商的极限定义出发，建立求导与微分的计算体系。
+    name: "精讲 · 导数与微分"
+    order: 11
+    summary: "从差商的极限定义出发，建立求导与微分的计算体系。"
     points:
       - id: calculus.derivative
         file: knowledge/concepts/derivative.md
-        order: 0
       - id: calculus.derivative.one-sided
         file: knowledge/concepts/derivative-one-sided.md
-        order: 1
       - id: calculus.derivative.rules
         file: knowledge/concepts/derivative-rules.md
-        order: 2
       - id: calculus.differential
         file: knowledge/concepts/differential.md
-        order: 3
       - id: calculus.derivative.high-order
         file: knowledge/concepts/derivative-high-order.md
-        order: 4

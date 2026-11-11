@@ -4,63 +4,88 @@ relations:
     to: calculus.function
     type: prerequisite
     strength: 1.0
-
   - id: relation.one-sided.limit
     from: calculus.limit.one-sided
     to: calculus.function
     type: prerequisite
     strength: 1.0
-
   - id: relation.limit-existence.one-sided
     from: calculus.limit
     to: calculus.limit.one-sided
     type: prerequisite
     strength: 1.0
-
   - id: relation.derivative.limit
     from: calculus.derivative
     to: calculus.limit
     type: prerequisite
     strength: 1.0
-
   - id: relation.derivative-one-sided.derivative
     from: calculus.derivative.one-sided
     to: calculus.derivative
     type: prerequisite
     strength: 1.0
-
   - id: relation.derivative-one-sided.limit
     from: calculus.derivative.one-sided
     to: calculus.limit.one-sided
     type: prerequisite
     strength: 0.9
-
   - id: relation.rules.derivative
     from: calculus.derivative.rules
     to: calculus.derivative
     type: prerequisite
     strength: 1.0
-
   - id: relation.differential.derivative
     from: calculus.differential
     to: calculus.derivative
     type: prerequisite
     strength: 1.0
-
   - id: relation.high-order.rules
     from: calculus.derivative.high-order
     to: calculus.derivative.rules
     type: prerequisite
     strength: 1.0
-
   - id: relation.differential.rules
     from: calculus.differential
     to: calculus.derivative.rules
     type: related
     strength: 0.7
-
   - id: relation.one-sided-derivative.contrast
     from: calculus.derivative.one-sided
     to: calculus.derivative.rules
     type: contrasts
     strength: 0.6
+  - id: relation.book.1-6-7-2
+    from: calculus.book.ch01.limit-criteria
+    to: calculus.book.ch07.series-tests
+    type: related
+    strength: 0.7
+  - id: relation.book.2-1-3-1
+    from: calculus.book.ch02.derivative-concept
+    to: calculus.book.ch03.mean-value-theorem
+    type: related
+    strength: 0.7
+  - id: relation.book.4-2-5-2
+    from: calculus.book.ch04.substitution-parts
+    to: calculus.book.ch05.fundamental-theorem
+    type: related
+    strength: 0.7
+  - id: relation.book.5-2-8-4
+    from: calculus.book.ch05.fundamental-theorem
+    to: calculus.book.ch08.composite-derivative
+    type: related
+    strength: 0.7
+  - id: relation.book.8-2-9-1
+    from: calculus.book.ch08.partial-derivative
+    to: calculus.book.ch09.double-integral
+    type: related
+    strength: 0.7
+  - id: relation.book.9-1-10-2
+    from: calculus.book.ch09.double-integral
+    to: calculus.book.ch10.line-integral-second
+    type: related
+    strength: 0.7
+  - id: relation.book.10-3-10-6
+    from: calculus.book.ch10.green-formula
+    to: calculus.book.ch10.gauss-formula
+    type: related
+    strength: 0.7

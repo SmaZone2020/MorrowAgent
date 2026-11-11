@@ -1,0 +1,68 @@
+---
+id: calculus.book.ch10.stokes-formula
+name: "10.7 斯托克斯公式"
+chapter: calculus.book.ch10
+tags:
+  - line-surface-integral
+  - textbook
+difficulty: 5
+exam_importance: medium
+learning_objectives:
+  - "能复述本节的定理与公式，并用于计算"
+prerequisites:
+  - calculus.book.ch10.gauss-formula
+summary: "定理："
+sources:
+  - source.textbook.bupt-calculus
+version: 1.0.0
+---
+> II 类曲线积分 ←→II 类曲面积分
+
+定理：
+
+$$
+\begin{align*}
+\oint_LP \mathrm dx+ Q \mathrm dy + R \mathrm dz&=\iint_\Sigma \left | \begin{matrix}
+\dfrac{\partial}{\partial y} & \dfrac{\partial}{\partial z} \\
+Q & R \\
+\end{matrix} \right | \mathrm dy \mathrm dz - \left | \begin{matrix}
+\dfrac{\partial}{\partial x} & \dfrac{\partial}{\partial z} \\
+P & R \\
+\end{matrix} \right | \mathrm dz \mathrm dx + \left | \begin{matrix}
+\dfrac{\partial}{\partial x} & \dfrac{\partial}{\partial y} \\
+Q & R\\
+\end{matrix} \right | \mathrm dx \mathrm dy \quad(有向 \Sigma 与L满足右手定则)\\
+&=\iint_\Sigma \left | \begin{matrix}
+\mathrm dy \mathrm dz & \mathrm dz \mathrm dx & \mathrm dx \mathrm dy \\
+\dfrac{\partial}{\partial x} & \dfrac{\partial }{\partial y} &\dfrac{\partial }{\partial z} \\
+P & Q & R
+\end{matrix} \right |\\
+(&=\iint_\Sigma \left | \begin{matrix}
+\cos \alpha & \cos \beta & \cos \gamma \\
+\dfrac{\partial}{\partial x} & \dfrac{\partial }{\partial y} &\dfrac{\partial }{\partial z} \\
+P & Q & R
+\end{matrix} \right |)
+\end{align*}
+$$
+
+## 例题
+
+$I=\oint_L (2y+z)\mathrm dx + (x-z) \mathrm dy + (y-x) \mathrm dz$，$L:x+y+z=1$ 与坐标面的交线
+
+解：$\Sigma: x+y+z=1$ 上侧
+
+$$
+\begin{align*}
+I&=\iint_\Sigma \left | \begin{matrix}
+\mathrm dy \mathrm dz & \mathrm dz \mathrm dx & \mathrm dx \mathrm dy \\
+\dfrac{\partial}{\partial x} & \dfrac{\partial }{\partial y} &\dfrac{\partial }{\partial z} \\
+2y+z & x-z & y-x
+\end{matrix} \right | \\
+&=\iint_\Sigma 2 \mathrm dy \mathrm dz + 2 \mathrm dz \mathrm dx - \mathrm dx \mathrm dy\\
+&=\iint_{D_{xy}}(2\times 1 + 2\times 1 - 1\times 1)\mathrm dx \mathrm dy\\
+&=3\iint_{D_{xy}} \mathrm dx \mathrm dy = \dfrac{3}{2}\\
+(&\Sigma: z=1-x-y, \vec{n}=(1,1,1))
+\end{align*}
+$$
+
+> 旋度 $\mathrm rot \vec{A}=\left | \begin{matrix}\vec{i} & \vec{j} & \vec{k} \\ \dfrac{\partial}{\partial x} & \dfrac{\partial}{\partial y} & \dfrac{\partial}{\partial z} \\P & Q & R \end{matrix} \right |$
