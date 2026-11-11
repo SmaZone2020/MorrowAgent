@@ -540,8 +540,9 @@ mod tests {
         .expect("parse");
 
         let content = load(&root, manifest).expect("content loads");
-        assert_eq!(content.Stats.Chapters, 2);
-        assert_eq!(content.Stats.Points, 8);
+        // 10 textbook chapters, a reference appendix and 2 hand-written ones.
+        assert_eq!(content.Stats.Chapters, 13);
+        assert_eq!(content.Stats.Points, 72);
         assert_eq!(content.Stats.Questions, 15);
         assert!(content.Points.iter().all(|point| !point.Body.is_empty()));
         assert!(content

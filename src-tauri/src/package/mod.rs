@@ -400,7 +400,7 @@ mod tests {
         let staging = staging_path(&work.join("packages"));
         let report = inspect(&archive, &staging).expect("inspect");
         assert!(report.Ok, "{:?}", report.Checks);
-        assert_eq!(report.Stats.as_ref().map(|stats| stats.Points), Some(8));
+        assert_eq!(report.Stats.as_ref().map(|stats| stats.Points), Some(72));
 
         let installed = install(&staging, &work.join("packages")).expect("install");
         assert_eq!(installed.Manifest.Id, "cn.morrow.calculus.shaanxi-upgrade");
@@ -431,11 +431,16 @@ mod tests {
         let second = work.join("second.morrow");
         export(&sample_root(), &second).expect("export second");
         let staging = staging_path(&packages);
-        inspect(&second, &staging).expect("inspect second");
+        let report = inspect(&second, &staging).expect("inspect second");
+        let version = report
+            .Summary
+            .as_ref()
+            .map(|summary| summary.Version.clone())
+            .expect("summary");
         let again = install(&staging, &packages).expect("install again");
         assert_eq!(
             again.ReplacedVersion.as_deref(),
-            Some("1.0.0"),
+            Some(version.as_str()),
             "reinstall keeps the workspace id but records the old version"
         );
         assert_eq!(again.RootPath, installed.RootPath);

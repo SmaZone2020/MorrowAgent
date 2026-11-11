@@ -3,9 +3,9 @@ format:
   version: "1.0"
 package:
   id: cn.morrow.calculus.shaanxi-upgrade
-  name: 应用高等数学（陕西专升本专项）
-  version: 1.0.0
-  description: 面向陕西专升本考试的高等数学学习包，覆盖函数与极限、导数与微分。
+  name: 高等数学（陕西专升本）
+  version: 2.0.0
+  description: 覆盖函数与极限到曲线曲面积分的完整高数教材，附公式速查、考点总结与陕西专升本历年真题。
   subject: mathematics
   sub_subject: calculus
   language: zh-CN
@@ -19,9 +19,10 @@ package:
     - upgrade
     - exam-prep
   cover:
+    file: media/covers/cover.png
     accent: "#2f6f5e"
     focus: [0.5, 0.35]
-    alt: 应用高等数学封面
+    alt: 高等数学封面：深绿底色上的积分号与书名
 author:
   name: Morrow Community
 compatibility:
