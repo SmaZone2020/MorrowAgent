@@ -265,18 +265,17 @@ export function DrillPage() {
         </>
       ) : (
         <Panel title={point ? point.name : "专项训练"}>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <span className="text-sm text-muted-foreground">
-              {questionId
-                ? "这道题已不在当前知识包中"
-                : pointId
-                  ? "该知识点暂无题目"
-                  : "这个学习包暂无题目"}
-            </span>
-            <AnimatedBadge status="neutral" size="sm" contentKey="empty">
-              {questionId ? "已下线" : "待补充"}
-            </AnimatedBadge>
-          </div>
+          <AnimatedBadge
+            status="neutral"
+            size="sm"
+            contentKey={questionId ? "offline" : "empty"}
+          >
+            {questionId
+              ? "已下线"
+              : pointId
+                ? "该知识点暂无题目"
+                : "这个学习包暂无题目"}
+          </AnimatedBadge>
         </Panel>
       )}
 

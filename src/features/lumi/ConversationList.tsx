@@ -70,23 +70,21 @@ export function ConversationList({
           <Button
             size="sm"
             variant="secondary"
-            className="min-w-0 flex-1 justify-center gap-1.5"
+            aria-label="收起会话历史"
+            className="size-8 shrink-0 rounded-lg p-0"
+            onClick={onToggle}
+          >
+            <ChevronLeft className="size-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            className="min-w-0 flex-1 justify-center rounded-lg gap-1.5"
             onClick={onCreate}
           >
             <Plus className="size-4" />
             新对话
           </Button>
-          <Tooltip content="收起会话历史" side="left">
-            <Button
-              size="sm"
-              variant="ghost"
-              aria-label="收起会话历史"
-              className="size-8 shrink-0 rounded-lg p-0"
-              onClick={onToggle}
-            >
-              <ChevronLeft className="size-4" />
-            </Button>
-          </Tooltip>
         </div>
 
         <div className="scrollbar-thin flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">
@@ -205,16 +203,16 @@ function ConversationRow({
         type="button"
         onClick={onSelect}
         aria-current={active ? "true" : undefined}
-        className="flex min-w-0 flex-1 flex-col items-start gap-0.5 rounded-lg px-2 py-1.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <span
-          className={`w-full truncate text-sm ${
+          className={`min-w-0 flex-1 truncate text-sm ${
             active ? "font-medium text-foreground" : "text-foreground/85"
           }`}
         >
           {entry.title || "未命名会话"}
         </span>
-        <span className="text-[11px] tabular-nums text-muted-foreground">
+        <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
           {relativeTime(entry.updatedAt)}
         </span>
       </button>

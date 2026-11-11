@@ -121,15 +121,14 @@ export function LumiPage() {
           {configured ? (
             <div className="flex flex-col gap-2">
               {editingTurnId ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <span className="min-w-0 flex-1 truncate">正在编辑消息</span>
+                <div className="flex items-center justify-end">
                   <Button
                     size="sm"
                     variant="ghost"
                     className="text-sm"
                     onClick={leaveEdit}
                   >
-                    取消
+                    取消编辑
                   </Button>
                 </div>
               ) : null}

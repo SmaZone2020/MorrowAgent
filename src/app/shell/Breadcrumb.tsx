@@ -1,51 +1,43 @@
+import { useNavigate } from "react-router-dom";
+import { ChevronRight } from "@gravity-ui/icons";
 import { useLibrary } from "@/features/library/store";
-import type { ShellLayer } from "@/app/shell/navHelpers";
 
 /**
- * Content header for the non-settings layers.
+ * Header for the workspace layer: `书架 / 包名 / 页面`.
  *
- * The shelf is one level, so it shows a single name. A workspace puts the
- * package name first: inside it, "知识库" alone does not say which package's
- * knowledge base the reader is looking at.
+ * The shelf segment is a link, because leaving a package has to be reachable
+ * from every page inside it. The shelf layer itself gets no bar: its page
+ * already carries the one heading it needs.
  */
 export function Breadcrumb({
-  layer,
-  section,
+  workspaceId,
   title,
 }: {
-  layer: ShellLayer;
-  section: string;
+  workspaceId: string;
   title: string;
 }) {
+  const navigate = useNavigate();
   const workspaces = useLibrary((state) => state.workspaces);
   const packageName =
-    layer.kind === "workspace"
-      ? workspaces.find((entry) => entry.id === layer.workspaceId)?.name
-      : undefined;
+    workspaces.find((entry) => entry.id === workspaceId)?.name ?? "学习包";
 
   return (
-    <header className="flex h-11 shrink-0 items-center gap-2 border-b border-border px-4">
-      {packageName ? (
-        <>
-          <span className="max-w-56 truncate text-sm text-muted-foreground">
-            {packageName}
-          </span>
-          <span className="text-sm text-muted-foreground">/</span>
-          <span className="truncate text-sm font-medium text-foreground">
-            {title}
-          </span>
-        </>
-      ) : (
-        <>
-          <span className="truncate text-sm text-muted-foreground">
-            {section}
-          </span>
-          <span className="text-sm text-muted-foreground">/</span>
-          <span className="truncate text-sm font-medium text-foreground">
-            {title}
-          </span>
-        </>
-      )}
+    <header className="flex h-11 shrink-0 items-center gap-1 border-b border-border px-4">
+      <button
+        type="button"
+        onClick={() => navigate("/")}
+        className="shrink-0 rounded-md px-1 py-0.5 text-sm text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        书架
+      </button>
+      <ChevronRight aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
+      <span className="max-w-56 truncate text-sm text-muted-foreground">
+        {packageName}
+      </span>
+      <ChevronRight aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
+      <span className="truncate text-sm font-medium text-foreground">
+        {title}
+      </span>
     </header>
   );
 }

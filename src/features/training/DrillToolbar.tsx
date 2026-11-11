@@ -137,7 +137,7 @@ function FontPanel() {
 
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-border/60 bg-card p-3 shadow-surface">
-      <span className="text-sm text-muted-foreground">题目字号</span>
+      <span className="text-sm font-medium text-foreground">题目字号</span>
       <div className="flex items-center gap-1">
         <Button
           size="sm"

@@ -136,11 +136,7 @@ export function DrillLumiPanel({ question }: { question?: Question }) {
             onEdit={startEdit}
             editingTurnId={editingTurnId}
           />
-        ) : (
-          <p className="flex h-full items-end pb-2 text-sm text-muted-foreground">
-            卡住了就问 Lumi，它会接着你的解法往下讲。
-          </p>
-        )}
+        ) : null}
       </div>
 
       <PromptInput

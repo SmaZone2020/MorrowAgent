@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { open as openFile } from "@tauri-apps/plugin-dialog";
-import { ArrowDownToLine, CircleCheck, CircleXmark } from "@gravity-ui/icons";
+import { CircleCheck, CircleXmark } from "@gravity-ui/icons";
 import { Button } from "@/vendor/beui/components/motion/button";
 import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
 import { Modal } from "@/components/Modal";
@@ -14,7 +14,7 @@ import {
 import { useLibrary } from "@/features/library/store";
 
 type Phase =
-  | { kind: "idle" }
+  | { kind: "picking" }
   | { kind: "checking"; file: string }
   | { kind: "report"; file: string; report: ValidationReport }
   | { kind: "installing"; file: string; report: ValidationReport }
@@ -23,9 +23,11 @@ type Phase =
 /**
  * Picks a `.morrow` file, validates it, then installs.
  *
- * Inspection is a separate step on purpose: it extracts into staging and runs
- * nine checks before anything touches `packages/`. The report is what the user
- * confirms, so an unsigned or tampered archive never reaches the shelf.
+ * Opening the dialog is the act of picking: the native file chooser comes up
+ * straight away, and the modal is only used for the report the user has to
+ * confirm. Inspection extracts into staging and runs its checks before anything
+ * touches `packages/`, so an unsigned or tampered archive never reaches the
+ * shelf.
  */
 export function ImportDialog({
   open,
@@ -37,34 +39,50 @@ export function ImportDialog({
   onInstalled: () => void;
 }) {
   const refresh = useLibrary((state) => state.refresh);
-  const [phase, setPhase] = useState<Phase>({ kind: "idle" });
-
-  const reset = () => setPhase({ kind: "idle" });
+  const [phase, setPhase] = useState<Phase>({ kind: "picking" });
+  const picking = useRef(false);
 
   const choose = async () => {
-    const file = await openFile({
-      multiple: false,
-      filters: [{ name: "Morrow 学习包", extensions: ["morrow", "7z"] }],
-    });
-    if (!file) return;
-
-    setPhase({ kind: "checking", file });
+    if (picking.current) return;
+    picking.current = true;
+    setPhase({ kind: "picking" });
     try {
-      const report = await inspectPackage(file);
-      setPhase({ kind: "report", file, report });
-      if (!report.ok && report.staging) {
-        // A failed inspection already staged the tree; drop it so a retry does
-        // not collide with the half-extracted copy.
-        void cancelImport(report.staging);
-      }
-    } catch (error) {
-      setPhase({
-        kind: "failed",
-        file,
-        reason: error instanceof Error ? error.message : "无法读取学习包",
+      const file = await openFile({
+        multiple: false,
+        filters: [{ name: "Morrow 学习包", extensions: ["morrow", "7z"] }],
       });
+      if (!file) {
+        onOpenChange(false);
+        return;
+      }
+
+      setPhase({ kind: "checking", file });
+      try {
+        const report = await inspectPackage(file);
+        setPhase({ kind: "report", file, report });
+        if (!report.ok && report.staging) {
+          // A failed inspection already staged the tree; drop it so a retry does
+          // not collide with the half-extracted copy.
+          void cancelImport(report.staging);
+        }
+      } catch (error) {
+        setPhase({
+          kind: "failed",
+          file,
+          reason: error instanceof Error ? error.message : "无法读取学习包",
+        });
+      }
+    } finally {
+      picking.current = false;
     }
   };
+
+  // The shelf's import button opens this dialog; the dialog immediately asks
+  // for a file. Cancelling the chooser closes the dialog with it.
+  useEffect(() => {
+    if (open && isTauriRuntime) void choose();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const install = async (report: ValidationReport) => {
     if (!report.staging) return;
@@ -72,7 +90,6 @@ export function ImportDialog({
     try {
       await installPackage(report.staging, report.update);
       await refresh();
-      reset();
       onInstalled();
       onOpenChange(false);
     } catch (error) {
@@ -85,13 +102,18 @@ export function ImportDialog({
   };
 
   const dismiss = (next: boolean) => {
-    if (!next) reset();
+    if (!next) setPhase({ kind: "picking" });
     onOpenChange(next);
   };
 
+  const busy =
+    phase.kind === "checking" ||
+    phase.kind === "installing" ||
+    phase.kind === "picking";
+
   return (
     <Modal
-      open={open}
+      open={open && (phase.kind !== "picking" || !isTauriRuntime)}
       onOpenChange={dismiss}
       title="导入学习包"
       width="lg"
@@ -104,33 +126,26 @@ export function ImportDialog({
           >
             {phase.report.update ? "更新到新版本" : "安装"}
           </Button>
-        ) : phase.kind === "report" || phase.kind === "failed" ? (
-          <Button size="sm" variant="secondary" className="text-sm" onClick={() => void choose()}>
-            重新选择
-          </Button>
-        ) : (
+        ) : busy ? null : (
           <Button
             size="sm"
+            variant="secondary"
             className="text-sm"
-            disabled={phase.kind === "checking" || !isTauriRuntime}
             onClick={() => void choose()}
           >
-            选择文件
+            重新选择
           </Button>
         )
       }
     >
       {!isTauriRuntime ? (
-        <p className="text-sm leading-6 text-muted-foreground">
-          浏览器预览中不能导入学习包，请在桌面应用里操作。
-        </p>
-      ) : phase.kind === "idle" ? (
-        <div className="flex flex-col gap-2 text-sm leading-6 text-muted-foreground">
-          <p>选择一个 .morrow 文件。导入前会先校验路径、清单与校验和。</p>
-          <p>同一个学习包的新版本会就地更新内容，你的作答记录与对话不受影响。</p>
-        </div>
-      ) : phase.kind === "checking" ? (
-        <p className="text-sm text-muted-foreground">正在校验学习包</p>
+        <AnimatedBadge status="warning" size="sm" contentKey="preview">
+          浏览器预览中不能导入学习包
+        </AnimatedBadge>
+      ) : phase.kind === "checking" || phase.kind === "installing" ? (
+        <AnimatedBadge status="loading" size="sm" contentKey={phase.kind}>
+          {phase.kind === "installing" ? "正在安装" : "正在校验"}
+        </AnimatedBadge>
       ) : phase.kind === "failed" ? (
         <div className="flex flex-col gap-2">
           <AnimatedBadge status="danger" size="sm" contentKey="failed">
@@ -138,16 +153,14 @@ export function ImportDialog({
           </AnimatedBadge>
           <p className="text-sm leading-6 text-muted-foreground">{phase.reason}</p>
         </div>
-      ) : (
+      ) : phase.kind === "report" ? (
         <CheckList report={phase.report} />
-      )}
+      ) : null}
     </Modal>
   );
 }
 
 function CheckList({ report }: { report: ValidationReport }) {
-  const failed = report.checks.filter((check) => !check.ok);
-
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
@@ -164,14 +177,14 @@ function CheckList({ report }: { report: ValidationReport }) {
           </AnimatedBadge>
         ) : null}
         {report.summary ? (
-          <span className="text-sm text-muted-foreground">
+          <span className="truncate text-sm text-foreground">
             {report.summary.name} · v{report.summary.version}
           </span>
         ) : null}
       </div>
 
       {report.stats ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm tabular-nums text-muted-foreground">
           {report.stats.chapters} 章 · {report.stats.points} 个知识点 ·{" "}
           {report.stats.questions} 道题
         </p>
@@ -203,13 +216,6 @@ function CheckList({ report }: { report: ValidationReport }) {
           </li>
         ))}
       </ul>
-
-      {failed.length > 0 ? (
-        <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-          <ArrowDownToLine className="size-4" />
-          修正后可重新选择同一个文件。
-        </p>
-      ) : null}
     </div>
   );
 }

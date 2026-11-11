@@ -1,11 +1,5 @@
 import type { ComponentType, SVGProps } from "react";
-import {
-  ArrowLeft,
-  BookOpen,
-  ChartLine,
-  GraduationCap,
-  Persons,
-} from "@gravity-ui/icons";
+import { BookOpen, ChartLine, GraduationCap, Persons } from "@gravity-ui/icons";
 import { LumiMark } from "@/features/lumi/LumiMark";
 
 export type NavigationIcon = ComponentType<SVGProps<SVGSVGElement>>;
@@ -32,19 +26,6 @@ export interface NavigationGroup {
 }
 
 /**
- * The shelf is its own layer: a package has to be chosen before Lumi, the
- * knowledge base or any record has meaning, so the rail there holds one
- * destination and the shelf itself is the content.
- */
-export const shelfNavigation: NavigationGroup[] = [
-  {
-    key: "shelf",
-    label: "书架",
-    items: [{ key: "library", label: "书架", path: "/", icon: BookOpen }],
-  },
-];
-
-/**
  * Inside a package. Every entry is scoped to `/:workspaceId`, so two packages
  * never share a transcript, a wrong-book or a profile (MLPS §1.2).
  */
@@ -62,8 +43,6 @@ export const workspaceNavigation: NavigationGroup[] = [
   },
 ];
 
-export const shelfPath = "/";
-
 export function workspaceBase(workspaceId: string): string {
   return `/w/${workspaceId}`;
 }
@@ -74,6 +53,3 @@ export function workspacePath(workspaceId: string, relative: string): string {
 }
 
 export const settingsPath = "/settings/general";
-
-// Kept for the dashboard-era footer entry, which is still a shelf shortcut.
-export const backToShelfIcon = ArrowLeft;

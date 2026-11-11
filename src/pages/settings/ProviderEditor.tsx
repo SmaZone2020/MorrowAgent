@@ -1,5 +1,6 @@
 import { Input } from "@/vendor/beui/components/motion/input";
 import { Button } from "@/vendor/beui/components/motion/button";
+import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
 import { InfoHint } from "@/components/InfoHint";
 import {
   Select,
@@ -89,13 +90,19 @@ export function ProviderEditor({
         >
           {test.status === "testing" ? "拉取中" : "拉取模型"}
         </Button>
-        <span className="text-sm text-muted-foreground">
-          已存 {profile.models.length} 个模型
-        </span>
         {test.status === "ok" ? (
-          <span className="text-sm text-success">
-            拉取成功，返回 {test.count} 个
-          </span>
+          <AnimatedBadge status="success" size="sm" contentKey={test.count}>
+            {test.count} 个
+          </AnimatedBadge>
+        ) : null}
+        {profile.models.length > 0 ? (
+          <AnimatedBadge
+            status="neutral"
+            size="sm"
+            contentKey={profile.models.length}
+          >
+            {profile.models.length} 个已存
+          </AnimatedBadge>
         ) : null}
       </div>
       {test.status === "error" ? (
@@ -123,11 +130,7 @@ export function ProviderEditor({
               ))}
             </SelectContent>
           </Select>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            还没有模型，先点「拉取模型」。
-          </p>
-        )}
+        ) : null}
       </div>
     </div>
   );

@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
 import { Button } from "@/vendor/beui/components/motion/button";
 import { Tooltip } from "@/vendor/beui/components/motion/tooltip";
-import { CircleInfo, Ellipsis } from "@gravity-ui/icons";
+import { Ellipsis } from "@gravity-ui/icons";
 import { cn } from "@/vendor/beui/lib/utils";
+import { InfoHint } from "@/components/InfoHint";
 import { coverData, type Workspace } from "@/features/library/api";
 
 /** A cover is decorative: no cover, a broken cover and a slow cover all fall back. */
@@ -122,19 +123,20 @@ export function PackageBook({
   );
 }
 
-/** The empty shelf explains what a learning package is, without a heading pair. */
-export function EmptyShelf({ onImport }: { onImport: () => void }) {
+/**
+ * An empty shelf states the fact, not a paragraph: the explanation lives in the
+ * question mark beside the label so the page keeps a single line of text.
+ */
+export function EmptyShelf() {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border bg-card/50 px-6 py-14 text-center">
-      <span className="grid size-11 place-items-center rounded-full bg-muted text-muted-foreground">
-        <CircleInfo className="size-5" />
-      </span>
-      <p className="max-w-md text-sm leading-6 text-muted-foreground">
-        书架还是空的。学习包是一个独立的学习工作区，导入后才有 Lumi、知识库与训练记录。
-      </p>
-      <Button size="sm" className="text-sm" onClick={onImport}>
-        导入学习包
-      </Button>
+    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border px-6 py-14">
+      <div className="flex items-center gap-1">
+        <span className="text-sm font-medium text-foreground">暂无书籍</span>
+        <InfoHint
+          icon="question"
+          label="学习包是一个独立的学习工作区，导入后才有 Lumi、知识库与训练记录。"
+        />
+      </div>
     </div>
   );
 }

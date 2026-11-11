@@ -4,7 +4,7 @@ import { AppShell } from "@/app/shell/AppShell";
 import { AppProviders } from "@/app/providers";
 import { TitleBar } from "@/app/shell/TitleBar";
 import { ResizeHandles } from "@/app/shell/ResizeHandles";
-import { isSettingsPath } from "@/app/shell/navHelpers";
+import { resolveShellLayer } from "@/app/shell/navHelpers";
 import { AnimatedSidebarProvider } from "@/vendor/beui/components/motion/animated-sidebar";
 import { useProviderStatus } from "@/features/settings/providerStatus";
 import { usePreferences } from "@/features/settings/preferencesStore";
@@ -16,7 +16,9 @@ import { flushUiState, loadUiState } from "@/features/uiState/store";
 // lives there and reads its open state from the provider.
 export function RootLayout() {
   const { pathname } = useLocation();
-  const settings = isSettingsPath(pathname);
+  // Both the shelf and settings own the whole window; only a workspace keeps a
+  // rail, so the drawer state is frozen wherever there is nothing to toggle.
+  const hasRail = resolveShellLayer(pathname).kind === "workspace";
   const hydrate = useProviderStatus((state) => state.hydrate);
   const hydratePreferences = usePreferences((state) => state.hydrate);
   // A collapsed rail is a deliberate layout choice, so it outlives the session.
@@ -53,11 +55,11 @@ export function RootLayout() {
     <AppProviders>
       <AnimatedSidebarProvider
         className="h-svh flex-col overflow-hidden"
-        // Settings has no sidebar, so the stored choice is frozen while it is
-        // open: the Ctrl+B shortcut cannot change a panel that is not on screen.
-        open={settings ? true : sidebarOpen}
+        // A page without a rail must not change a panel that is not on screen,
+        // so the stored choice is frozen until a workspace is opened again.
+        open={hasRail ? sidebarOpen : true}
         onOpenChange={(next) => {
-          if (!settings) setSidebarOpen(next);
+          if (hasRail) setSidebarOpen(next);
         }}
       >
         <TitleBar />

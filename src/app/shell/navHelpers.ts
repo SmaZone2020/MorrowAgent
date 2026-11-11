@@ -1,10 +1,5 @@
 import type { NavigationGroup, NavigationItem, NavigationSubItem } from "@/app/navigation";
-import {
-  shelfNavigation,
-  workspaceBase,
-  workspaceNavigation,
-  workspacePath,
-} from "@/app/navigation";
+import { workspaceNavigation, workspacePath } from "@/app/navigation";
 
 export interface FlatNavigationEntry {
   group: NavigationGroup;
@@ -34,22 +29,24 @@ export function resolveShellLayer(pathname: string): ShellLayer {
   return { kind: "shelf" };
 }
 
-/** The navigation groups for a layer, with workspace paths already prefixed. */
+/**
+ * The navigation groups for a layer, with workspace paths already prefixed.
+ * The shelf and settings are single pages without a rail, so only a workspace
+ * has a list.
+ */
 export function navigationFor(layer: ShellLayer): NavigationGroup[] {
-  if (layer.kind === "workspace") {
-    return workspaceNavigation.map((group) => ({
-      ...group,
-      items: group.items.map((item) => ({
-        ...item,
-        path: workspacePath(layer.workspaceId, item.path),
-        children: item.children?.map((child) => ({
-          ...child,
-          path: workspacePath(layer.workspaceId, child.path),
-        })),
+  if (layer.kind !== "workspace") return [];
+  return workspaceNavigation.map((group) => ({
+    ...group,
+    items: group.items.map((item) => ({
+      ...item,
+      path: workspacePath(layer.workspaceId, item.path),
+      children: item.children?.map((child) => ({
+        ...child,
+        path: workspacePath(layer.workspaceId, child.path),
       })),
-    }));
-  }
-  return shelfNavigation;
+    })),
+  }));
 }
 
 export function flattenNavigation(groups: NavigationGroup[]): FlatNavigationEntry[] {
@@ -69,13 +66,8 @@ export function entryPath(entry: FlatNavigationEntry): string {
   return entry.child?.path ?? entry.item.path;
 }
 
-export function isSettingsPath(pathname: string): boolean {
-  return resolveShellLayer(pathname).kind === "settings";
-}
-
 export function matchesPath(entry: FlatNavigationEntry, pathname: string): boolean {
   const target = entryPath(entry);
-  if (target === "/") return pathname === "/";
   return pathname === target || pathname.startsWith(`${target}/`);
 }
 
@@ -100,11 +92,4 @@ export function describeLocation(
     return { section: entry.item.label, title: entry.child.label };
   }
   return { section: entry.group.label, title: entry.item.label };
-}
-
-/** The leaf of a workspace URL: `/w/x/knowledge` → `/knowledge`. */
-export function workspaceRelative(pathname: string, workspaceId: string): string {
-  const base = workspaceBase(workspaceId);
-  if (pathname === base || pathname === `${base}/`) return "/";
-  return pathname.startsWith(base) ? pathname.slice(base.length) : pathname;
 }

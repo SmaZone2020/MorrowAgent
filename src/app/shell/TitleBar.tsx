@@ -16,12 +16,13 @@ const CONTROL_SIZE = "size-9";
 
 // The sidebar toggle lives beside the product name so the content header stays
 // a pure breadcrumb. The title bar renders inside the sidebar provider, which
-// is what gives the trigger its context. Settings owns the whole window and has
-// no sidebar, so the toggle is disabled there instead of being removed: the bar
-// keeps its shape and the button returns the moment you leave settings.
+// is what gives the trigger its context. The shelf and settings are single
+// pages with no rail, so the toggle is disabled there instead of being
+// removed: the bar keeps its shape and the button returns inside a package.
 export function TitleBar() {
   const { pathname } = useLocation();
-  const sidebarToggleDisabled = resolveShellLayer(pathname).kind === "settings";
+  const sidebarToggleDisabled =
+    resolveShellLayer(pathname).kind !== "workspace";
   const [maximized, setMaximized] = useState(false);
 
   useEffect(() => {
@@ -63,7 +64,7 @@ export function TitleBar() {
         <AnimatedSidebarTrigger
           aria-label="收起或展开侧边栏"
           disabled={sidebarToggleDisabled}
-          title={sidebarToggleDisabled ? "设置页不显示侧边栏" : "收起或展开侧边栏"}
+          title={sidebarToggleDisabled ? "当前页面没有侧边栏" : "收起或展开侧边栏"}
           className="ml-1 size-7 rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40 disabled:hover:bg-transparent"
         >
           <LayoutSideContentLeft aria-hidden="true" className="size-4.5" />

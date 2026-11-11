@@ -6,7 +6,7 @@ import {
   type PackageContent,
   type Workspace,
 } from "@/features/library/api";
-import { readScope, writeScope, usePersistedState } from "@/features/uiState";
+import { readScope, writeScope } from "@/features/uiState";
 
 /**
  * The shelf and the active workspace.
@@ -88,12 +88,4 @@ export function rememberWorkspace(workspaceId: string | null) {
 
 export function lastWorkspaceId(): string | null {
   return readScope<string | null>("library:lastWorkspaceId", null);
-}
-
-/**
- * Shelf filters live in the library scope, not inside a workspace: they
- * describe how the whole shelf is being viewed.
- */
-export function useShelfFilter() {
-  return usePersistedState<string>("library:filter", "all");
 }

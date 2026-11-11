@@ -167,11 +167,13 @@ export function KnowledgeDocument({
       ) : null}
 
       <Section title="相关题目">
-        <p className="text-sm text-muted-foreground">
-          {related.length > 0
-            ? `这个知识点下有 ${related.length} 道题。`
-            : "这个知识点还没有题目。"}
-        </p>
+        <AnimatedBadge
+          status={related.length > 0 ? "info" : "neutral"}
+          size="sm"
+          contentKey={related.length}
+        >
+          {related.length > 0 ? `${related.length} 道` : "暂无题目"}
+        </AnimatedBadge>
       </Section>
     </article>
   );
