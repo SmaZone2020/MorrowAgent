@@ -189,7 +189,7 @@ export function DrillPage() {
             index={position + 1}
             total={openQuestions.length}
             initialAnswer={answers[current.id] ?? null}
-            initialRevealed={results[current.id] === "revealed"}
+            initialVerdict={results[current.id] ?? null}
             onAnswered={(answer, isCorrect) => {
               // Record the answer and, on a correct one, advance in a single
               // update: two writes from the same render would race.

@@ -52,6 +52,18 @@ export interface ContentImage {
   width?: number;
 }
 
+/**
+ * A worked solution shipped beside the questions (MLPS §9). Absent for most
+ * questions today: a question must stay usable without one, so nothing may
+ * require this to be present.
+ */
+export interface QuestionSolution {
+  summary: string;
+  steps: { index: number; content: string }[];
+  finalAnswer: string;
+  alternatives: string[];
+}
+
 export interface Question {
   id: string;
   content: string;
@@ -64,6 +76,8 @@ export interface Question {
   images: ContentImage[];
   knowledgeTags: string[];
   commonErrors: { errorType: string; description: string }[];
+  /** Present only when the package has a solution file for this question. */
+  solution?: QuestionSolution;
   estimatedMinutes?: number;
   sourceType: string;
   sourceReference?: string;

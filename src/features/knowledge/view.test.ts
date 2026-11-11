@@ -92,6 +92,17 @@ function content(): PackageContent {
         estimatedMinutes: null,
       },
     ],
+    solutions: [
+      {
+        questionId: "test.q.1",
+        summary: "先看极限是否存在。",
+        steps: [{ index: 1, content: "分别求左右极限。" }],
+        finalAnswer: "B",
+        alternatives: [],
+        commonErrors: ["只看右支"],
+        knowledgePoints: ["test.point.a"],
+      },
+    ],
     relations: [
       {
         id: "test.rel.1",
@@ -134,6 +145,17 @@ describe("toKnowledgeView", () => {
     const view = toKnowledgeView("ws-1", content());
     expect(view.questions[0]?.estimatedMinutes).toBe(3);
     expect(view.questions[1]?.estimatedMinutes).toBeUndefined();
+  });
+
+  it("attaches a solution only to the question it names", () => {
+    const view = toKnowledgeView("ws-1", content());
+    const solved = view.questions.find((entry) => entry.id === "test.q.1");
+    const bare = view.questions.find((entry) => entry.id === "test.q.2");
+    expect(solved?.solution?.finalAnswer).toBe("B");
+    expect(solved?.explanation).toBe("先看极限是否存在。");
+    expect(solved?.commonErrors[0]?.description).toBe("只看右支");
+    expect(bare?.solution).toBeUndefined();
+    expect(bare?.explanation).toBe("");
   });
 });
 

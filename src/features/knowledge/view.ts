@@ -3,6 +3,7 @@ import type {
   PackageContent,
   PackagePoint,
   PackageQuestion,
+  PackageSolution,
 } from "@/features/library/api";
 import type {
   KnowledgeChapter,
@@ -81,17 +82,36 @@ function answerText(question: PackageQuestion): string {
   return question.answer.join("");
 }
 
-function toQuestion(question: PackageQuestion): Question {
+/**
+ * A worked solution becomes the question's explanation. The steps stay a list
+ * rather than being flattened into prose: the card numbers them, and the final
+ * answer is shown apart from the reasoning so it can be compared at a glance.
+ */
+function toQuestion(
+  question: PackageQuestion,
+  solution: PackageSolution | undefined,
+): Question {
   return {
     id: question.id,
     content: question.content,
     questionType: question.type,
-    explanation: "",
+    explanation: solution?.summary ?? "",
     options: question.options,
     answer: answerText(question),
     images: [],
     knowledgeTags: question.knowledgePoints,
-    commonErrors: [],
+    commonErrors: (solution?.commonErrors ?? []).map((description) => ({
+      errorType: "common",
+      description,
+    })),
+    solution: solution
+      ? {
+          summary: solution.summary,
+          steps: solution.steps,
+          finalAnswer: solution.finalAnswer,
+          alternatives: solution.alternatives,
+        }
+      : undefined,
     estimatedMinutes: question.estimatedMinutes ?? undefined,
     sourceType: question.sourceType,
     sourceReference: question.sourceId ?? undefined,
@@ -112,6 +132,11 @@ export function toKnowledgeView(
   }));
 
   const points = content.points.map((point) => toPoint(point, relations));
+  // Solutions are a separate list joined by question id; a question without one
+  // is normal, so the map is simply missing that key.
+  const solutions = new Map(
+    (content.solutions ?? []).map((solution) => [solution.questionId, solution]),
+  );
 
   return {
     workspaceId,
@@ -129,7 +154,9 @@ export function toKnowledgeView(
       pointIds: chapter.pointIds,
     })),
     points,
-    questions: content.questions.map(toQuestion),
+    questions: content.questions.map((question) =>
+      toQuestion(question, solutions.get(question.id)),
+    ),
     relations,
     sources: content.sources.map((source) => ({
       id: source.id,

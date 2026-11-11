@@ -75,6 +75,16 @@ export interface PackageQuestion {
   estimatedMinutes: number | null;
 }
 
+export interface PackageSolution {
+  questionId: string;
+  summary: string;
+  steps: { index: number; content: string }[];
+  finalAnswer: string;
+  alternatives: string[];
+  commonErrors: string[];
+  knowledgePoints: string[];
+}
+
 export interface PackageRelation {
   id: string;
   from: string;
@@ -88,6 +98,8 @@ export interface PackageContent {
   chapters: PackageChapter[];
   points: PackagePoint[];
   questions: PackageQuestion[];
+  /** Worked solutions, keyed by `questionId`; empty when the package ships none. */
+  solutions: PackageSolution[];
   relations: PackageRelation[];
   tags: { id: string; name: string }[];
   sources: { id: string; title: string; license: string }[];
