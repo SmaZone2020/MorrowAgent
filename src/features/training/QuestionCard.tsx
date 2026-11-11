@@ -39,6 +39,8 @@ export interface QuestionCardProps {
   index: number;
   total: number;
   onNext?: () => void;
+  /** The label on the advance button; "下一题" unless the set is ending. */
+  nextLabel?: string;
   /** Fires once when the answer is submitted, with the answer and its verdict. */
   onAnswered?: (answer: string, isCorrect: boolean) => void;
   /** Fires when a question reveals its answer without a score. */
@@ -58,6 +60,7 @@ export function QuestionCard({
   index,
   total,
   onNext,
+  nextLabel = "下一题",
   onAnswered,
   onRevealed,
   initialAnswer = null,
@@ -305,7 +308,7 @@ export function QuestionCard({
               }
               onClick={onNext}
             >
-              下一题
+              {nextLabel}
             </Button>
           ) : null}
         </div>

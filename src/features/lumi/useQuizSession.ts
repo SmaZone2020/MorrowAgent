@@ -28,6 +28,7 @@ function asQuestion(question: QuizQuestion, componentId: string): Question {
     images: [],
     knowledgeTags: question.knowledgePoints,
     commonErrors: [],
+    difficulty: question.difficulty,
     estimatedMinutes: question.estimatedMinutes,
     sourceType: "generated",
     version: "1",

@@ -1,5 +1,5 @@
 import type { ComponentType, SVGProps } from "react";
-import { BookOpen, ChartLine, GraduationCap, Persons } from "@gravity-ui/icons";
+import { BookOpen, ChartLine, GraduationCap, Persons, Target } from "@gravity-ui/icons";
 import { LumiMark } from "@/features/lumi/LumiMark";
 
 export type NavigationIcon = ComponentType<SVGProps<SVGSVGElement>>;
@@ -36,6 +36,7 @@ export const workspaceNavigation: NavigationGroup[] = [
     items: [
       { key: "lumi", label: "Lumi AI", path: "/lumi", icon: LumiMark },
       { key: "knowledge", label: "知识库", path: "/knowledge", icon: BookOpen },
+      { key: "diagnostic", label: "诊断测评", path: "/diagnostic", icon: Target },
       { key: "drill", label: "专项训练", path: "/drill", icon: GraduationCap },
       { key: "wrongBook", label: "错题本", path: "/wrong-book", icon: Persons },
       { key: "profile", label: "知识画像", path: "/profile", icon: ChartLine },

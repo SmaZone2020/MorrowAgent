@@ -15,6 +15,7 @@ import { KnowledgePage } from "@/pages/KnowledgePage";
 import { WrongBookPage } from "@/pages/WrongBookPage";
 import { ProfilePage } from "@/pages/ProfilePage";
 import { DrillPage } from "@/pages/training/DrillPage";
+import { DiagnosticPage } from "@/pages/training/DiagnosticPage";
 
 /**
  * Three layers, nested by URL rather than by state:
@@ -41,6 +42,7 @@ export const router = createHashRouter([
           { path: "lumi", element: <LumiPage /> },
           { path: "knowledge", element: <KnowledgePage /> },
           { path: "drill", element: <DrillPage /> },
+          { path: "diagnostic", element: <DiagnosticPage /> },
           { path: "wrong-book", element: <WrongBookPage /> },
           { path: "profile", element: <ProfilePage /> },
         ],

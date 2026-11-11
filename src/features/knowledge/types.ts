@@ -78,6 +78,8 @@ export interface Question {
   commonErrors: { errorType: string; description: string }[];
   /** Present only when the package has a solution file for this question. */
   solution?: QuestionSolution;
+  /** 1–5, as declared by the package author. */
+  difficulty: number;
   estimatedMinutes?: number;
   sourceType: string;
   sourceReference?: string;

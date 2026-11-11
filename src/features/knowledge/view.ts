@@ -113,6 +113,7 @@ function toQuestion(
         }
       : undefined,
     estimatedMinutes: question.estimatedMinutes ?? undefined,
+    difficulty: question.difficulty,
     sourceType: question.sourceType,
     sourceReference: question.sourceId ?? undefined,
     version: "",
