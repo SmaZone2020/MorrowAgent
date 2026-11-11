@@ -30,6 +30,9 @@ const slugs = [
   // Switching packages is a searchable list of installed ones, which is what
   // the registry's combobox is: filter, keyboard stepping and a morphing panel.
   "combobox",
+  // Filtering the drill by knowledge points is a pick-several control; the
+  // registry's multi-select brings removable tokens and a list that stays open.
+  "multi-select",
   // Dialogs come from the same registry so every overlay shares one unfold
   // animation and one focus trap instead of a per-page portal.
   "center-morph-modal",

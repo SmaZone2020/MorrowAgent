@@ -6,10 +6,11 @@ import { Panel } from "@/components/Panel";
 import { EmptyState } from "@/components/EmptyState";
 import { QuestionCard } from "@/features/training/QuestionCard";
 import { DrillToolbar } from "@/features/training/DrillToolbar";
+import { PointFilter } from "@/pages/training/PointFilter";
 import { recordAttempt } from "@/features/training/attempts";
 import { usePersistedState } from "@/features/uiState";
 import { workspaceScope } from "@/features/uiState/scope";
-import { findPoint, questionsFor } from "@/features/knowledge";
+import { findPoint } from "@/features/knowledge";
 import type { KnowledgeIndex, Question } from "@/features/knowledge";
 import {
   useKnowledge,
@@ -58,7 +59,9 @@ export function DrillPage() {
   const workspaceId = useWorkspaceId();
   const index = useKnowledge();
   const [params, setParams] = useSearchParams();
-  const pointId = params.get("point");
+  // Repeated `point` parameters, so a link may open several points at once and
+  // the multi-select can round-trip through the URL like the old single chip.
+  const pointIds = useMemo(() => params.getAll("point"), [params]);
   const questionId = params.get("question");
 
   const [stored, setStored] = usePersistedState<DrillRun>(
@@ -75,14 +78,19 @@ export function DrillPage() {
       const one = index.questionsById.get(questionId);
       return one ? [one] : [];
     }
-    if (pointId) return questionsFor(index, pointId);
-    return allQuestions(index);
-  }, [index, pointId, questionId]);
+    if (pointIds.length === 0) return allQuestions(index);
+    // Several points selected: keep the package's own order rather than
+    // concatenating per-point lists, so the numbering stays predictable.
+    const wanted = new Set(pointIds);
+    return allQuestions(index).filter((question) =>
+      question.knowledgeTags.some((id) => wanted.has(id)),
+    );
+  }, [index, pointIds, questionId]);
 
   const runKey = questionId
     ? `q:${questionId}`
-    : pointId
-      ? `p:${pointId}`
+    : pointIds.length > 0
+      ? `p:${[...pointIds].sort().join(",")}`
       : "all";
   // Deriving instead of resetting in an effect keeps the first frame correct:
   // a stored run for another set must never render its question number here.
@@ -107,7 +115,10 @@ export function DrillPage() {
       return { ...base, ...next(base) };
     });
 
-  const point = pointId ? findPoint(index, pointId) : undefined;
+  // The empty-state panel names the point only when the filter is a single one;
+  // with several selected there is no single name to show.
+  const point =
+    pointIds.length === 1 ? findPoint(index, pointIds[0] ?? "") : undefined;
   const current = openQuestions[position];
 
   const answered = openQuestions.filter((entry) => entry.id in results).length;
@@ -119,59 +130,42 @@ export function DrillPage() {
     (entry) => results[entry.id] === "correct",
   ).length;
 
-  const selectPoint = (next: string | null) => {
+  const selectPoints = (next: string[]) => {
     patch(() => ({ index: 0, results: {}, answers: {}, run: 0 }));
-    if (next) setParams({ point: next });
-    else setParams({});
+    if (next.length === 0) {
+      setParams({});
+      return;
+    }
+    const search = new URLSearchParams();
+    for (const id of next) search.append("point", id);
+    setParams(search);
   };
 
-  // A single-question link hides the point chips, which would otherwise all
-  // look inactive while the list is clearly filtered.
-  const chipsVisible = !questionId;
+  // A single-question link hides the point filter, which would otherwise look
+  // idle while the list is clearly narrowed to one question.
+  const filterVisible = !questionId;
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-5 sm:p-7">
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 flex-1 flex-col gap-3">
-          {chipsVisible ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                size="sm"
-                variant={pointId ? "ghost" : "primary"}
-                className="text-sm"
-                onClick={() => selectPoint(null)}
-              >
-                全部题目
-              </Button>
-              {index.view.chapters.flatMap((chapter) =>
-                chapter.pointIds.map((id) => {
-                  const entry = findPoint(index, id);
-                  if (!entry) return null;
-                  return (
-                    <Button
-                      key={entry.id}
-                      size="sm"
-                      variant={entry.id === pointId ? "primary" : "ghost"}
-                      className="text-sm"
-                      onClick={() => selectPoint(entry.id)}
-                    >
-                      {entry.name}
-                    </Button>
-                  );
-                }),
-              )}
-            </div>
+          {filterVisible ? (
+            <PointFilter
+              index={index}
+              selected={pointIds}
+              onChange={selectPoints}
+            />
           ) : (
             <div className="flex flex-wrap items-center gap-2">
               <AnimatedBadge status="info" size="sm" contentKey="single">
                 错题重做
               </AnimatedBadge>
-              {pointId ? (
+              {pointIds[0] ? (
                 <Button
                   size="sm"
                   variant="ghost"
                   className="text-sm"
-                  onClick={() => selectPoint(pointId)}
+                  onClick={() => selectPoints(pointIds)}
                 >
                   返回本知识点
                 </Button>
@@ -271,8 +265,8 @@ export function DrillPage() {
             title={
               questionId
                 ? "这道题已不在当前知识包中"
-                : pointId
-                  ? "该知识点暂无题目"
+                : pointIds.length > 0
+                  ? "所选知识点暂无题目"
                   : "这个学习包暂无题目"
             }
           />
