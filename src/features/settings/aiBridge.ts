@@ -3,9 +3,33 @@ import { isTauriRuntime } from "@/app/shell/windowControls";
 
 export type Protocol = "openai-chat" | "openai-responses" | "anthropic";
 
+/** One piece of a user turn. Text and images may share a single message. */
+export type ContentPart =
+  | { type: "text"; text: string }
+  | { type: "image"; mimeType: string; data: string };
+
 export interface ChatMessage {
-  role: "system" | "user" | "assistant";
-  content: string;
+  role: "system" | "user" | "assistant" | "tool";
+  /** A plain string for the common case, parts when the turn carries images. */
+  content: string | ContentPart[];
+  /** Set on an assistant turn that asked for tools. */
+  toolCalls?: ToolCall[];
+  /** Set on the `role: "tool"` turn that answers one call. */
+  toolCallId?: string;
+}
+
+export interface ToolCall {
+  id: string;
+  name: string;
+  /** Raw JSON string, exactly as the model streamed it. */
+  arguments: string;
+}
+
+/** A tool the model may call. `parameters` is a JSON Schema object. */
+export interface ToolDef {
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
 }
 
 export interface ModelInfo {
@@ -33,6 +57,20 @@ export function requireTauri(): void {
       "模型请求由 Tauri 后端转发；浏览器预览里无法调用，请用 pnpm tauri:dev。",
     );
   }
+}
+
+/** Plain text of a message body, with any images dropped. */
+export function flattenContent(content: ChatMessage["content"]): string {
+  if (typeof content === "string") return content;
+  return content
+    .filter((part): part is Extract<ContentPart, { type: "text" }> => part.type === "text")
+    .map((part) => part.text)
+    .join("\n");
+}
+
+/** True when a body carries at least one image, which some models reject. */
+export function hasImage(content: ChatMessage["content"]): boolean {
+  return typeof content !== "string" && content.some((part) => part.type === "image");
 }
 
 // Model traffic goes through Rust, not `fetch`: the debug endpoint rejects
