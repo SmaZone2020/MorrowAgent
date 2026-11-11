@@ -3,7 +3,10 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
 use crate::provider::protocol::prepare;
-use crate::provider::types::{ChatRequest, ProviderConfig};
+use crate::provider::types::{ChatRequest, ProviderConfig, ToolCall};
+use crate::provider::wire::{
+    read_anthropic, read_openai_chat, read_openai_responses, ToolAccumulator, WireEvent,
+};
 
 /// Event name the webview listens on. One channel for every request: the
 /// payload carries the request id, so two open conversations never mix.
@@ -15,6 +18,10 @@ pub struct Delta {
     pub RequestId: String,
     #[serde(rename = "delta", skip_serializing_if = "Option::is_none")]
     pub Delta: Option<String>,
+    /// Sent once, on the frame that ends the reply, when the model asked for
+    /// tools. The caller runs them and sends the results back as new turns.
+    #[serde(rename = "toolCalls", skip_serializing_if = "Option::is_none")]
+    pub ToolCalls: Option<Vec<ToolCall>>,
     #[serde(rename = "done")]
     pub Done: bool,
     #[serde(rename = "error", skip_serializing_if = "Option::is_none")]
@@ -26,15 +33,17 @@ impl Delta {
         Self {
             RequestId: request_id.to_string(),
             Delta: Some(text),
+            ToolCalls: None,
             Done: false,
             Error: None,
         }
     }
 
-    fn finish(request_id: &str) -> Self {
+    fn finish(request_id: &str, tool_calls: Vec<ToolCall>) -> Self {
         Self {
             RequestId: request_id.to_string(),
             Delta: None,
+            ToolCalls: (!tool_calls.is_empty()).then_some(tool_calls),
             Done: true,
             Error: None,
         }
@@ -44,9 +53,18 @@ impl Delta {
         Self {
             RequestId: request_id.to_string(),
             Delta: None,
+            ToolCalls: None,
             Done: true,
             Error: Some(message),
         }
+    }
+}
+
+fn reader(protocol: crate::provider::protocol::Protocol) -> fn(&str) -> Vec<WireEvent> {
+    match protocol {
+        crate::provider::protocol::Protocol::OpenaiChat => read_openai_chat,
+        crate::provider::protocol::Protocol::OpenaiResponses => read_openai_responses,
+        crate::provider::protocol::Protocol::Anthropic => read_anthropic,
     }
 }
 
@@ -104,7 +122,8 @@ pub async fn run(
 
     let mut stream = response.bytes_stream();
     let mut buffer = String::new();
-    let read = prepared.Reads;
+    let read = reader(config.Protocol);
+    let mut tools = ToolAccumulator::default();
 
     while let Some(next) = stream.next().await {
         let bytes = match next {
@@ -127,8 +146,13 @@ pub async fn run(
         while let Some(index) = buffer.find("\n\n") {
             let frame: String = buffer.drain(..index + 2).collect();
             for line in frame.lines() {
-                if let Some(text) = read(line) {
-                    let _ = app.emit(DELTA_EVENT, Delta::chunk(&request_id, text));
+                for event in read(line) {
+                    match event {
+                        WireEvent::Text(text) => {
+                            let _ = app.emit(DELTA_EVENT, Delta::chunk(&request_id, text));
+                        }
+                        other => tools.apply(&other),
+                    }
                 }
             }
         }
@@ -136,10 +160,16 @@ pub async fn run(
 
     // A last frame without its trailing blank line still carries content.
     for line in buffer.lines() {
-        if let Some(text) = read(line) {
-            let _ = app.emit(DELTA_EVENT, Delta::chunk(&request_id, text));
+        for event in read(line) {
+            match event {
+                WireEvent::Text(text) => {
+                    let _ = app.emit(DELTA_EVENT, Delta::chunk(&request_id, text));
+                }
+                other => tools.apply(&other),
+            }
         }
     }
 
-    let _ = app.emit(DELTA_EVENT, Delta::finish(&request_id));
+    let calls = tools.finish();
+    let _ = app.emit(DELTA_EVENT, Delta::finish(&request_id, calls));
 }

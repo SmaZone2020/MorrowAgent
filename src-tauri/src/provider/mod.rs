@@ -2,6 +2,7 @@ pub mod protocol;
 pub mod secret;
 pub mod stream;
 pub mod types;
+pub mod wire;
 
 use types::{ModelInfo, ProviderConfig, WireModels};
 
