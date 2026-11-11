@@ -189,13 +189,13 @@ export function AnimatedBadge({
               className="col-start-1 row-start-1 inline-flex items-center justify-center"
             >
               {status === "loading" && !reduce && !icon ? (
-                <motion.span
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                  className="inline-flex"
-                >
+                // A CSS keyframe, not a motion `rotate`: AnimatePresence's
+                // `initial={false}` propagates to descendants and makes them
+                // mount already at their animate value, so a motion rotation
+                // here would paint one still frame at 360deg forever.
+                <span className="inline-flex animate-spin">
                   <Icon className={ICON_CLASS[size]} />
-                </motion.span>
+                </span>
               ) : (
                 (icon ?? <Icon className={ICON_CLASS[size]} />)
               )}

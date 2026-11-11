@@ -49,7 +49,7 @@ export function TitleBar() {
   return (
     <div
       data-tauri-drag-region
-      className="flex h-9 shrink-0 items-center border-b border-border bg-background none-select"
+      className="relative z-[200] flex h-9 shrink-0 items-center border-b border-border bg-background"
     >
       <div
         data-tauri-drag-region

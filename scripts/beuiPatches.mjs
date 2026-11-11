@@ -359,8 +359,31 @@ function patchStreamingResponse(source) {
 
 // The palette is light-only and hue-free, so status colours follow the project
 // tokens instead of beUI's emerald/amber scale.
+const BADGE_SPINNER_ANCHOR = `                <motion.span
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  className="inline-flex"
+                >
+                  <Icon className={ICON_CLASS[size]} />
+                </motion.span>`;
+
+const BADGE_SPINNER_PATCH = `                <span className="inline-flex animate-spin">
+                  <Icon className={ICON_CLASS[size]} />
+                </span>`;
+
 function patchAnimatedBadge(source) {
-  return replaceOnce(source, BADGE_ANCHOR, BADGE_PATCH, "animated-badge status palette");
+  const patched = replaceOnce(
+    source,
+    BADGE_ANCHOR,
+    BADGE_PATCH,
+    "animated-badge status palette",
+  );
+  return replaceOnce(
+    patched,
+    BADGE_SPINNER_ANCHOR,
+    BADGE_SPINNER_PATCH,
+    "animated-badge spinner",
+  );
 }
 
 const patches = {
