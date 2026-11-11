@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Paperclip } from "@gravity-ui/icons";
 import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
 import { Button } from "@/vendor/beui/components/motion/button";
+import { Tooltip } from "@/vendor/beui/components/motion/tooltip";
 import { PromptInput } from "@/vendor/beui/components/agents/prompt-input";
 import { LumiCharacter } from "@/features/lumi/LumiCharacter";
 import { MessageList } from "@/features/lumi/MessageList";
@@ -252,18 +253,26 @@ export function LumiPage() {
                 onStop={stop}
                 className="bg-card shadow-surface"
                 leadingAction={
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    aria-label="添加附件"
-                    title={vision ? "添加图片或文档" : "当前模型不支持图片，只能添加文档"}
-                    disabled={Boolean(pending) || sending || reading}
-                    className="size-8 rounded-full p-0"
-                    onClick={() => fileInput.current?.click()}
+                  <Tooltip
+                    content={
+                      vision
+                        ? "添加图片或文档"
+                        : "当前模型不支持图片，只能添加文档"
+                    }
+                    side="top"
                   >
-                    <Paperclip className="size-4" />
-                  </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      aria-label="添加附件"
+                      disabled={Boolean(pending) || sending || reading}
+                      className="size-8 rounded-full p-0"
+                      onClick={() => fileInput.current?.click()}
+                    >
+                      <Paperclip className="size-4" />
+                    </Button>
+                  </Tooltip>
                 }
               />
             </div>

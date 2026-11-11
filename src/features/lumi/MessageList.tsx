@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/vendor/beui/components/motion/button";
+import { Tooltip } from "@/vendor/beui/components/motion/tooltip";
 import { ArrowUturnCcwLeft, CircleExclamation, Pencil, TrashBin } from "@gravity-ui/icons";
 import {
   Message,
@@ -68,51 +69,55 @@ function TurnActions({
     >
       {confirming ? (
         <>
-          <Button
-            size="icon"
-            variant="ghost"
-            aria-label="确认删除"
-            title="确认删除"
-            className="size-7 rounded-lg text-destructive"
-            onClick={onDelete}
-          >
-            <TrashBin className="size-3.5" />
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            aria-label="取消删除"
-            title="取消删除"
-            className="size-7 rounded-lg"
-            onClick={() => setConfirming(false)}
-          >
-            <ArrowUturnCcwLeft className="size-3.5" />
-          </Button>
+          <Tooltip content="确认删除" side="top">
+            <Button
+              size="icon"
+              variant="ghost"
+              aria-label="确认删除"
+              className="size-7 rounded-lg text-destructive"
+              onClick={onDelete}
+            >
+              <TrashBin className="size-3.5" />
+            </Button>
+          </Tooltip>
+          <Tooltip content="取消删除" side="top">
+            <Button
+              size="icon"
+              variant="ghost"
+              aria-label="取消删除"
+              className="size-7 rounded-lg"
+              onClick={() => setConfirming(false)}
+            >
+              <ArrowUturnCcwLeft className="size-3.5" />
+            </Button>
+          </Tooltip>
         </>
       ) : (
         <>
           {onEdit ? (
+            <Tooltip content="编辑消息" side="top">
+              <Button
+                size="icon"
+                variant="ghost"
+                aria-label="编辑消息"
+                className="size-7 rounded-lg"
+                onClick={onEdit}
+              >
+                <Pencil className="size-3.5" />
+              </Button>
+            </Tooltip>
+          ) : null}
+          <Tooltip content="删除消息" side="top">
             <Button
               size="icon"
               variant="ghost"
-              aria-label="编辑消息"
-              title="编辑消息"
-              className="size-7 rounded-lg"
-              onClick={onEdit}
+              aria-label="删除消息"
+              className="size-7 rounded-lg text-muted-foreground hover:text-destructive"
+              onClick={() => setConfirming(true)}
             >
-              <Pencil className="size-3.5" />
+              <TrashBin className="size-3.5" />
             </Button>
-          ) : null}
-          <Button
-            size="icon"
-            variant="ghost"
-            aria-label="删除消息"
-            title="删除消息"
-            className="size-7 rounded-lg text-muted-foreground hover:text-destructive"
-            onClick={() => setConfirming(true)}
-          >
-            <TrashBin className="size-3.5" />
-          </Button>
+          </Tooltip>
         </>
       )}
     </div>

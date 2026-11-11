@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { AnimatedSidebarTrigger } from "@/vendor/beui/components/motion/animated-sidebar";
+import { Tooltip } from "@/vendor/beui/components/motion/tooltip";
 import { House, LayoutSideContentLeft } from "@gravity-ui/icons";
 import { resolveShellLayer } from "@/app/shell/navHelpers";
 import {
@@ -68,25 +69,33 @@ export function TitleBar() {
         >
           Morrow Agent
         </span>
-        <button
-          type="button"
-          data-tauri-drag-region="false"
-          aria-label="返回书架"
-          title={homeDisabled ? "已经在书架" : "返回书架"}
-          disabled={homeDisabled}
-          onClick={() => navigate("/")}
-          className="ml-1 inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+        <Tooltip
+          content={homeDisabled ? "已经在书架" : "返回书架"}
+          side="bottom"
         >
-          <House aria-hidden="true" className="size-4.5" />
-        </button>
-        <AnimatedSidebarTrigger
-          aria-label="收起或展开侧边栏"
-          disabled={sidebarToggleDisabled}
-          title={sidebarToggleDisabled ? "当前页面没有侧边栏" : "收起或展开侧边栏"}
-          className="ml-1 size-7 rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40 disabled:hover:bg-transparent"
+          <button
+            type="button"
+            data-tauri-drag-region="false"
+            aria-label="返回书架"
+            disabled={homeDisabled}
+            onClick={() => navigate("/")}
+            className="ml-1 inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+          >
+            <House aria-hidden="true" className="size-4.5" />
+          </button>
+        </Tooltip>
+        <Tooltip
+          content={sidebarToggleDisabled ? "当前页面没有侧边栏" : "收起或展开侧边栏"}
+          side="bottom"
         >
-          <LayoutSideContentLeft aria-hidden="true" className="size-4.5" />
-        </AnimatedSidebarTrigger>
+          <AnimatedSidebarTrigger
+            aria-label="收起或展开侧边栏"
+            disabled={sidebarToggleDisabled}
+            className="ml-1 size-7 rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40 disabled:hover:bg-transparent"
+          >
+            <LayoutSideContentLeft aria-hidden="true" className="size-4.5" />
+          </AnimatedSidebarTrigger>
+        </Tooltip>
       </div>
 
       <div className="flex items-stretch">

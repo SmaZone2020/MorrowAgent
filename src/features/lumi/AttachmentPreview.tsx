@@ -1,5 +1,6 @@
 import { FileText, Xmark } from "@gravity-ui/icons";
 import { Button } from "@/vendor/beui/components/motion/button";
+import { Tooltip } from "@/vendor/beui/components/motion/tooltip";
 import { formatSize } from "@/features/lumi/attachments";
 import type { MessageAttachment } from "@/features/lumi/history";
 
@@ -83,17 +84,18 @@ export function AttachmentTray({
           <span className="shrink-0 text-muted-foreground">
             {formatSize(attachment.size)}
           </span>
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            aria-label={`移除 ${attachment.name}`}
-            title="移除"
-            className="size-6 shrink-0 rounded-full"
-            onClick={() => onRemove(attachment.id)}
-          >
-            <Xmark className="size-3.5" />
-          </Button>
+          <Tooltip content="移除" side="top">
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              aria-label={`移除 ${attachment.name}`}
+              className="size-6 shrink-0 rounded-full"
+              onClick={() => onRemove(attachment.id)}
+            >
+              <Xmark className="size-3.5" />
+            </Button>
+          </Tooltip>
         </span>
       ))}
     </div>

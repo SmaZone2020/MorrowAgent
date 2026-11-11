@@ -7,6 +7,7 @@ import {
 } from "react";
 import { ArrowUpRightFromSquare } from "@gravity-ui/icons";
 import { Button } from "@/vendor/beui/components/motion/button";
+import { Tooltip } from "@/vendor/beui/components/motion/tooltip";
 import { Modal } from "@/components/Modal";
 import { hostOf, openExternalUrl } from "@/features/rich/openExternal";
 
@@ -72,18 +73,19 @@ export function ExternalLink({
 }) {
   const open = useContext(LinkGuardContext);
   return (
-    <button
-      type="button"
-      title={href}
-      onClick={() => open?.(href)}
-      className="inline cursor-pointer text-left text-foreground underline decoration-border underline-offset-2 transition-colors hover:decoration-foreground"
-    >
-      {children}
-      <ArrowUpRightFromSquare
-        aria-hidden="true"
-        className="ml-0.5 inline size-3 align-baseline text-muted-foreground"
-      />
-    </button>
+    <Tooltip content={href} side="top">
+      <button
+        type="button"
+        onClick={() => open?.(href)}
+        className="inline cursor-pointer text-left text-foreground underline decoration-border underline-offset-2 transition-colors hover:decoration-foreground"
+      >
+        {children}
+        <ArrowUpRightFromSquare
+          aria-hidden="true"
+          className="ml-0.5 inline size-3 align-baseline text-muted-foreground"
+        />
+      </button>
+    </Tooltip>
   );
 }
 

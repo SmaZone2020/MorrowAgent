@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Button } from "@/vendor/beui/components/motion/button";
+import { Tooltip } from "@/vendor/beui/components/motion/tooltip";
 import { Modal } from "@/components/Modal";
 
 /** Inline artifacts never exceed this width, so one big figure cannot eat the reply. */
@@ -46,16 +47,17 @@ export function ArtifactAction({
   children: ReactNode;
 }) {
   return (
-    <Button
-      size="sm"
-      variant="ghost"
-      aria-label={label}
-      title={label}
-      className="size-8 p-0"
-      onClick={onClick}
-    >
-      {children}
-    </Button>
+    <Tooltip content={label} side="top">
+      <Button
+        size="sm"
+        variant="ghost"
+        aria-label={label}
+        className="size-8 p-0"
+        onClick={onClick}
+      >
+        {children}
+      </Button>
+    </Tooltip>
   );
 }
 
