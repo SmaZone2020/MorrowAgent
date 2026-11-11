@@ -1,10 +1,15 @@
+import { useState } from "react";
 import { Button } from "@/vendor/beui/components/motion/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/vendor/beui/components/motion/popover";
+import {
+  ColorSelector,
+  ColorSelectorItem,
+  ColorSelectorList,
+} from "@/vendor/beui/components/motion/color-selector";
 import { Tooltip } from "@/vendor/beui/components/motion/tooltip";
 import { ArrowUturnCcwLeft, TrashBin } from "@gravity-ui/icons";
-import {
-  INK_WIDTHS,
-  type InkWidth,
-} from "@/features/scratchpad/geometry";
+import { INK_WIDTHS, type InkWidth } from "@/features/scratchpad/geometry";
+import { INK_COLORS, labelOf, swatchOf } from "@/features/scratchpad/palette";
 import { useScratchpad } from "@/features/scratchpad/useScratchpad";
 
 // A dot at each nib width, so the choice reads at a glance instead of needing a
@@ -43,11 +48,13 @@ export function ScratchpadPanel({
         role="img"
         aria-label="草稿纸"
         style={{ height }}
-        className="w-full touch-none rounded-lg bg-background/60 [background-image:radial-gradient(var(--border)_1px,transparent_1px)] [background-size:16px_16px]"
+        className="w-full touch-none cursor-crosshair rounded-lg bg-background/60 [background-image:radial-gradient(var(--border)_1px,transparent_1px)] [background-size:16px_16px]"
         {...pad.handlers}
       />
       <div className="flex items-center justify-between gap-1">
         <div className="flex items-center gap-0.5">
+          <InkColorPicker value={pad.color} onChange={pad.setColor} />
+          <span aria-hidden className="mx-1 h-4 w-px bg-border" />
           {INK_WIDTHS.map((width) => (
             <Tooltip key={width} content={WIDTH_LABELS[width]} side="top">
               <Button
@@ -55,7 +62,7 @@ export function ScratchpadPanel({
                 variant={pad.width === width ? "primary" : "ghost"}
                 aria-label={WIDTH_LABELS[width]}
                 aria-pressed={pad.width === width}
-                className="size-7 rounded-md p-0"
+                className="size-8 rounded-full p-0"
                 onClick={() => pad.setWidth(width)}
               >
                 <span
@@ -69,6 +76,7 @@ export function ScratchpadPanel({
           <Button
             size="sm"
             variant="ghost"
+            className="text-sm"
             disabled={pad.isEmpty}
             onClick={pad.undo}
           >
@@ -78,6 +86,7 @@ export function ScratchpadPanel({
           <Button
             size="sm"
             variant="ghost"
+            className="text-sm"
             disabled={pad.isEmpty}
             onClick={pad.clear}
           >
@@ -87,5 +96,69 @@ export function ScratchpadPanel({
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * The pen colour. The trigger is the current nib; the panel is beUI's
+ * color-selector, which brings the spring-gliding selection ring and radio
+ * keyboard navigation instead of a hand-rolled swatch row.
+ */
+function InkColorPicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+}) {
+  // Choosing a colour is the end of the interaction, so the panel closes on
+  // pick; leaving it open would cover the canvas the reader is about to draw on.
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={setOpen}
+      side="top"
+      align="start"
+      sideOffset={10}
+      panelRadius={14}
+    >
+      <PopoverTrigger>
+        <Button
+          size="sm"
+          variant="ghost"
+          aria-label={`墨色：${labelOf(value)}`}
+          className="size-8 rounded-full p-0"
+        >
+          <span
+            className="size-4 rounded-full border border-foreground/15"
+            style={{ backgroundColor: swatchOf(value) }}
+          />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="p-2">
+        <ColorSelector
+          value={value}
+          onValueChange={(next) => {
+            onChange(next);
+            setOpen(false);
+          }}
+          aria-label="墨色"
+        >
+          <ColorSelectorList className="gap-2 p-0">
+            {INK_COLORS.map((entry) => (
+              <ColorSelectorItem
+                key={entry.id}
+                value={entry.value}
+                color={entry.swatch}
+                label={entry.label}
+                className="size-9"
+              />
+            ))}
+          </ColorSelectorList>
+        </ColorSelector>
+      </PopoverContent>
+    </Popover>
   );
 }

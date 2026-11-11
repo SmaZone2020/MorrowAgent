@@ -18,6 +18,10 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-info: var(--info);
+  /* beUI's popover paints on this token; without it the panel would be
+     transparent. It is the card surface, so a floating panel matches a card. */
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
 
   --font-sans: "Inter", "Noto Sans SC", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Source Han Serif SC", "Noto Serif SC", "Songti SC", serif;
@@ -46,6 +50,10 @@
 
   --card: #faf7f1;
   --card-foreground: #384248;
+
+  /* Floating surfaces (popovers, dropdown panels) sit above a card. */
+  --popover: #faf7f1;
+  --popover-foreground: #384248;
 
   --muted: #e7e1d7;
   --muted-foreground: #6f6a63;
@@ -83,6 +91,10 @@
 
   --card: #24282b;
   --card-foreground: #e8e3da;
+
+  /* Floating surfaces (popovers, dropdown panels) sit above a card. */
+  --popover: #2b3033;
+  --popover-foreground: #e8e3da;
 
   --muted: #2e3336;
   --muted-foreground: #a6a09a;

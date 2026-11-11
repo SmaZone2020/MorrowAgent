@@ -6,6 +6,10 @@ import {
   type InkWidth,
 } from "@/features/scratchpad/geometry";
 import {
+  DEFAULT_INK_COLOR,
+  strokeColor,
+} from "@/features/scratchpad/palette";
+import {
   emptyDocument,
   type Stroke,
   type StrokeDocument,
@@ -19,9 +23,10 @@ import {
 import { appScope } from "@/features/uiState/scope";
 
 export interface ScratchpadHandlers {
-  pointerDown: (event: React.PointerEvent<HTMLCanvasElement>) => void;
-  pointerMove: (event: React.PointerEvent<HTMLCanvasElement>) => void;
-  pointerUp: () => void;
+  onPointerDown: (event: React.PointerEvent<HTMLCanvasElement>) => void;
+  onPointerMove: (event: React.PointerEvent<HTMLCanvasElement>) => void;
+  onPointerUp: (event: React.PointerEvent<HTMLCanvasElement>) => void;
+  onPointerCancel: (event: React.PointerEvent<HTMLCanvasElement>) => void;
 }
 
 export interface ScratchpadApi {
@@ -31,6 +36,8 @@ export interface ScratchpadApi {
   isEmpty: boolean;
   width: InkWidth;
   setWidth: (width: InkWidth) => void;
+  color: string;
+  setColor: (color: string) => void;
   undo: () => void;
   clear: () => void;
   toDocument: () => StrokeDocument;
@@ -58,9 +65,20 @@ export function useScratchpad(persistKey?: string): ScratchpadApi {
   const widthRef = useRef(width);
   widthRef.current = width;
 
+  // Like the nib width, the colour is a tool setting shared by every pad.
+  const [color, setColorState] = useState<string>(() =>
+    readScope<string>(appScope("inkColor"), DEFAULT_INK_COLOR),
+  );
+  const colorRef = useRef(color);
+  colorRef.current = color;
+
   const chooseWidth = useCallback((next: InkWidth) => {
     setWidth(next);
     writeScope(appScope("inkWidth"), next);
+  }, []);
+  const chooseColor = useCallback((next: string) => {
+    setColorState(next);
+    writeScope(appScope("inkColor"), next);
   }, []);
   const drawingRef = useRef<Stroke | null>(null);
   const strokesRef = useRef<Stroke[]>([]);
@@ -105,11 +123,17 @@ export function useScratchpad(persistKey?: string): ScratchpadApi {
 
     const ratio = window.devicePixelRatio || 1;
     context.clearRect(0, 0, canvas.width / ratio, canvas.height / ratio);
-    context.fillStyle = inkColor();
+    const themeInk = inkColor();
     for (const stroke of committed) {
+      // The colour is per stroke, not per pass: recolouring the pen must not
+      // repaint work that was already done in another colour.
+      context.fillStyle = strokeColor(stroke.color, themeInk);
       context.fill(strokeToPath(stroke, normalizeWidth(stroke.width)));
     }
-    if (live) context.fill(strokeToPath(live, normalizeWidth(live.width)));
+    if (live) {
+      context.fillStyle = strokeColor(live.color, themeInk);
+      context.fill(strokeToPath(live, normalizeWidth(live.width)));
+    }
   }, []);
 
   useEffect(() => {
@@ -142,15 +166,21 @@ export function useScratchpad(persistKey?: string): ScratchpadApi {
     (event: React.PointerEvent<HTMLCanvasElement>) => {
       const canvas = canvasRef.current;
       if (!canvas) return;
+      // A second finger must not restart the stroke under the first one.
+      if (drawingRef.current) return;
       touchedRef.current = true;
       canvas.setPointerCapture(event.pointerId);
       const rect = canvas.getBoundingClientRect();
       drawingRef.current = {
         points: [pointFromEvent(event, rect)],
         width: widthRef.current,
+        color: colorRef.current,
       };
+      // Show the first dot immediately; without this a tap paints nothing
+      // until pointerup commits the stroke.
+      paint(strokesRef.current, drawingRef.current);
     },
-    [],
+    [paint],
   );
 
   const pointerMove = useCallback(
@@ -167,14 +197,28 @@ export function useScratchpad(persistKey?: string): ScratchpadApi {
     [paint],
   );
 
-  const pointerUp = useCallback(() => {
-    const current = drawingRef.current;
+  const pointerUp = useCallback(
+    (event: React.PointerEvent<HTMLCanvasElement>) => {
+      const current = drawingRef.current;
+      drawingRef.current = null;
+      if (!current) return;
+      const canvas = canvasRef.current;
+      if (canvas?.hasPointerCapture(event.pointerId)) {
+        canvas.releasePointerCapture(event.pointerId);
+      }
+      // A tap with no movement still deserves a dot, so single-point strokes
+      // are kept instead of discarded as empty.
+      setStrokes((previous) => [...previous, current]);
+    },
+    [],
+  );
+
+  // A cancelled gesture (the OS took the pointer, the window lost focus) must
+  // not leave the pen down, or the next move would draw a line to the cursor.
+  const pointerCancel = useCallback(() => {
     drawingRef.current = null;
-    if (!current) return;
-    // A tap with no movement still deserves a dot, so single-point strokes are
-    // kept instead of discarded as empty.
-    setStrokes((previous) => [...previous, current]);
-  }, []);
+    paint(strokesRef.current);
+  }, [paint]);
 
   const undo = useCallback(() => {
     touchedRef.current = true;
@@ -198,11 +242,13 @@ export function useScratchpad(persistKey?: string): ScratchpadApi {
 
   return {
     canvasRef,
-    handlers: { pointerDown, pointerMove, pointerUp },
+    handlers: { onPointerDown: pointerDown, onPointerMove: pointerMove, onPointerUp: pointerUp, onPointerCancel: pointerCancel },
     strokes,
     isEmpty: strokes.length === 0,
     width,
     setWidth: chooseWidth,
+    color,
+    setColor: chooseColor,
     undo,
     clear,
     toDocument,

@@ -11,6 +11,12 @@ export interface Stroke {
    * the pen had a width control still replays at the default.
    */
   width?: number;
+  /**
+   * CSS colour the stroke was drawn in. Empty means "follow the foreground
+   * token", which is what ink recorded before the pen had a colour control
+   * replays as — that keeps old work readable when the theme flips.
+   */
+  color?: string;
 }
 
 /**
