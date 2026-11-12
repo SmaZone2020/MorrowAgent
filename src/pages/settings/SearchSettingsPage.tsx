@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
-import { ArrowUpRightFromSquare, Globe } from "@gravity-ui/icons";
+import { ArrowUpRightFromSquare, Globe, Pencil } from "@gravity-ui/icons";
 import { Button } from "@/vendor/beui/components/motion/button";
 import { Input } from "@/vendor/beui/components/motion/input";
 import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
+import { Tooltip } from "@/vendor/beui/components/motion/tooltip";
+import { Modal } from "@/components/Modal";
 import {
   SettingsGroup,
   SettingsPageShell,
@@ -28,6 +30,10 @@ function formatBalance(infos: { currency: string; totalBalance: string }[]): str
  * OpenAI-compatible endpoint, while `web_search` and `fetch_page` bill DeepSeek
  * per call. The balance is the cheapest proof the key is live, so it is read
  * straight after saving rather than kept behind a "测试" button.
+ *
+ * The key itself lives in a modal, not on the row: a password field sitting
+ * open on a settings page invites a stray keystroke, and there is nothing to
+ * read there anyway once one is stored.
  */
 export function SearchSettingsPage() {
   const ready = useSearchKey((state) => state.ready);
@@ -40,6 +46,7 @@ export function SearchSettingsPage() {
   const refreshBalance = useSearchKey((state) => state.refreshBalance);
   const clear = useSearchKey((state) => state.clear);
 
+  const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -54,6 +61,12 @@ export function SearchSettingsPage() {
     if (ready && !balance) void refreshBalance();
   }, [balance, ready, refreshBalance]);
 
+  const openEditor = () => {
+    setDraft("");
+    setSaveError(null);
+    setEditing(true);
+  };
+
   const save = async () => {
     const key = draft.trim();
     if (!key) return;
@@ -61,6 +74,7 @@ export function SearchSettingsPage() {
     setSaveError(null);
     try {
       await saveKey(key);
+      setEditing(false);
       setDraft("");
     } catch (cause) {
       setSaveError(cause instanceof Error ? cause.message : String(cause));
@@ -74,6 +88,8 @@ export function SearchSettingsPage() {
     setSaveError(null);
     try {
       await clear();
+      setEditing(false);
+      setDraft("");
     } catch (cause) {
       setSaveError(cause instanceof Error ? cause.message : String(cause));
     } finally {
@@ -86,82 +102,58 @@ export function SearchSettingsPage() {
   return (
     <SettingsPageShell title="搜索与请求">
       <SettingsGroup title="DeepSeek">
-        <div className="flex flex-col gap-3 px-4 py-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex min-w-0 items-center gap-2">
-              <Globe aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-              <span className="text-sm font-medium text-foreground">API Key</span>
+        <SettingsRow
+          title="API Key"
+          hint={
+            source === "provider"
+              ? "留空即复用「AI 供应商」里官方 DeepSeek 的 Key，在那边改一次即可。"
+              : "网页搜索与正文抓取按次计费，用的是这把 Key。"
+          }
+          control={
+            <div className="flex items-center gap-2">
+              {source === "search" ? (
+                <AnimatedBadge status="success" size="sm">
+                  已配置
+                </AnimatedBadge>
+              ) : source === "provider" ? (
+                <AnimatedBadge status="info" size="sm">
+                  复用供应商 Key
+                </AnimatedBadge>
+              ) : (
+                <AnimatedBadge status="neutral" size="sm">
+                  未配置
+                </AnimatedBadge>
+              )}
+              <Tooltip content="编辑 Key" side="top">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  aria-label="编辑 Key"
+                  className="size-8 rounded-full p-0"
+                  onClick={openEditor}
+                >
+                  <Pencil className="size-4" />
+                </Button>
+              </Tooltip>
             </div>
-            {source === "search" ? (
-              <AnimatedBadge status="success" size="sm">
-                已配置
-              </AnimatedBadge>
-            ) : source === "provider" ? (
-              <AnimatedBadge status="info" size="sm">
-                复用供应商 Key
-              </AnimatedBadge>
-            ) : (
-              <AnimatedBadge status="neutral" size="sm">
-                未配置
-              </AnimatedBadge>
-            )}
-          </div>
-
-          <Input
-            type="password"
-            value={draft}
-            onChange={setDraft}
-            placeholder={
-              source === "search"
-                ? "已保存，输入新 Key 可替换"
-                : "留空即用「AI 供应商」里的官方 Key"
-            }
-            spellCheck={false}
-            autoComplete="off"
-            classNames={{ field: "rounded-xl" }}
-          />
-
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              size="sm"
-              className="text-sm"
-              disabled={saving || !draft.trim()}
-              onClick={() => void save()}
-            >
-              {saving ? "保存中" : "保存"}
-            </Button>
-            {source === "search" ? (
-              <Button
-                size="sm"
-                variant="ghost"
-                className="text-sm text-muted-foreground hover:text-destructive"
-                disabled={saving}
-                onClick={() => void forget()}
-              >
-                清除
-              </Button>
-            ) : null}
+          }
+        />
+        <SettingsRow
+          title="获取 Key"
+          hint="在 DeepSeek 开放平台创建，复制后填到上一行。"
+          control={
             <Button
               size="sm"
               variant="secondary"
               className="text-sm"
               onClick={() => void openExternalUrl(PLATFORM_URL)}
             >
+              <Globe className="size-4" />
               DeepSeek 开放平台
               <ArrowUpRightFromSquare className="size-4" />
             </Button>
-          </div>
-
-          {source === "provider" ? (
-            <p className="text-sm leading-6 text-muted-foreground">
-              正在复用「AI 供应商」里官方 DeepSeek 的 Key，那边改一次即可。
-            </p>
-          ) : null}
-
-          {saveError ? (
-            <p className="text-sm leading-6 text-destructive">{saveError}</p>
-          ) : null}
-        </div>
+          }
+        />
       </SettingsGroup>
 
       <SettingsGroup title="账户">
@@ -202,6 +194,71 @@ export function SearchSettingsPage() {
           />
         ) : null}
       </SettingsGroup>
+
+      <Modal
+        open={editing}
+        onOpenChange={(open) => {
+          if (!open) setEditing(false);
+        }}
+        title="DeepSeek API Key"
+        width="md"
+        footer={
+          <>
+            {source === "search" ? (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="mr-auto text-sm text-muted-foreground hover:text-destructive"
+                disabled={saving}
+                onClick={() => void forget()}
+              >
+                清除
+              </Button>
+            ) : null}
+            <Button
+              size="sm"
+              variant="secondary"
+              className="text-sm"
+              disabled={saving}
+              onClick={() => setEditing(false)}
+            >
+              取消
+            </Button>
+            <Button
+              size="sm"
+              className="text-sm"
+              disabled={saving || !draft.trim()}
+              onClick={() => void save()}
+            >
+              {saving ? "保存中" : "保存"}
+            </Button>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-3">
+          <Input
+            type="password"
+            value={draft}
+            onChange={setDraft}
+            placeholder={
+              source === "search"
+                ? "已保存，输入新 Key 可替换"
+                : "留空即用「AI 供应商」里的官方 Key"
+            }
+            spellCheck={false}
+            autoComplete="off"
+            classNames={{ field: "rounded-xl" }}
+          />
+          {source === "provider" ? (
+            <p className="text-sm leading-6 text-muted-foreground">
+              保存后会用这里的 Key 顶替供应商里的那把；清除则回到复用状态。
+            </p>
+          ) : null}
+          {saveError ? (
+            <p className="text-sm leading-6 text-destructive">{saveError}</p>
+          ) : null}
+        </div>
+      </Modal>
     </SettingsPageShell>
   );
 }
