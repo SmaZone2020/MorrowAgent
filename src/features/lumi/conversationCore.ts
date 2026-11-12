@@ -108,6 +108,15 @@ export interface ConversationStoreOptions {
   tools?: string[];
   /** Reads the package so a tool answer comes from real content. */
   context?: () => ToolContext | null;
+  /**
+   * Called once a request that produced a visible answer has finished.
+   *
+   * The store cannot know whether the learner is looking at it: it is a module
+   * singleton, and the page that shows it may have been navigated away from
+   * while the reply was still streaming. The host supplies this so a finished
+   * answer can be announced where the learner actually is.
+   */
+  onRequestSettled?: (workspaceId: string | null) => void;
 }
 
 /**
@@ -128,6 +137,7 @@ export function createConversationStore({
   idPrefix = "conv",
   tools: toolNames = [],
   context,
+  onRequestSettled,
 }: ConversationStoreOptions) {
   let controller: AbortController | null = null;
   // The first hydrate is kicked off from an effect, which React runs twice in
@@ -198,10 +208,11 @@ export function createConversationStore({
           controller = new AbortController();
           return controller.signal;
         },
-        releaseRequest: () => {
+        releaseRequest: (delivered = true) => {
           if (get().pending) return;
           if (!get().sending) return;
           set({ sending: false });
+          if (delivered) onRequestSettled?.(get().workspaceId);
         },
       }),
     };

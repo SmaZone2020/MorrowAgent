@@ -4,6 +4,7 @@ import { Button } from "@/vendor/beui/components/motion/button";
 import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
 import { Panel } from "@/components/Panel";
 import { EmptyState } from "@/components/EmptyState";
+import { LoadingLine } from "@/components/LoadingLine";
 import { MathText } from "@/components/MathText";
 import { Modal } from "@/components/Modal";
 import { findPoint } from "@/features/knowledge";
@@ -113,7 +114,7 @@ export function WrongBookPage() {
         }
       >
         {!loaded ? (
-          <p className="py-4 text-sm text-muted-foreground">读取中</p>
+          <LoadingLine className="py-4" />
         ) : attempts.length === 0 ? (
           <EmptyState
             mood="proud"

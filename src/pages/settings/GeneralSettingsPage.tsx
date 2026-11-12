@@ -1,5 +1,6 @@
 import { Display, Moon, Sun } from "@gravity-ui/icons";
 import { Input } from "@/vendor/beui/components/motion/input";
+import { Switch } from "@/vendor/beui/components/motion/switch";
 import {
   Select,
   SelectContent,
@@ -53,6 +54,8 @@ export function GeneralSettingsPage() {
   const questionScale = usePreferences((state) => state.questionScale);
   const nickname = usePreferences((state) => state.nickname);
   const birthday = usePreferences((state) => state.birthday);
+  const lumiDot = usePreferences((state) => state.lumiDot);
+  const lumiToast = usePreferences((state) => state.lumiToast);
   const updatePreferences = usePreferences((state) => state.update);
   const age = ageFrom(birthday);
 
@@ -174,6 +177,33 @@ export function GeneralSettingsPage() {
                 field: "h-8 rounded-lg",
                 input: "text-sm tabular-nums",
               }}
+            />
+          }
+        />
+      </SettingsGroup>
+
+      <SettingsGroup title="Lumi 的提醒">
+        <SettingsRow
+          title="侧边栏红点"
+          hint="Lumi 在你离开页面后回完消息，会给侧边栏的 Lumi AI 加一个红点。"
+          control={
+            <Switch
+              checked={lumiDot}
+              ariaLabel="侧边栏红点"
+              onCheckedChange={(value) => updatePreferences({ lumiDot: value })}
+            />
+          }
+        />
+        <SettingsRow
+          title="应用内通知"
+          hint="同一条回复再用一个 Toast 提醒一次，可以直接跳过去看。"
+          control={
+            <Switch
+              checked={lumiToast}
+              ariaLabel="应用内通知"
+              onCheckedChange={(value) =>
+                updatePreferences({ lumiToast: value })
+              }
             />
           }
         />

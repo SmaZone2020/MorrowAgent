@@ -37,6 +37,8 @@ export const usePreferences = create<PreferencesState>((set, get) => ({
       nickname: get().nickname,
       birthday: get().birthday,
       thinking: get().thinking,
+      lumiDot: get().lumiDot,
+      lumiToast: get().lumiToast,
       ...patch,
     };
     set(next);

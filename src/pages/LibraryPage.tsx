@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Gear, Plus } from "@gravity-ui/icons";
 import { Button } from "@/vendor/beui/components/motion/button";
 import { Tooltip } from "@/vendor/beui/components/motion/tooltip";
+import { LoadingLine } from "@/components/LoadingLine";
 import { settingsPath, workspacePath } from "@/app/navigation";
 import { PackageBook, EmptyShelf } from "@/features/library/PackageBook";
 import { ImportDialog } from "@/features/library/ImportDialog";
@@ -86,7 +87,7 @@ export function LibraryPage() {
         className="scrollbar-thin mx-auto min-h-0 w-full max-w-6xl flex-1 overflow-y-auto px-5 py-5 sm:px-7 sm:py-6"
       >
         {!loaded ? (
-          <p className="text-sm text-muted-foreground">正在读取书架</p>
+          <LoadingLine label="正在读取书架" />
         ) : workspaces.length === 0 ? (
           // Vertically centred with a small downward bias: an empty shelf reads
           // as a place, not as a message stuck under the heading.

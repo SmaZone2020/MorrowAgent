@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import { AppShell } from "@/app/shell/AppShell";
 import { AppProviders } from "@/app/providers";
 import { TitleBar } from "@/app/shell/TitleBar";
+import { LumiNoticeHost } from "@/app/shell/LumiNoticeHost";
 import { ResizeHandles } from "@/app/shell/ResizeHandles";
 import { resolveShellLayer } from "@/app/shell/navHelpers";
 import { AnimatedSidebarProvider } from "@/vendor/beui/components/motion/animated-sidebar";
@@ -68,6 +69,9 @@ export function RootLayout() {
           <AppShell />
         </div>
       </AnimatedSidebarProvider>
+      {/* Above every page, below the title bar: a reply that finished elsewhere
+          has to be able to say so from wherever the learner now is. */}
+      <LumiNoticeHost />
       <ResizeHandles />
     </AppProviders>
   );

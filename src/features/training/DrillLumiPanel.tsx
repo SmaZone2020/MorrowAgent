@@ -12,7 +12,6 @@ import { MessageList } from "@/features/lumi/MessageList";
 import { LumiMark } from "@/features/lumi/LumiMark";
 import { useBoundConversation } from "@/features/lumi/useBoundConversation";
 import { useToolContext } from "@/features/lumi/useToolContext";
-import { useLearnerProfile } from "@/features/lumi/useLearnerProfile";
 import { useDrillConversation } from "@/features/training/drillConversation";
 import { usePersistedState } from "@/features/uiState";
 import { useWorkspaceId } from "@/features/workspace/WorkspaceContext";
@@ -90,9 +89,10 @@ export function DrillLumiPanel({
 }) {
   useBoundConversation(useDrillConversation);
   // The rail's composer carries only `@<id>`, so the model needs the package
-  // readable here too — otherwise it would answer from the id alone.
+  // readable here too — otherwise it would answer from the id alone. The
+  // learner block itself is published by the workspace shell, shared with the
+  // Lumi page.
   useToolContext("drill");
-  useLearnerProfile();
 
   const workspaceId = useWorkspaceId();
   const turns = useDrillConversation((state) => state.turns);

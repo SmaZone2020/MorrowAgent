@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/vendor/beui/components/motion/button";
 import { Panel } from "@/components/Panel";
 import { EmptyState } from "@/components/EmptyState";
+import { LoadingLine } from "@/components/LoadingLine";
 import { usePersistedState, useScrollMemory } from "@/features/uiState";
 import { appScope, workspaceScope } from "@/features/uiState/scope";
 import {
@@ -155,7 +156,7 @@ export function ExamPage() {
     >
       {!loaded ? (
         <Panel title="模拟考试">
-          <p className="py-3 text-sm text-muted-foreground">读取中</p>
+          <LoadingLine className="py-3" />
         </Panel>
       ) : active && paper ? (
         <>

@@ -5,6 +5,7 @@ import { Button } from "@/vendor/beui/components/motion/button";
 import { Panel } from "@/components/Panel";
 import { EmptyState } from "@/components/EmptyState";
 import { InfoHint } from "@/components/InfoHint";
+import { LoadingLine } from "@/components/LoadingLine";
 import { SquircleWrapper } from "@/components/SquircleWrapper";
 import { ChoiceTabs } from "@/pages/settings/SettingsBlocks";
 import { workspacePath } from "@/app/navigation";
@@ -111,7 +112,7 @@ export function ReportPage() {
         }
       >
         {!loaded ? (
-          <p className="py-3 text-sm text-muted-foreground">读取中</p>
+          <LoadingLine className="py-3" />
         ) : empty ? (
           <EmptyState
             mood="curious"
@@ -171,7 +172,7 @@ export function ReportPage() {
 
       <Panel title="章节掌握度">
         {!loaded ? (
-          <p className="py-3 text-sm text-muted-foreground">读取中</p>
+          <LoadingLine className="py-3" />
         ) : axes.length < 3 ? (
           <EmptyState
             mood="curious"

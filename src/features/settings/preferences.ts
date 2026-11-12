@@ -19,6 +19,10 @@ export interface Preferences {
    * Only DeepSeek understands the switch; other providers never see it.
    */
   thinking: string;
+  /** Marks the rail entry when a reply finished while the learner was elsewhere. */
+  lumiDot: boolean;
+  /** Announces that reply with a toast instead of only the dot. */
+  lumiToast: boolean;
 }
 
 export interface StoreStats {
@@ -40,6 +44,8 @@ export const defaultPreferences: Preferences = {
   nickname: "",
   birthday: "",
   thinking: "high",
+  lumiDot: true,
+  lumiToast: true,
 };
 
 export async function loadPreferences(): Promise<Preferences> {

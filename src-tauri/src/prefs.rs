@@ -35,6 +35,18 @@ pub struct Preferences {
     /// learner's patience rather than about one conversation.
     #[serde(rename = "thinking", default = "default_thinking")]
     pub Thinking: String,
+    /// Whether the rail's Lumi entry gets a dot when a reply finishes while the
+    /// learner is on another page. Quiet, so it is on by default.
+    #[serde(rename = "lumiDot", default = "default_true")]
+    pub LumiDot: bool,
+    /// Whether that same reply also raises a toast. Louder, and on by default
+    /// because an answer nobody notices is an answer that was not given.
+    #[serde(rename = "lumiToast", default = "default_true")]
+    pub LumiToast: bool,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 fn default_temperature() -> f64 {
@@ -133,6 +145,8 @@ impl Default for Preferences {
             Nickname: String::new(),
             Birthday: String::new(),
             Thinking: default_thinking(),
+            LumiDot: default_true(),
+            LumiToast: default_true(),
         }
     }
 }

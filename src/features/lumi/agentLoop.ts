@@ -48,8 +48,14 @@ export interface LoopDeps {
     message: string;
   }) => void;
   abortSignal: () => AbortSignal;
-  /** Called once the request that owns `sending` has finished. */
-  releaseRequest: () => void;
+  /**
+   * Called once the request that owns `sending` has finished.
+   *
+   * `delivered` is false when the turn ended in an error: a failed request is
+   * something the learner is already looking at, and announcing it as a finished
+   * reply would be a lie.
+   */
+  releaseRequest: (delivered?: boolean) => void;
 }
 
 /** Runs one tool, falling back to a sentence the model can read. */
@@ -147,7 +153,7 @@ export function createLoop(deps: LoopDeps) {
     const config = activeProvider();
     if (!config) {
       deps.patchReply(replyTurn.id, { pending: false, error: "还没有配置 Provider" });
-      deps.releaseRequest();
+      deps.releaseRequest(false);
       return;
     }
 
@@ -193,6 +199,7 @@ export function createLoop(deps: LoopDeps) {
       });
     };
 
+    let failed = false;
     try {
       // Whether this request would carry pictures is decided by the transcript,
       // not by the reply turn: the images sit on the user turn that was sent.
@@ -250,6 +257,7 @@ export function createLoop(deps: LoopDeps) {
       }
     } catch (error) {
       if (deps.conversationId() !== conversationId) return;
+      failed = true;
       deps.patchReply(replyTurn.id, {
         pending: false,
         error: error instanceof Error ? error.message : "请求失败",
@@ -258,7 +266,7 @@ export function createLoop(deps: LoopDeps) {
       // Only the outermost pass owns the flag: a tool round trip re-enters this
       // function, and clearing `sending` between rounds would flash the UI back
       // to idle mid-chain.
-      if (depth === 0) deps.releaseRequest();
+      if (depth === 0) deps.releaseRequest(!failed);
     }
   }
 

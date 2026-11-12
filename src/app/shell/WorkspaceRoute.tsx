@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useParams } from "react-router-dom";
 import { WorkspaceProvider } from "@/features/workspace/WorkspaceContext";
+import { WorkspaceAgentContext } from "@/features/lumi/WorkspaceAgentContext";
 
 /**
  * The workspace layer's shell.
@@ -17,6 +18,9 @@ export function WorkspaceRoute() {
 
   return (
     <WorkspaceProvider workspaceId={workspaceId}>
+      {/* Mounted above the outlet so a streaming reply keeps its tools even
+          after the learner walks away from the Lumi page. */}
+      <WorkspaceAgentContext />
       <Outlet />
     </WorkspaceProvider>
   );

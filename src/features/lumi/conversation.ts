@@ -1,4 +1,6 @@
 import { createConversationStore } from "@/features/lumi/conversationCore";
+import { noteReplySettled } from "@/features/lumi/activity";
+import { usePreferences } from "@/features/settings/preferencesStore";
 import { buildPrompt, SYSTEM_PROMPT } from "@/features/lumi/prompt";
 import { currentProfile } from "@/features/lumi/learnerProfile";
 import { ALL_TOOL_NAMES } from "@/features/lumi/tools";
@@ -26,4 +28,10 @@ export const useConversation = createConversationStore({
     buildPrompt("lumi", currentProfile(workspaceId)),
   tools: ALL_TOOL_NAMES,
   context: currentToolContext,
+  // A reply keeps streaming after the learner leaves the page, because the store
+  // is a module singleton. This is what tells them it arrived.
+  onRequestSettled: (workspaceId) => {
+    const { lumiDot, lumiToast } = usePreferences.getState();
+    noteReplySettled(workspaceId, { dot: lumiDot, toast: lumiToast });
+  },
 });

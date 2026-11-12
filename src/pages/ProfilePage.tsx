@@ -7,6 +7,7 @@ import { Tooltip } from "@/vendor/beui/components/motion/tooltip";
 import { Panel } from "@/components/Panel";
 import { EmptyState } from "@/components/EmptyState";
 import { InfoHint } from "@/components/InfoHint";
+import { LoadingLine } from "@/components/LoadingLine";
 import { findPoint } from "@/features/knowledge";
 import { useScrollMemory } from "@/features/uiState";
 import { workspaceScope } from "@/features/uiState/scope";
@@ -111,7 +112,7 @@ export function ProfilePage() {
         }
       >
         {!loaded ? (
-          <p className="py-4 text-sm text-muted-foreground">读取中</p>
+          <LoadingLine className="py-4" />
         ) : index.view.points.length === 0 ? (
           <EmptyState mood="confused" title="这个学习包暂无知识点" />
         ) : (

@@ -33,6 +33,7 @@ import { AppStatusFooter } from "@/app/shell/AppStatusFooter";
 import { RailFlyout } from "@/app/shell/RailFlyout";
 import { usePersistedState } from "@/features/uiState/usePersistedState";
 import { appScope } from "@/features/uiState/scope";
+import { useLumiActivity } from "@/features/lumi/activity";
 
 // Rail-state spacing is zeroed out so the icon column reads as one even stack
 // instead of five groups each keeping their own padding and gap. Horizontal
@@ -62,6 +63,12 @@ export function AppShell() {
     [entries, location.pathname],
   );
   const description = describeLocation(activeEntry);
+  // A reply that finished while the learner was on another page marks the rail
+  // entry, so the answer is discoverable without interrupting them.
+  const workspaceId = layer.kind === "workspace" ? layer.workspaceId : null;
+  const lumiUnread = useLumiActivity((state) =>
+    workspaceId ? Boolean(state.unread[workspaceId]) : false,
+  );
   const [expanded, setExpanded] = usePersistedState<string | null>(
     appScope("sidebar.expanded"),
     activeEntry?.item.children ? activeEntry.item.key : null,
@@ -170,7 +177,21 @@ export function AppShell() {
                             }}
                           >
                             <AnimatedSidebarMenuButton
-                              icon={<item.icon className="size-5" />}
+                              icon={
+                                <span className="relative grid size-5 place-items-center">
+                                  <item.icon className="size-5" />
+                                  {/* A dot rather than a count: the number of
+                                      unseen replies is not a useful quantity,
+                                      and the toast carries the detail. It sits
+                                      on the icon so the rail keeps it too. */}
+                                  {item.key === "lumi" && lumiUnread ? (
+                                    <span
+                                      aria-hidden="true"
+                                      className="absolute -top-1 -right-1 size-2 rounded-full bg-destructive ring-2 ring-card"
+                                    />
+                                  ) : null}
+                                </span>
+                              }
                               isActive={Boolean(selfActive || childActive)}
                               ariaExpanded={
                                 item.children ? expanded === item.key : undefined

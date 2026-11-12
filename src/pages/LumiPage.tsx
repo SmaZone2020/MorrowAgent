@@ -16,8 +16,7 @@ import {
 } from "@/features/lumi/useAttachmentDraft";
 import { useConversation } from "@/features/lumi/conversation";
 import { useBoundConversation } from "@/features/lumi/useBoundConversation";
-import { useToolContext } from "@/features/lumi/useToolContext";
-import { useLearnerProfile } from "@/features/lumi/useLearnerProfile";
+import { setLumiOnScreen, useLumiActivity } from "@/features/lumi/activity";
 import { greetingFor } from "@/features/lumi/greetings";
 import { useProviderStatus } from "@/features/settings/providerStatus";
 import { usePreferences } from "@/features/settings/preferencesStore";
@@ -90,10 +89,16 @@ export function LumiPage() {
   const pending = useConversation((state) => state.pending);
   const answerQuiz = useConversation((state) => state.answerQuiz);
 
-  // Publishes the package to the tool layer; tools read live content.
-  useToolContext("lumi");
-  // Publishes the goal and the weak points so the prompt can open with them.
-  useLearnerProfile();
+  // The package and the learner block are published by the workspace shell, so
+  // a reply keeps its tools after this page unmounts.
+
+  // A reply that finishes while this page is open is already visible here, so
+  // it is not announced; the count is what the activity store checks.
+  useEffect(() => {
+    setLumiOnScreen(workspaceId, true);
+    useLumiActivity.getState().clearUnread(workspaceId);
+    return () => setLumiOnScreen(workspaceId, false);
+  }, [workspaceId]);
 
   const empty = turns.length === 0;
 
