@@ -114,9 +114,7 @@ export function SearchSettingsPage() {
             placeholder={
               source === "search"
                 ? "已保存，输入新 Key 可替换"
-                : source === "provider"
-                  ? "已复用 AI 供应商里的 DeepSeek Key"
-                  : "sk-..."
+                : "留空即用「AI 供应商」里的官方 Key"
             }
             spellCheck={false}
             autoComplete="off"
