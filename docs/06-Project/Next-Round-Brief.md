@@ -86,7 +86,7 @@ Morrow Agent 的**学习闭环主干已经跑通**（书架 → 学习包安装 
 
 - 现状：33 题覆盖 12/85 点。第 2 章之后全部「未测」，导致诊断卷只能覆盖 12 个点、画像大面积空白。
 - 目标：每点 ≥ 2 题（至少 1 选择/判断 + 1 计算/填空），合计 ~170 题，每題配解析。
-- 工具链已就绪：`prompts/question-generation.md`、`schemas/question.schema.json`、`scripts/mlps/validatePackage.mjs`、`scripts/mlps/checks/questions.mjs`。
+- 工具链已就绪：`schemas/question.schema.json`、`scripts/mlps/validatePackage.mjs`、`scripts/mlps/checks/questions.mjs`（提示词属于工作材料，不随仓库分发）。
 - 输出：`packages/<pkg>/questions/generated/chNN.json` + `solutions/chNN.json` + 更新 `questions/index.yaml`、`solutions/index.yaml`。
 - 改完必须重算 `checksums.sha256`（`scripts/writeChecksums.mjs`）并重新打包（`scripts/mlps/pack.mjs`）。
 - **别用 PowerShell 生成 JSON**（中文会坏）。用 Node 脚本或编辑工具。

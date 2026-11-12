@@ -108,7 +108,7 @@ function pickQuestion(question) {
 function main() {
   if (!existsSync(knowledgeRoot)) {
     console.error(
-      `\u2717 没有知识库源目录：${relative(projectRoot, knowledgeRoot)}（约定见 prompts/conventions.md）`,
+      `\u2717 没有知识库源目录：${relative(projectRoot, knowledgeRoot)}（YAML 源文件统一放在 data/yaml/）`,
     );
     process.exitCode = 1;
     return;

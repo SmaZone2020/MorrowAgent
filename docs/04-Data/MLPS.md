@@ -9,7 +9,7 @@
 </div>
 
 > This document is written in Chinese. The title and summary above are the English entry point.
-> For a task-oriented walkthrough of producing a package, read [`Package-Authoring-Guide.md`](Package-Authoring-Guide.md). This document is the specification; that one is the manual.
+> For a task-oriented walkthrough of producing a package, read [`Package-Authoring-Guide.md`](Package-Authoring-Guide.md) (中文：[`Package-Authoring-Guide.zh-CN.md`](Package-Authoring-Guide.zh-CN.md)). This document is the specification; that one is the manual.
 
 ## Morrow 学习包格式与数据标准
 

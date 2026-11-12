@@ -300,7 +300,7 @@ function main() {
   const fallback = defaultRoot();
   if (targets.length === 0 && !fallback) {
     return fail(
-      "没有知识库源目录：请把 YAML 放进 data/yaml/（约定见 prompts/conventions.md），或把目录作为参数传入",
+      "没有知识库源目录：请把 YAML 放进 data/yaml/，或把目录作为参数传入",
     );
   }
   const roots = targets.length > 0 ? targets : [fallback];
