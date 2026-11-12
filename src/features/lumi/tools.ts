@@ -7,6 +7,8 @@ import {
 } from "@/features/training/mastery";
 import { count, text } from "@/features/lumi/toolArgs";
 import { quizTool } from "@/features/lumi/quizTool";
+import { recentAttemptsTool } from "@/features/lumi/attemptsTool";
+import type { RecentAttempt } from "@/features/training/attemptCache";
 
 /**
  * Tools the model may call, and how this client answers them.
@@ -63,6 +65,8 @@ export interface ToolContext {
   stats: Map<string, { attempts: number; correct: number; lastAttemptAt: number }>;
   /** Wrong-book rows, newest first. */
   wrong: { questionId: string; knowledgePointId: string; createdAt: number }[];
+  /** Every recent attempt, newest first, right and wrong. */
+  recent: RecentAttempt[];
 }
 
 export type ToolOutcome =
@@ -301,6 +305,7 @@ export const TOOLS: ToolHandler[] = [
   READ_POINT,
   READ_QUESTION,
   WRONG_LIST,
+  recentAttemptsTool,
 ];
 
 export function findTool(name: string): ToolHandler | undefined {

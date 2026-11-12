@@ -8,6 +8,7 @@ import { QuestionCard } from "@/features/training/QuestionCard";
 import { DrillToolbar } from "@/features/training/DrillToolbar";
 import { PointFilter } from "@/pages/training/PointFilter";
 import { recordAttempt } from "@/features/training/attempts";
+import { refreshAttempts } from "@/features/training/attemptCache";
 import { usePersistedState } from "@/features/uiState";
 import { workspaceScope } from "@/features/uiState/scope";
 import { findPoint } from "@/features/knowledge";
@@ -184,7 +185,7 @@ export function DrillPage() {
             total={openQuestions.length}
             initialAnswer={answers[current.id] ?? null}
             initialVerdict={results[current.id] ?? null}
-            onAnswered={(answer, isCorrect) => {
+            onAnswered={(answer, isCorrect, ink) => {
               // Record the answer and, on a correct one, advance in a single
               // update: two writes from the same render would race.
               const last = position + 1 >= openQuestions.length;
@@ -203,10 +204,15 @@ export function DrillPage() {
                 current,
                 answer,
                 isCorrect,
-              ).catch(() => {
-                // A failed write must not block the drill; the answer stays on
-                // screen and the next submit simply tries again.
-              });
+                { inkSummary: ink },
+              )
+                // The tool context reads the snapshot, not the database, so a
+                // refresh here is what lets "我最近错在哪" see this answer.
+                .then(() => refreshAttempts(workspaceId))
+                .catch(() => {
+                  // A failed write must not block the drill; the answer stays on
+                  // screen and the next submit simply tries again.
+                });
             }}
             onRevealed={() => {
               patch((base) => ({
@@ -273,7 +279,18 @@ export function DrillPage() {
         </Panel>
       )}
 
-      <DrillToolbar className="absolute top-32 right-10" question={current} />
+      <DrillToolbar
+        className="absolute top-32 right-10"
+        question={current}
+        answerState={
+          current
+            ? {
+                answered: current.id in results,
+                verdict: results[current.id] ?? null,
+              }
+            : undefined
+        }
+      />
     </div>
   );
 }

@@ -66,6 +66,21 @@ export async function loadWrongAttempts(
   return invoke<WrongAttempt[]>("attempt_wrong_list", { workspaceId, limit });
 }
 
+/**
+ * Every recent attempt, right or wrong.
+ *
+ * The wrong book retires a question as soon as it is answered correctly, which
+ * is right for a list of things to redo but wrong for a tutor: "you got this
+ * one right after missing it twice" is the most useful thing Lumi can say.
+ */
+export async function loadRecentAttempts(
+  workspaceId: string,
+  limit = 20,
+): Promise<WrongAttempt[]> {
+  if (!isTauriRuntime) return [];
+  return invoke<WrongAttempt[]>("attempt_recent", { workspaceId, limit });
+}
+
 export async function forgetAttempt(
   workspaceId: string,
   questionId: string,

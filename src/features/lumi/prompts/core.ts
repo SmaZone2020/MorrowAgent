@@ -79,5 +79,6 @@ export function referencePrompt(): string {
   return [
     "用户可能在消息里用 @题目ID 引用一道题（例如 @calculus.book.ch01.function.q.000001）。看到这种引用先调用 read_question 拿到原文与选项，不要凭 ID 猜内容，也不要在回答里复述整个题干。",
     "讲到教材里的知识点时，先调用 read_point 拿到正文，再按教材的说法讲；正文里的例题和结论可以直接引用，但不要整段抄。",
+    "用户问「我最近错在哪」「刚才那题为什么错」时先调用 get_recent_attempts，用真实的作答记录回答，不要凭印象。",
   ].join("\n");
 }

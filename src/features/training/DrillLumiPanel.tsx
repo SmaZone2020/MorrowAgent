@@ -19,6 +19,12 @@ import { useWorkspaceId } from "@/features/workspace/WorkspaceContext";
 import { workspaceScope } from "@/features/uiState/scope";
 import type { Question } from "@/features/knowledge";
 
+/** What the drill card has recorded for the question on screen. */
+export interface AnswerState {
+  answered: boolean;
+  verdict: "correct" | "wrong" | "revealed" | null;
+}
+
 /** Narrow enough for the prompt input to stay usable; wide enough for a graph. */
 const MIN_WIDTH = 288;
 const DEFAULT_WIDTH = 384;
@@ -38,9 +44,29 @@ function clampWidth(width: number) {
  * question look like a long quote. A `@id` reference is short, unambiguous, and
  * resolvable through the `read_question` tool, so the model still sees the real
  * stem without the user having to paste it.
+ *
+ * The answer state rides along as one short line. Without it the model has to
+ * ask "你做了吗" before it can say anything, and with it in the user's own
+ * sentence every question would start with a status report instead.
  */
-function questionSeed(question: Question): string {
-  return [`关于 @${question.id}`, "", "我的问题是："].join("\n");
+export function questionSeed(
+  question: Question,
+  state?: AnswerState,
+): string {
+  const lines = [`关于 @${question.id}`];
+  if (state?.answered) {
+    const verdict =
+      state.verdict === "correct"
+        ? "判定为对"
+        : state.verdict === "wrong"
+          ? "判定为错"
+          : "看了答案";
+    lines.push(`我已作答，${verdict}。`);
+  } else {
+    lines.push("我还没作答。");
+  }
+  lines.push("", "我的问题是：");
+  return lines.join("\n");
 }
 
 /**
@@ -54,7 +80,14 @@ function questionSeed(question: Question): string {
  * transcript can also be lifted into a dialog when the rail is too narrow to
  * read a derivation comfortably.
  */
-export function DrillLumiPanel({ question }: { question?: Question }) {
+export function DrillLumiPanel({
+  question,
+  answerState,
+}: {
+  question?: Question;
+  /** What the card on screen has recorded, so the seed can say so. */
+  answerState?: AnswerState;
+}) {
   useBoundConversation(useDrillConversation);
   // The rail's composer carries only `@<id>`, so the model needs the package
   // readable here too — otherwise it would answer from the id alone.
@@ -89,15 +122,21 @@ export function DrillLumiPanel({ question }: { question?: Question }) {
   const drag = useRef<{ x: number; width: number } | null>(null);
 
   const seed = useMemo(
-    () => (question ? questionSeed(question) : ""),
-    [question],
+    () => (question ? questionSeed(question, answerState) : ""),
+    [question, answerState],
   );
+  // The seed changes when the card's verdict does. A draft that is still just
+  // the old seed is refreshed with it; a draft the user has edited is left
+  // alone, because answering a question must never overwrite what they typed.
+  const lastSeedRef = useRef(seed);
 
-  // A fresh rail with nothing typed yet starts from the current card, so the
-  // user can ask "why?" without pasting the stem themselves.
   useEffect(() => {
-    if (!listLoaded || turns.length > 0 || draft) return;
-    if (seed) setDraft(seed);
+    if (!listLoaded) return;
+    const previous = lastSeedRef.current;
+    lastSeedRef.current = seed;
+    if (!seed || turns.length > 0) return;
+    if (draft && draft !== previous) return;
+    setDraft(seed);
   }, [draft, listLoaded, seed, setDraft, turns.length]);
 
   const submit = (value: string) => {
@@ -116,6 +155,7 @@ export function DrillLumiPanel({ question }: { question?: Question }) {
 
   const clear = () => {
     setDraft(seed);
+    lastSeedRef.current = seed;
     cancelEdit();
     void startNew();
   };
@@ -255,6 +295,7 @@ export function DrillLumiPanel({ question }: { question?: Question }) {
             onClick={() => {
               cancelEdit();
               setDraft(seed);
+              lastSeedRef.current = seed;
             }}
           >
             取消编辑

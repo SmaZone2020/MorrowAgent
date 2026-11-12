@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { InfoHint } from "@/components/InfoHint";
 import { QuestionCard } from "@/features/training/QuestionCard";
 import { recordAttempt } from "@/features/training/attempts";
+import { refreshAttempts } from "@/features/training/attemptCache";
 import { buildDiagnostic } from "@/features/training/blueprint";
 import { usePersistedState } from "@/features/uiState";
 import { workspaceScope } from "@/features/uiState/scope";
@@ -150,7 +151,7 @@ export function DiagnosticPage() {
         total={paper.length}
         initialAnswer={run.answers[current.id] ?? null}
         initialVerdict={run.results[current.id] ?? null}
-        onAnswered={(answer, isCorrect) => {
+        onAnswered={(answer, isCorrect, ink) => {
           patch((base) => ({
             results: {
               ...base.results,
@@ -158,9 +159,11 @@ export function DiagnosticPage() {
             },
             answers: { ...base.answers, [current.id]: answer },
           }));
-          void recordAttempt(workspaceId, current, answer, isCorrect).catch(
-            () => undefined,
-          );
+          void recordAttempt(workspaceId, current, answer, isCorrect, {
+            inkSummary: ink,
+          })
+            .then(() => refreshAttempts(workspaceId))
+            .catch(() => undefined);
         }}
         onRevealed={() => {
           patch((base) => ({

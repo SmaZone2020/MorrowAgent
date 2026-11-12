@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/vendor/beui/components/motion/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/vendor/beui/components/motion/popover";
 import {
@@ -9,6 +9,7 @@ import {
 import { Tooltip } from "@/vendor/beui/components/motion/tooltip";
 import { ArrowUturnCcwLeft, TrashBin } from "@gravity-ui/icons";
 import { INK_WIDTHS, type InkWidth } from "@/features/scratchpad/geometry";
+import type { InkSummary } from "@/features/scratchpad/inkSummary";
 import { INK_COLORS, labelOf, swatchOf } from "@/features/scratchpad/palette";
 import { useScratchpad } from "@/features/scratchpad/useScratchpad";
 
@@ -34,12 +35,27 @@ const DOT_SIZE: Record<InkWidth, string> = {
 export function ScratchpadPanel({
   height = 300,
   persistKey,
+  onReady,
 }: {
   height?: number;
   /** Binds the ink to a scope so it survives a reload; omit for a throwaway pad. */
   persistKey?: string;
+  /**
+   * Hands the caller a reader for the pad's summary. The card submits an answer
+   * and needs to know how much ink went into it, but the pad owns its state, so
+   * it publishes a closure instead of lifting every stroke into the parent.
+   */
+  onReady?: (summary: () => InkSummary) => void;
 }) {
   const pad = useScratchpad(persistKey);
+
+  // A ref rather than a dependency: `pad.summary` is stable, and reporting it on
+  // every render would re-run the caller's effect on every stroke.
+  const reportRef = useRef(onReady);
+  reportRef.current = onReady;
+  useEffect(() => {
+    reportRef.current?.(pad.summary);
+  }, [pad.summary]);
 
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-border/60 bg-card p-2">

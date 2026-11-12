@@ -69,6 +69,34 @@ impl Store {
         Ok(())
     }
 
+    /// The newest attempts in this workspace, regardless of verdict. The wrong
+    /// book shows only what is still wrong; a tutor needs the correct ones too,
+    /// because "you got the last three right" is part of the diagnosis.
+    pub fn recent_attempts(
+        &self,
+        workspace_id: &str,
+        limit: i64,
+    ) -> Result<Vec<StoredAttempt>, String> {
+        let connection = self.lock()?;
+        let mut statement = connection
+            .prepare(
+                "SELECT id, question_id, knowledge_point_id, question_version,
+                        question_snapshot, answer, is_correct, created_at,
+                        error_type, ink_summary
+                 FROM answer_attempts
+                 WHERE workspace_id = ?1
+                 ORDER BY created_at DESC, rowid DESC LIMIT ?2",
+            )
+            .map_err(|error| format!("查询作答记录失败：{}", error))?;
+
+        let rows = statement
+            .query_map(params![workspace_id, limit], read_attempt)
+            .map_err(|error| format!("读取作答记录失败：{}", error))?;
+
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(|error| format!("解析作答记录失败：{}", error))
+    }
+
     /// Questions whose most recent attempt in this workspace was wrong.
     /// Answering correctly later retires the entry without deleting the history
     /// behind it.
@@ -254,6 +282,24 @@ mod tests {
         assert_eq!(stats[0].KnowledgePointId, "limit");
         assert_eq!(stats[0].Attempts, 2);
         assert_eq!(stats[0].Correct, 1);
+
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn recent_attempts_keep_the_correct_ones_and_stay_scoped() {
+        let (path, store) = temp_store();
+
+        store.record_attempt("w1", attempt("a1", false)).expect("wrong");
+        store.record_attempt("w1", attempt("a2", true)).expect("right");
+        store.record_attempt("w2", attempt("a3", true)).expect("other");
+
+        let rows = store.recent_attempts("w1", 20).expect("recent");
+        assert_eq!(rows.len(), 2);
+        // Newest first, and the correct attempt is present even though the
+        // wrong book would have retired it.
+        assert_eq!(rows[0].Id, "a2");
+        assert_eq!(rows[1].Id, "a1");
 
         let _ = std::fs::remove_file(path);
     }

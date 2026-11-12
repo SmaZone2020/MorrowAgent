@@ -14,6 +14,7 @@ import {
   type Stroke,
   type StrokeDocument,
 } from "@/features/scratchpad/types";
+import { summarizeInk, type InkSummary } from "@/features/scratchpad/inkSummary";
 import {
   loadUiState,
   peekScope,
@@ -41,6 +42,8 @@ export interface ScratchpadApi {
   undo: () => void;
   clear: () => void;
   toDocument: () => StrokeDocument;
+  /** How much work the pad holds, for the attempt row. */
+  summary: () => InkSummary;
 }
 
 /**
@@ -82,6 +85,12 @@ export function useScratchpad(persistKey?: string): ScratchpadApi {
   }, []);
   const drawingRef = useRef<Stroke | null>(null);
   const strokesRef = useRef<Stroke[]>([]);
+  // Time with the pen actually down. Wall-clock since the first stroke would
+  // count however long the tab sat open, and restored ink from a previous
+  // session has no duration at all — this stays honest in both cases.
+  const penDownAtRef = useRef<number | null>(null);
+  const inkSecondsRef = useRef(0);
+  const clearedRef = useRef(false);
   // Writes stay off until the stored ink has been read. The state file is
   // loaded asynchronously at boot, and a write before that would replace the
   // saved strokes with the empty initial value.
@@ -179,6 +188,7 @@ export function useScratchpad(persistKey?: string): ScratchpadApi {
       // Show the first dot immediately; without this a tap paints nothing
       // until pointerup commits the stroke.
       paint(strokesRef.current, drawingRef.current);
+      penDownAtRef.current = Date.now();
     },
     [paint],
   );
@@ -202,6 +212,10 @@ export function useScratchpad(persistKey?: string): ScratchpadApi {
       const current = drawingRef.current;
       drawingRef.current = null;
       if (!current) return;
+      if (penDownAtRef.current !== null) {
+        inkSecondsRef.current += (Date.now() - penDownAtRef.current) / 1000;
+        penDownAtRef.current = null;
+      }
       const canvas = canvasRef.current;
       if (canvas?.hasPointerCapture(event.pointerId)) {
         canvas.releasePointerCapture(event.pointerId);
@@ -216,6 +230,10 @@ export function useScratchpad(persistKey?: string): ScratchpadApi {
   // A cancelled gesture (the OS took the pointer, the window lost focus) must
   // not leave the pen down, or the next move would draw a line to the cursor.
   const pointerCancel = useCallback(() => {
+    if (penDownAtRef.current !== null) {
+      inkSecondsRef.current += (Date.now() - penDownAtRef.current) / 1000;
+      penDownAtRef.current = null;
+    }
     drawingRef.current = null;
     paint(strokesRef.current);
   }, [paint]);
@@ -227,6 +245,7 @@ export function useScratchpad(persistKey?: string): ScratchpadApi {
 
   const clear = useCallback(() => {
     touchedRef.current = true;
+    clearedRef.current = true;
     setStrokes([]);
   }, []);
 
@@ -238,6 +257,20 @@ export function useScratchpad(persistKey?: string): ScratchpadApi {
       ...emptyDocument(Math.round(rect.width), Math.round(rect.height)),
       strokes: strokesRef.current,
     };
+  }, []);
+
+  const summary = useCallback((): InkSummary => {
+    // A pen still down when the answer is submitted has been working the whole
+    // time, so its elapsed seconds count too.
+    const inFlight =
+      penDownAtRef.current === null
+        ? 0
+        : (Date.now() - penDownAtRef.current) / 1000;
+    return summarizeInk(
+      strokesRef.current,
+      inkSecondsRef.current + inFlight,
+      clearedRef.current,
+    );
   }, []);
 
   return {
@@ -252,6 +285,7 @@ export function useScratchpad(persistKey?: string): ScratchpadApi {
     undo,
     clear,
     toDocument,
+    summary,
   };
 }
 

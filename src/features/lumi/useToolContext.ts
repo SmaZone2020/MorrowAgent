@@ -72,6 +72,7 @@ export function useToolContext(owner: string) {
         })),
       stats: attemptSnapshot(workspaceId).stats,
       wrong: attemptSnapshot(workspaceId).wrong,
+      recent: attemptSnapshot(workspaceId).recent,
     });
 
     setToolContextSource(owner, read);

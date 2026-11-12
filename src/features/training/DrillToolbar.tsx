@@ -15,7 +15,7 @@ import { usePersistedState } from "@/features/uiState";
 import { workspaceScope } from "@/features/uiState/scope";
 import { useWorkspaceId } from "@/features/workspace/WorkspaceContext";
 import { LumiMark } from "@/features/lumi/LumiMark";
-import { DrillLumiPanel } from "@/features/training/DrillLumiPanel";
+import { DrillLumiPanel, type AnswerState } from "@/features/training/DrillLumiPanel";
 import type { Question } from "@/features/knowledge";
 
 export type ToolKey = "lumi" | "scratchpad" | "font";
@@ -33,10 +33,13 @@ const SCALE_STEP = 0.1;
 export function DrillToolbar({
   className,
   question,
+  answerState,
 }: {
   className?: string;
   /** The card on screen; the Lumi rail opens preloaded with it. */
   question?: Question;
+  /** What the card has recorded, so the rail's seed can say whether it is done. */
+  answerState?: AnswerState;
 }) {
   const workspaceId = useWorkspaceId();
   // Which panel is open is part of the drill layout, so it comes back after a
@@ -48,7 +51,9 @@ export function DrillToolbar({
 
   return (
     <div className={`flex shrink-0 items-start gap-2 ${className || ""}`}>
-      {active === "lumi" ? <DrillLumiPanel question={question} /> : null}
+      {active === "lumi" ? (
+        <DrillLumiPanel question={question} answerState={answerState} />
+      ) : null}
       {active === "scratchpad" ? (
         <div className="w-[min(22rem,42vw)]">
           <ScratchpadPanel persistKey={workspaceScope(workspaceId, "drill.ink.board")} />

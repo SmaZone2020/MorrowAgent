@@ -15,6 +15,7 @@ const DRILL_TOOLS = [
   "search_knowledge",
   "get_mastery",
   "list_wrong_questions",
+  "get_recent_attempts",
 ];
 
 /**

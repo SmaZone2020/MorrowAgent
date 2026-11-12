@@ -176,6 +176,15 @@ fn attempt_wrong_list(
 }
 
 #[tauri::command]
+fn attempt_recent(
+    state: State<'_, Store>,
+    workspace_id: String,
+    limit: Option<i64>,
+) -> Result<Vec<StoredAttempt>, String> {
+    state.recent_attempts(&workspace_id, limit.unwrap_or(20))
+}
+
+#[tauri::command]
 fn attempt_forget(
     state: State<'_, Store>,
     workspace_id: String,
@@ -608,6 +617,7 @@ pub fn run() {
             data_stats,
             attempt_record,
             attempt_wrong_list,
+            attempt_recent,
             attempt_forget,
             attempt_point_stats,
             attempt_set_error_type,

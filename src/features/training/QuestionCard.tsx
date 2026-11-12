@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/vendor/beui/components/motion/button";
 import {
   Card,
@@ -15,10 +15,12 @@ import { AnswerInput } from "@/features/training/AnswerInput";
 import { answersMatch } from "@/features/training/answerMatch";
 import { imagesAt, type Question } from "@/features/knowledge";
 import { ScratchpadPanel } from "@/features/scratchpad/Scratchpad";
+import { inkSummaryJson, type InkSummary } from "@/features/scratchpad/inkSummary";
 import { scaledText } from "@/features/training/textScale";
 import { usePreferences } from "@/features/settings/preferencesStore";
 import { useWorkspaceId } from "@/features/workspace/WorkspaceContext";
 import { workspaceScope } from "@/features/uiState/scope";
+import { SquircleWrapper } from "@/components/SquircleWrapper";
 
 type Phase = "answering" | "submitted";
 
@@ -42,7 +44,7 @@ export interface QuestionCardProps {
   /** The label on the advance button; "下一题" unless the set is ending. */
   nextLabel?: string;
   /** Fires once when the answer is submitted, with the answer and its verdict. */
-  onAnswered?: (answer: string, isCorrect: boolean) => void;
+  onAnswered?: (answer: string, isCorrect: boolean, inkSummary: string) => void;
   /** Fires when a question reveals its answer without a score. */
   onRevealed?: () => void;
   /** An answer already given in this run, so a reload shows it as submitted. */
@@ -67,6 +69,14 @@ export function QuestionCard({
   initialVerdict = null,
 }: QuestionCardProps) {
   const [selected, setSelected] = useState<string | null>(initialAnswer);
+  // The pad publishes its own summary reader; the card only needs to call it at
+  // submit time, so it holds the closure rather than the strokes.
+  const inkSummary = useRef<() => InkSummary>(() => ({
+    strokes: 0,
+    points: 0,
+    seconds: 0,
+    cleared: false,
+  }));
   const [phase, setPhase] = useState<Phase>(
     initialAnswer ? "submitted" : "answering",
   );
@@ -101,14 +111,25 @@ export function QuestionCard({
     // A self-assessed question has no verdict yet: the reader marks it after
     // comparing their work with the solution.
     if (!selfAssessed) {
-      onAnswered?.(answer, answersMatch(answer, question.answer));
+      onAnswered?.(
+        answer,
+        answersMatch(answer, question.answer),
+        inkSummaryJson(inkSummary.current()),
+      );
     }
   };
 
   const mark = (isCorrect: boolean) => {
     const verdict: Verdict = isCorrect ? "correct" : "wrong";
     setSelfVerdict(verdict);
-    onAnswered?.(answer, isCorrect);
+    // The pad is read here rather than at submit: on a calculation the ink is
+    // still the work in progress when the answer is typed, and the reader may
+    // add to it while comparing with the solution.
+    onAnswered?.(
+      answer,
+      isCorrect,
+      inkSummaryJson(inkSummary.current()),
+    );
   };
 
   // The verdict is drawn as a watermark inside the answer card, which only
@@ -128,10 +149,10 @@ export function QuestionCard({
             : "wrong";
 
   return (
-    <Card
+    <SquircleWrapper className="flex flex-col gap-6 p-6">
+<Card
       variant="outlined"
       size="compact"
-      className="border-transparent bg-card shadow-surface"
     >
       <CardHeader>
         <CardTitle as="h2">
@@ -178,6 +199,9 @@ export function QuestionCard({
                   workspaceId,
                   `drill.ink.${question.id}`,
                 )}
+                onReady={(read) => {
+                  inkSummary.current = read;
+                }}
               />
             ) : null}
           </div>
@@ -314,5 +338,6 @@ export function QuestionCard({
         </div>
       </CardContent>
     </Card>
+    </SquircleWrapper>
   );
 }
