@@ -240,6 +240,26 @@ fn data_stats(state: State<'_, Store>) -> Result<StoreStats, String> {
     state.stats()
 }
 
+/// Packs the local store into `target` and returns the archive size.
+#[tauri::command]
+fn data_backup(state: State<'_, Store>, target: String) -> Result<u64, String> {
+    state.backup_to(std::path::Path::new(&target))
+}
+
+/// Replaces the local store from a backup file. The caller must restart the app
+/// afterwards; the webview still holds the pre-restore data.
+#[tauri::command]
+fn data_restore(state: State<'_, Store>, path: String) -> Result<(), String> {
+    state.restore_from(std::path::Path::new(&path))
+}
+
+/// Restarts the process. Used after a restore, where every in-memory page still
+/// describes the store that was just replaced.
+#[tauri::command]
+fn app_restart(app: tauri::AppHandle) {
+    app.restart()
+}
+
 #[tauri::command]
 fn attempt_record(
     state: State<'_, Store>,
@@ -443,6 +463,19 @@ fn package_inspect(app: tauri::AppHandle, path: String) -> Result<ValidationRepo
     report
 }
 
+/// The package id of a staged tree, read before anything is installed.
+///
+/// A workspace can refuse an update, and that decision has to be made before
+/// `package::install` moves the new tree into place — afterwards the old
+/// content is already gone.
+fn staged_package_id(staging: &std::path::Path) -> Result<String, String> {
+    let raw = std::fs::read_to_string(staging.join("manifest.yaml"))
+        .map_err(|error| format!("无法读取 manifest.yaml：{error}"))?;
+    let manifest: package::manifest::PackageManifest =
+        serde_yaml::from_str(&raw).map_err(|error| format!("manifest 解析失败：{error}"))?;
+    Ok(manifest.Package.Id)
+}
+
 #[tauri::command]
 fn package_install(
     app: tauri::AppHandle,
@@ -451,6 +484,27 @@ fn package_install(
     update: bool,
 ) -> Result<Workspace, String> {
     let packages = packages_dir(&app)?;
+
+    // A locked workspace keeps its content until the learner unlocks it. The
+    // check happens before anything is moved, so a refused update leaves the
+    // installed tree exactly as it was.
+    let guarded = if update {
+        state.workspace_for_package(&staged_package_id(std::path::Path::new(&staging))?)?
+    } else {
+        None
+    };
+    if let Some(workspace) = &guarded {
+        if workspace.VersionPolicy == store::POLICY_LOCKED && !workspace.Orphaned {
+            // The staged copy is spent: leaving it behind would make the next
+            // import collide with a tree nobody is going to install.
+            let _ = std::fs::remove_dir_all(&staging);
+            return Err(format!(
+                "「{}」已锁定在 v{}，请先在书架解锁后再更新",
+                workspace.Name, workspace.PackageVersion
+            ));
+        }
+    }
+
     let installed = package::install(std::path::Path::new(&staging), &packages)?;
 
     let existing = state.workspace_for_package(&installed.Manifest.Id)?;
@@ -529,6 +583,17 @@ fn workspace_content(
 #[tauri::command]
 fn workspace_touch(state: State<'_, Store>, workspace_id: String) -> Result<(), String> {
     state.touch_workspace(&workspace_id)
+}
+
+/// Whether this workspace takes newer versions of its package. Separate from
+/// install so a learner can lock the version without reimporting anything.
+#[tauri::command]
+fn workspace_set_policy(
+    state: State<'_, Store>,
+    workspace_id: String,
+    policy: String,
+) -> Result<Workspace, String> {
+    state.set_version_policy(&workspace_id, &policy)
 }
 
 #[tauri::command]
@@ -757,6 +822,9 @@ pub fn run() {
             chat_reset,
             data_reset,
             data_stats,
+            data_backup,
+            data_restore,
+            app_restart,
             attempt_record,
             attempt_wrong_list,
             attempt_recent,
@@ -788,6 +856,7 @@ pub fn run() {
             workspace_list,
             workspace_content,
             workspace_touch,
+            workspace_set_policy,
             workspace_remove,
             open_external_url
         ])

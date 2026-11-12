@@ -14,6 +14,8 @@ export interface Workspace {
   installedAt: number;
   lastOpenedAt: number;
   orphaned: boolean;
+  /** `follow` takes newer versions of the package; `locked` keeps this one. */
+  versionPolicy: string;
 }
 
 export interface PackageSummary {
@@ -157,6 +159,14 @@ export async function workspaceContent(
 export async function touchWorkspace(workspaceId: string): Promise<void> {
   if (!isTauriRuntime) return;
   await invoke("workspace_touch", { workspaceId });
+}
+
+/** Whether this workspace takes newer versions of its package. */
+export async function setVersionPolicy(
+  workspaceId: string,
+  policy: "follow" | "locked",
+): Promise<Workspace> {
+  return invoke<Workspace>("workspace_set_policy", { workspaceId, policy });
 }
 
 export async function removeWorkspace(

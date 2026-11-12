@@ -59,6 +59,21 @@ export async function resetAllData(): Promise<void> {
   await invoke("data_reset");
 }
 
+/** Packs the database and the preference files; returns the archive size. */
+export async function backupData(target: string): Promise<number> {
+  return invoke<number>("data_backup", { target });
+}
+
+/** Replaces the local store from a backup file. Restart afterwards. */
+export async function restoreData(path: string): Promise<void> {
+  await invoke("data_restore", { path });
+}
+
+/** Restarts the process so every page re-reads the restored store. */
+export async function restartApp(): Promise<void> {
+  await invoke("app_restart");
+}
+
 /** Bytes to "12.4 MB", which is the only precision worth showing here. */
 export function formatBytes(bytes: number): string {
   if (bytes <= 0) return "0 KB";

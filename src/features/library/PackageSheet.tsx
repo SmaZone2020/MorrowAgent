@@ -3,12 +3,15 @@ import { useNavigate } from "react-router-dom";
 import { save as saveFile } from "@tauri-apps/plugin-dialog";
 import { Button } from "@/vendor/beui/components/motion/button";
 import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
+import { Switch } from "@/vendor/beui/components/motion/switch";
+import { InfoHint } from "@/components/InfoHint";
 import { Modal } from "@/components/Modal";
 import { isTauriRuntime } from "@/app/shell/windowControls";
 import { workspacePath } from "@/app/navigation";
 import {
   exportPackage,
   removeWorkspace,
+  setVersionPolicy,
   type Workspace,
 } from "@/features/library/api";
 import { useLibrary } from "@/features/library/store";
@@ -35,16 +38,38 @@ export function PackageSheet({
   const [removing, setRemoving] = useState<Removing>("none");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [policy, setPolicy] = useState<string | null>(null);
 
   const close = (open: boolean) => {
     if (!open) {
       setRemoving("none");
       setNotice(null);
+      setPolicy(null);
     }
     onOpenChange(open);
   };
 
   if (!workspace) return null;
+
+  // The sheet is opened from a snapshot of the shelf row, so the switch keeps
+  // its own copy: without it the toggle would snap back until the whole page
+  // reloads.
+  const currentPolicy = policy ?? workspace.versionPolicy;
+
+  const togglePolicy = async (follow: boolean) => {
+    const next = follow ? "follow" : "locked";
+    setPolicy(next);
+    setBusy(true);
+    try {
+      await setVersionPolicy(workspace.id, next);
+      await refresh();
+    } catch (error) {
+      setPolicy(workspace.versionPolicy);
+      setNotice(error instanceof Error ? error.message : "保存版本策略失败");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const exportTo = async () => {
     const target = await saveFile({
@@ -165,6 +190,19 @@ export function PackageSheet({
           <Row label="安装时间" value={formatDate(workspace.installedAt)} />
           <Row label="最近打开" value={formatDate(workspace.lastOpenedAt)} />
         </dl>
+
+        <div className="flex items-center justify-between gap-4 border-t border-border/70 pt-3">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <p className="text-sm font-medium text-foreground">跟随版本更新</p>
+            <InfoHint label="关闭后这个学习包停在当前版本，导入新版只会提示，不会覆盖。" />
+          </div>
+          <Switch
+            checked={currentPolicy !== "locked"}
+            disabled={busy || workspace.orphaned}
+            ariaLabel="跟随版本更新"
+            onCheckedChange={(follow) => void togglePolicy(follow)}
+          />
+        </div>
 
         {notice ? (
           <p className="text-sm text-muted-foreground">{notice}</p>

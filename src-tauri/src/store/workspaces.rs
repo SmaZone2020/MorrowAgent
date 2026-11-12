@@ -31,6 +31,23 @@ pub struct Workspace {
     pub LastOpenedAt: i64,
     #[serde(rename = "orphaned")]
     pub Orphaned: bool,
+    /// `follow` takes newer versions of the package; `locked` keeps this one and
+    /// merely mentions that an update exists. A learner revising for an exam
+    /// mid-week does not want the textbook to change under their notes.
+    #[serde(rename = "versionPolicy")]
+    pub VersionPolicy: String,
+}
+
+/// The two policies a workspace can hold. Anything else clamps to `follow`, so a
+/// hand-edited row can never stop updates silently.
+pub const POLICY_FOLLOW: &str = "follow";
+pub const POLICY_LOCKED: &str = "locked";
+
+fn clamp_policy(value: &str) -> String {
+    match value {
+        POLICY_LOCKED => POLICY_LOCKED.to_string(),
+        _ => POLICY_FOLLOW.to_string(),
+    }
 }
 
 /// What the caller must supply to create or replace a workspace.
@@ -60,7 +77,7 @@ impl Store {
         let mut statement = connection
             .prepare(
                 "SELECT id, package_id, package_version, name, root_path, cover_path,
-                        accent, tags, installed_at, last_opened_at, orphaned
+                        accent, tags, installed_at, last_opened_at, orphaned, version_policy
                  FROM workspaces
                  ORDER BY orphaned ASC, last_opened_at DESC, installed_at DESC",
             )
@@ -79,7 +96,7 @@ impl Store {
         let mut statement = connection
             .prepare(
                 "SELECT id, package_id, package_version, name, root_path, cover_path,
-                        accent, tags, installed_at, last_opened_at, orphaned
+                        accent, tags, installed_at, last_opened_at, orphaned, version_policy
                  FROM workspaces WHERE id = ?1",
             )
             .map_err(|error| format!("查询学习包失败：{}", error))?;
@@ -105,6 +122,10 @@ impl Store {
 
     /// Inserts or replaces a workspace by id. Replacing keeps `last_opened_at`
     /// and the id, so an update does not detach the history attached to it.
+    ///
+    /// `version_policy` is deliberately absent from the `DO UPDATE` list: it
+    /// belongs to the learner, and reinstalling content must not quietly reset
+    /// a workspace they locked.
     pub fn upsert_workspace(&self, workspace: NewWorkspace) -> Result<Workspace, String> {
         let tags = serde_json::to_string(&workspace.Tags).unwrap_or_else(|_| "[]".to_string());
         let stamp = now();
@@ -142,6 +163,22 @@ impl Store {
 
         self.workspace(&workspace.Id)?
             .ok_or_else(|| "学习包写入后读取失败".to_string())
+    }
+
+    /// Switches an installed workspace between following and locking updates.
+    /// Kept out of `upsert_workspace` so installing content never rewrites it.
+    pub fn set_version_policy(&self, id: &str, policy: &str) -> Result<Workspace, String> {
+        let policy = clamp_policy(policy);
+        let connection = self.lock()?;
+        connection
+            .execute(
+                "UPDATE workspaces SET version_policy = ?1 WHERE id = ?2",
+                params![policy, id],
+            )
+            .map_err(|error| format!("保存版本策略失败：{}", error))?;
+        drop(connection);
+        self.workspace(id)?
+            .ok_or_else(|| "学习包不存在".to_string())
     }
 
     pub fn touch_workspace(&self, id: &str) -> Result<(), String> {
@@ -209,6 +246,7 @@ impl Store {
 
 fn read_workspace(row: &rusqlite::Row<'_>) -> rusqlite::Result<Workspace> {
     let tags: String = row.get(7)?;
+    let policy: String = row.get(11)?;
     Ok(Workspace {
         Id: row.get(0)?,
         PackageId: row.get(1)?,
@@ -221,6 +259,7 @@ fn read_workspace(row: &rusqlite::Row<'_>) -> rusqlite::Result<Workspace> {
         InstalledAt: row.get(8)?,
         LastOpenedAt: row.get(9)?,
         Orphaned: row.get::<_, i64>(10)? != 0,
+        VersionPolicy: clamp_policy(&policy),
     })
 }
 
@@ -286,6 +325,43 @@ mod tests {
         assert_eq!(second.LastOpenedAt, first.LastOpenedAt);
         assert_eq!(store.workspaces().expect("list").len(), 1);
 
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn a_locked_policy_survives_reinstalling_the_same_package() {
+        let (path, store) = temp_store();
+        store.upsert_workspace(workspace("w1", "cn.morrow.calculus")).expect("insert");
+        // A fresh workspace follows updates without being asked.
+        assert_eq!(
+            store.workspace("w1").expect("read").expect("present").VersionPolicy,
+            "follow"
+        );
+
+        store.set_version_policy("w1", "locked").expect("lock");
+
+        let mut next = workspace("w1", "cn.morrow.calculus");
+        next.PackageVersion = "1.1.0".to_string();
+        store.upsert_workspace(next).expect("update");
+
+        // Installing content must not silently unlock what the learner locked.
+        assert_eq!(
+            store.workspace("w1").expect("read").expect("present").VersionPolicy,
+            "locked"
+        );
+
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn an_unknown_policy_falls_back_to_following() {
+        let (path, store) = temp_store();
+        store.upsert_workspace(workspace("w1", "cn.morrow.calculus")).expect("insert");
+        store.set_version_policy("w1", "whatever").expect("set");
+        assert_eq!(
+            store.workspace("w1").expect("read").expect("present").VersionPolicy,
+            "follow"
+        );
         let _ = std::fs::remove_file(path);
     }
 

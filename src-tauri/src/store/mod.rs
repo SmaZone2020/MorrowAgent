@@ -4,6 +4,7 @@ use std::sync::Mutex;
 use rusqlite::{params, Connection};
 
 pub mod attempts;
+pub mod backup;
 pub mod evidence;
 pub mod exams;
 pub mod goals;
@@ -20,7 +21,7 @@ pub use goals::{StudyGoal, TrendPoint};
 pub use types::{
     ConversationSummary, MessageAttachment, NewAttempt, NewMessage, StoreStats, StoredMessage,
 };
-pub use workspaces::{NewWorkspace, Workspace};
+pub use workspaces::{NewWorkspace, Workspace, POLICY_LOCKED};
 
 /// The database handle shared by every command. SQLite serialises writes
 /// anyway, and the app has one window, so a single connection behind a mutex is
@@ -327,6 +328,32 @@ impl Store {
             .execute("DELETE FROM answer_attempts", [])
             .map(|_| ())
             .map_err(|error| format!("清空作答失败：{}", error))
+    }
+
+    /// Packs the database and the two JSON files beside it into `target`.
+    ///
+    /// The connection is held for the whole call so no page can write between
+    /// the checkpoint and the copy; otherwise the archive could contain a
+    /// database from one instant and preferences from another.
+    pub fn backup_to(&self, target: &Path) -> Result<u64, String> {
+        let connection = self.lock()?;
+        backup::checkpoint(&connection)?;
+        let directory = self
+            .Path
+            .parent()
+            .ok_or_else(|| "无法定位数据目录".to_string())?;
+        backup::backup(directory, target)
+    }
+
+    /// Restores a backup over the live store. The caller is expected to restart
+    /// the app afterwards: pages hold data read before the swap.
+    pub fn restore_from(&self, source: &Path) -> Result<(), String> {
+        let mut connection = self.lock()?;
+        let directory = self
+            .Path
+            .parent()
+            .ok_or_else(|| "无法定位数据目录".to_string())?;
+        backup::restore(directory, source, &mut connection)
     }
 }
 

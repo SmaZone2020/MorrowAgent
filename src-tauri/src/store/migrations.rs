@@ -128,4 +128,13 @@ pub const MIGRATIONS: &[&str] = &[
 
     ALTER TABLE answer_attempts ADD COLUMN source TEXT NOT NULL DEFAULT '';
     "#,
+    // 8 — how a workspace treats a newer version of its package.
+    //
+    // `follow` installs the update and keeps the history attached; `locked`
+    // refuses it and only says a newer version exists. The default is `follow`
+    // because that is what an unasked-for choice should be: the learner who
+    // never opens this setting still gets the corrected content.
+    r#"
+    ALTER TABLE workspaces ADD COLUMN version_policy TEXT NOT NULL DEFAULT 'follow';
+    "#,
 ];

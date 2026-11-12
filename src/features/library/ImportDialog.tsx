@@ -58,6 +58,7 @@ export function ImportDialog({
   onInstalled: () => void;
 }) {
   const refresh = useLibrary((state) => state.refresh);
+  const workspaces = useLibrary((state) => state.workspaces);
   const [phase, setPhase] = useState<Phase>({ kind: "choose", file: null });
   const [dragging, setDragging] = useState(false);
   const [hint, setHint] = useState<string | null>(null);
@@ -154,6 +155,17 @@ export function ImportDialog({
 
   const busy = phase.kind === "checking" || phase.kind === "installing";
 
+  // An update that will be refused is shown before the install button is
+  // pressed: finding out from an error after the click reads like a bug.
+  const locked =
+    phase.kind === "report" && phase.report.update
+      ? workspaces.find(
+          (workspace) =>
+            workspace.packageId === phase.report.summary?.id &&
+            workspace.versionPolicy === "locked",
+        )
+      : undefined;
+
   return (
     <Modal
       open={open}
@@ -175,6 +187,7 @@ export function ImportDialog({
               <Button
                 size="sm"
                 className="text-sm"
+                disabled={Boolean(locked)}
                 onClick={() => void install(phase.report)}
               >
                 {phase.report.update ? "更新到新版本" : "安装"}
@@ -224,7 +237,20 @@ export function ImportDialog({
       ) : phase.kind === "failed" ? (
         <StatusLine status="danger" label="导入失败" detail={phase.reason} />
       ) : (
-        <CheckList report={phase.report} />
+        <>
+          <CheckList report={phase.report} />
+          {locked ? (
+            <Alert variant="warning" className="mt-3">
+              <AlertIcon />
+              <AlertContent>
+                <AlertTitle>「{locked.name}」锁定了当前版本</AlertTitle>
+                <AlertDescription>
+                  到书架里打开它，把「跟随版本更新」重新打开，再回来导入这个新版。
+                </AlertDescription>
+              </AlertContent>
+            </Alert>
+          ) : null}
+        </>
       )}
     </Modal>
   );
