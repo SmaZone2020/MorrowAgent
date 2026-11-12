@@ -6,6 +6,7 @@ import { Panel } from "@/components/Panel";
 import { EmptyState } from "@/components/EmptyState";
 import { InfoHint } from "@/components/InfoHint";
 import { SquircleWrapper } from "@/components/SquircleWrapper";
+import { ChoiceTabs } from "@/pages/settings/SettingsBlocks";
 import { isTauriRuntime } from "@/app/shell/windowControls";
 import { workspacePath } from "@/app/navigation";
 import { useScrollMemory } from "@/features/uiState";
@@ -99,19 +100,15 @@ export function ReportPage() {
       <Panel
         title="练习趋势"
         action={
-          <div className="flex items-center gap-1">
-            {WINDOWS.map((window) => (
-              <Button
-                key={window}
-                size="sm"
-                variant={window === days ? "secondary" : "ghost"}
-                className="text-sm"
-                onClick={() => setDays(window)}
-              >
-                {window} 天
-              </Button>
-            ))}
-          </div>
+          <ChoiceTabs
+            label="统计时间范围"
+            options={WINDOWS.map((window) => ({
+              value: String(window),
+              label: `${window} 天`,
+            }))}
+            value={String(days)}
+            onChange={(value) => setDays(Number(value))}
+          />
         }
       >
         {!isTauriRuntime ? (

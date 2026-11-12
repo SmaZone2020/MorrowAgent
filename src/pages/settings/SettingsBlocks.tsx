@@ -1,6 +1,11 @@
 import type { ComponentType, ReactNode, SVGProps } from "react";
 import { InfoHint } from "@/components/InfoHint";
 import { Button } from "@/vendor/beui/components/motion/button";
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from "@/vendor/beui/components/motion/tabs";
 import { Tooltip } from "@/vendor/beui/components/motion/tooltip";
 
 /** The wide page frame: big serif title, then groups with generous spacing. */
@@ -82,8 +87,10 @@ export interface ChoiceOption<T extends string> {
 }
 
 /**
- * A single-choice row built from the library Button. With `iconOnly` the labels
- * move into tooltips, which keeps a three-way choice to three square targets.
+ * A single-choice row drawn with the library's Tabs, so the chosen pill slides
+ * between options instead of blinking from one button style to another. With
+ * `iconOnly` the labels move into tooltips, which keeps a three-way choice to
+ * three square targets.
  */
 export function ChoiceTabs<T extends string>({
   options,
@@ -98,39 +105,53 @@ export function ChoiceTabs<T extends string>({
   iconOnly?: boolean;
   label: string;
 }) {
-  return (
-    <div role="tablist" aria-label={label} className="flex items-center gap-1">
-      {options.map((option) => {
-        const selected = option.value === value;
-        const Icon = option.icon;
-        const button = (
-          <Button
-            key={option.value}
-            role="tab"
-            aria-selected={selected}
-            aria-label={iconOnly ? option.label : undefined}
-            variant={selected ? "secondary" : "ghost"}
-            size="sm"
-            className={
-              iconOnly
-                ? `size-8 p-0 ${selected ? "text-foreground" : ""}`
-                : `text-sm ${selected ? "text-foreground" : ""}`
-            }
-            onClick={() => onChange(option.value)}
-          >
-            {Icon ? <Icon aria-hidden="true" className="size-4" /> : null}
-            {iconOnly ? null : option.label}
-          </Button>
-        );
+  if (iconOnly) {
+    return (
+      <div role="group" aria-label={label} className="flex items-center gap-1">
+        {options.map((option) => {
+          const Icon = option.icon;
+          const selected = option.value === value;
+          return (
+            <Tooltip key={option.value} content={option.label} side="top">
+              <Button
+                aria-pressed={selected}
+                aria-label={option.label}
+                variant={selected ? "secondary" : "ghost"}
+                size="sm"
+                className={`size-8 p-0 ${selected ? "text-foreground" : ""}`}
+                onClick={() => onChange(option.value)}
+              >
+                {Icon ? <Icon aria-hidden="true" className="size-4" /> : null}
+              </Button>
+            </Tooltip>
+          );
+        })}
+      </div>
+    );
+  }
 
-        return iconOnly ? (
-          <Tooltip key={option.value} content={option.label} side="top">
-            {button}
-          </Tooltip>
-        ) : (
-          button
-        );
-      })}
-    </div>
+  return (
+    <Tabs
+      value={value}
+      onValueChange={(next) => onChange(next as T)}
+      variant="pill"
+    >
+      <TabsList aria-label={label} className="bg-muted p-0.5">
+        {options.map((option) => {
+          const Icon = option.icon;
+          return (
+            <TabsTrigger
+              key={option.value}
+              value={option.value}
+              icon={Icon ? <Icon className="size-4" /> : undefined}
+              className="px-3 py-1"
+            >
+              {option.label}
+            </TabsTrigger>
+          );
+        })}
+      </TabsList>
+    </Tabs>
   );
 }
+

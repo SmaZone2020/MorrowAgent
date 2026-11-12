@@ -63,6 +63,13 @@ function questionsFor(minutes: number, tasks: number): number {
   return Math.min(12, Math.max(2, perPoint));
 }
 
+/** The three bands the goal speaks in, in the order they are shown. */
+export const DIFFICULTY_BANDS: { value: string; label: string }[] = [
+  { value: "basic", label: "基础" },
+  { value: "advanced", label: "提高" },
+  { value: "challenging", label: "综合" },
+];
+
 /** The goal speaks in bands; the package declares 1–5, so map between them. */
 export function difficultyBand(difficulty: number): string {
   if (difficulty <= 2) return "basic";
