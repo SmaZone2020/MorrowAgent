@@ -23,6 +23,11 @@ function findScrollParent(element: HTMLElement): HTMLElement | null {
  * database or a file after the first paint, so at mount there is not enough
  * height to scroll anywhere; the offset is reapplied as the content grows until
  * it sticks once.
+ *
+ * The pane that scrolls belongs to the shell, not to the page, so it survives
+ * navigation. A page with no remembered offset therefore has to return it to the
+ * top explicitly: otherwise it opens wherever the previous page happened to be,
+ * which is why the dashboard used to arrive halfway down.
  */
 export function useScrollMemory<T extends HTMLElement>(scope: string) {
   const ref = useRef<T>(null);
@@ -34,6 +39,7 @@ export function useScrollMemory<T extends HTMLElement>(scope: string) {
     if (!container) return;
 
     const saved = readScope<number>(scope, 0);
+    if (saved <= 0) container.scrollTop = 0;
     let restoring = saved > 0;
     let frame = 0;
     let last = saved;
