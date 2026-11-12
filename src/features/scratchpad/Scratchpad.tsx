@@ -63,8 +63,16 @@ export function ScratchpadPanel({
         ref={pad.canvasRef}
         role="img"
         aria-label="草稿纸"
-        style={{ height }}
-        className="w-full touch-none cursor-crosshair rounded-lg bg-background/60 [background-image:radial-gradient(var(--border)_1px,transparent_1px)] [background-size:16px_16px]"
+        style={{
+          height,
+          // The grid pans and zooms with the sheet, so the view transform is
+          // visible even on an empty pad.
+          backgroundSize: `${16 * pad.view.scale}px ${16 * pad.view.scale}px`,
+          backgroundPosition: `${pad.view.x}px ${pad.view.y}px`,
+        }}
+        className={`w-full touch-none rounded-lg bg-background/60 [background-image:radial-gradient(var(--border)_1px,transparent_1px)] ${
+          pad.panning ? "cursor-grabbing" : "cursor-crosshair"
+        }`}
         {...pad.handlers}
       />
       <div className="flex items-center justify-between gap-1">
@@ -87,6 +95,24 @@ export function ScratchpadPanel({
               </Button>
             </Tooltip>
           ))}
+          {/* Only while the sheet is moved: at home the control would be a
+              button that does nothing, and the pad is already crowded. */}
+          {pad.moved ? (
+            <>
+              <span aria-hidden className="mx-1 h-4 w-px bg-border" />
+              <Tooltip content="回到原处" side="top">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  aria-label="回到原处"
+                  className="text-sm tabular-nums text-muted-foreground"
+                  onClick={pad.resetView}
+                >
+                  {Math.round(pad.view.scale * 100)}%
+                </Button>
+              </Tooltip>
+            </>
+          ) : null}
         </div>
         <div className="flex items-center gap-1">
           <Button

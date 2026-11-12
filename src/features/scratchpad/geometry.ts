@@ -58,14 +58,60 @@ function polygonToPath(points: number[][]): string {
   return `${path} Z`;
 }
 
+/**
+ * How the sheet sits inside the canvas: `screen = world * scale + offset`.
+ *
+ * Strokes stay in sheet coordinates, so panning and zooming never rewrite the
+ * ink — the view is a lens, not an edit. That matters because the strokes are
+ * what gets persisted and replayed.
+ */
+export interface ViewTransform {
+  scale: number;
+  x: number;
+  y: number;
+}
+
+export const IDENTITY_VIEW: ViewTransform = { scale: 1, x: 0, y: 0 };
+
+/** Below this the ink stops being legible; above it a stroke fills the pad. */
+export const MIN_ZOOM = 0.5;
+export const MAX_ZOOM = 4;
+
+export function isIdentityView(view: ViewTransform): boolean {
+  return view.scale === 1 && view.x === 0 && view.y === 0;
+}
+
+/**
+ * Zooms about a point in canvas space, leaving whatever is under the cursor
+ * under the cursor. Zooming about the centre instead would make the learner
+ * chase the detail they were aiming at.
+ */
+export function zoomAt(
+  view: ViewTransform,
+  factor: number,
+  anchorX: number,
+  anchorY: number,
+): ViewTransform {
+  const scale = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, view.scale * factor));
+  if (scale === view.scale) return view;
+
+  const worldX = (anchorX - view.x) / view.scale;
+  const worldY = (anchorY - view.y) / view.scale;
+  return {
+    scale,
+    x: anchorX - worldX * scale,
+    y: anchorY - worldY * scale,
+  };
+}
+
 export function pointFromEvent(event: {
   clientX: number;
   clientY: number;
   pressure: number;
-}, rect: DOMRect): StrokePoint {
+}, rect: DOMRect, view: ViewTransform = IDENTITY_VIEW): StrokePoint {
   return {
-    x: event.clientX - rect.left,
-    y: event.clientY - rect.top,
+    x: (event.clientX - rect.left - view.x) / view.scale,
+    y: (event.clientY - rect.top - view.y) / view.scale,
     // A mouse reports 0 pressure; treat it as a normal pen press instead of an
     // invisible stroke.
     pressure: event.pressure > 0 ? event.pressure : 0.5,
