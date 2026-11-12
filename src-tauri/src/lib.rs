@@ -16,8 +16,8 @@ use package::ValidationReport;
 use provider::secret::{self, ProviderBook};
 use provider::types::{ChatRequest, ModelInfo, ProviderConfig};
 use store::{
-    ConversationSummary, NewAttempt, NewMessage, PointStats, Store, StoreStats, StoredAttempt,
-    StoredMessage, StudyGoal, TrendPoint, Workspace,
+    ConversationSummary, NewAttempt, NewMessage, PointEvidence, PointStats, Store, StoreStats,
+    StoredAttempt, StoredMessage, StudyGoal, TrendPoint, Workspace,
 };
 use tauri::Manager;
 use tauri::State;
@@ -190,6 +190,44 @@ fn attempt_point_stats(
     workspace_id: String,
 ) -> Result<Vec<PointStats>, String> {
     state.point_stats(&workspace_id)
+}
+
+#[tauri::command]
+fn attempt_set_error_type(
+    state: State<'_, Store>,
+    workspace_id: String,
+    attempt_id: String,
+    error_type: String,
+) -> Result<(), String> {
+    state.set_error_type(&workspace_id, &attempt_id, &error_type)
+}
+
+#[tauri::command]
+fn evidence_list(
+    state: State<'_, Store>,
+    workspace_id: String,
+) -> Result<Vec<PointEvidence>, String> {
+    state.evidence(&workspace_id)
+}
+
+#[tauri::command]
+fn evidence_set(
+    state: State<'_, Store>,
+    workspace_id: String,
+    point_id: String,
+    state_name: String,
+    note: Option<String>,
+) -> Result<(), String> {
+    state.set_evidence(&workspace_id, &point_id, &state_name, &note.unwrap_or_default())
+}
+
+#[tauri::command]
+fn evidence_clear(
+    state: State<'_, Store>,
+    workspace_id: String,
+    point_id: String,
+) -> Result<(), String> {
+    state.clear_evidence(&workspace_id, &point_id)
 }
 
 #[tauri::command]
@@ -572,6 +610,10 @@ pub fn run() {
             attempt_wrong_list,
             attempt_forget,
             attempt_point_stats,
+            attempt_set_error_type,
+            evidence_list,
+            evidence_set,
+            evidence_clear,
             goal_load,
             goal_save,
             attempt_trend,

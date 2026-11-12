@@ -175,6 +175,8 @@ mod tests {
             QuestionSnapshot: "题干".to_string(),
             Answer: "B".to_string(),
             IsCorrect: correct,
+            ErrorType: String::new(),
+            InkSummary: String::new(),
         }
     }
 

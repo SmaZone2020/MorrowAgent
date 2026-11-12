@@ -101,4 +101,12 @@ pub struct NewAttempt {
     pub Answer: String,
     #[serde(rename = "isCorrect")]
     pub IsCorrect: bool,
+    /// Why the answer went wrong, from the diagnostic vocabulary. Empty for a
+    /// correct answer and for one the learner has not classified yet.
+    #[serde(rename = "errorType", default)]
+    pub ErrorType: String,
+    /// A small JSON summary of the scratchpad work, so a later read can tell
+    /// "worked it out on paper" from "guessed".
+    #[serde(rename = "inkSummary", default)]
+    pub InkSummary: String,
 }

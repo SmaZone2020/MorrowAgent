@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { isTauriRuntime } from "@/app/shell/windowControls";
 import type { Question } from "@/features/knowledge";
+import type { EvidenceState, PointEvidence } from "@/features/training/evidence";
 
 export interface WrongAttempt {
   id: string;
@@ -11,6 +12,10 @@ export interface WrongAttempt {
   answer: string;
   isCorrect: boolean;
   createdAt: number;
+  /** Empty until the learner says why it went wrong. */
+  errorType: string;
+  /** JSON summary of the scratchpad work, empty when nothing was drawn. */
+  inkSummary: string;
 }
 
 export interface PointStats {
@@ -34,6 +39,7 @@ export async function recordAttempt(
   question: Question,
   answer: string,
   isCorrect: boolean,
+  extra?: { errorType?: string; inkSummary?: string },
 ): Promise<void> {
   if (!isTauriRuntime) return;
   await invoke("attempt_record", {
@@ -46,6 +52,8 @@ export async function recordAttempt(
       questionSnapshot: question.content,
       answer,
       isCorrect,
+      errorType: extra?.errorType ?? "",
+      inkSummary: extra?.inkSummary ?? "",
     },
   });
 }
@@ -71,4 +79,52 @@ export async function loadPointStats(
 ): Promise<PointStats[]> {
   if (!isTauriRuntime) return [];
   return invoke<PointStats[]>("attempt_point_stats", { workspaceId });
+}
+
+/** Names the reason one wrong attempt went wrong; empty clears the label. */
+export async function setErrorType(
+  workspaceId: string,
+  attemptId: string,
+  errorType: string,
+): Promise<void> {
+  if (!isTauriRuntime) return;
+  await invoke("attempt_set_error_type", {
+    workspaceId,
+    attemptId,
+    errorType,
+  });
+}
+
+export async function loadEvidence(
+  workspaceId: string,
+): Promise<PointEvidence[]> {
+  if (!isTauriRuntime) return [];
+  try {
+    return await invoke<PointEvidence[]>("evidence_list", { workspaceId });
+  } catch {
+    return [];
+  }
+}
+
+export async function setEvidence(
+  workspaceId: string,
+  pointId: string,
+  state: EvidenceState,
+  note = "",
+): Promise<void> {
+  if (!isTauriRuntime) return;
+  await invoke("evidence_set", {
+    workspaceId,
+    pointId,
+    stateName: state,
+    note,
+  });
+}
+
+export async function clearEvidence(
+  workspaceId: string,
+  pointId: string,
+): Promise<void> {
+  if (!isTauriRuntime) return;
+  await invoke("evidence_clear", { workspaceId, pointId });
 }

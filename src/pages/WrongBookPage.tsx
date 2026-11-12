@@ -17,8 +17,10 @@ import {
 import {
   forgetAttempt,
   loadWrongAttempts,
+  setErrorType,
   type WrongAttempt,
 } from "@/features/training/attempts";
+import { ErrorTypeSelect } from "@/features/training/ErrorTypeSelect";
 import { drillQuestionPath } from "@/pages/training/DrillPage";
 
 /**
@@ -53,6 +55,22 @@ export function WrongBookPage() {
     } catch {
       // Put the row back from the database instead of leaving the list out of
       // step with what is actually stored.
+      void loadWrongAttempts(workspaceId).then(setAttempts);
+    }
+  };
+
+  // The label is written through immediately and optimistically: it is one
+  // string on one row, and waiting for the round trip would make the picker
+  // feel like it ignored the click.
+  const classify = async (attemptId: string, errorType: string) => {
+    setAttempts((rows) =>
+      rows.map((row) =>
+        row.id === attemptId ? { ...row, errorType } : row,
+      ),
+    );
+    try {
+      await setErrorType(workspaceId, attemptId, errorType);
+    } catch {
       void loadWrongAttempts(workspaceId).then(setAttempts);
     }
   };
@@ -126,6 +144,11 @@ export function WrongBookPage() {
                         {point.name}
                       </span>
                     ) : null}
+                    <ErrorTypeSelect
+                      value={attempt.errorType}
+                      onChange={(next) => void classify(attempt.id, next)}
+                      label="错误类型"
+                    />
                     <Button
                       size="sm"
                       variant="secondary"

@@ -4,6 +4,7 @@ use std::sync::Mutex;
 use rusqlite::{params, Connection};
 
 pub mod attempts;
+pub mod evidence;
 pub mod goals;
 pub mod messages;
 pub mod migrations;
@@ -12,6 +13,7 @@ pub mod types;
 pub mod workspaces;
 
 pub use attempts::{PointStats, StoredAttempt};
+pub use evidence::PointEvidence;
 pub use goals::{StudyGoal, TrendPoint};
 pub use types::{
     ConversationSummary, MessageAttachment, NewAttempt, NewMessage, StoreStats, StoredMessage,

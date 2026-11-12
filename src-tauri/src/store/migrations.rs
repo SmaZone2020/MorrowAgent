@@ -84,4 +84,22 @@ pub const MIGRATIONS: &[&str] = &[
         updated_at       INTEGER NOT NULL
     );
     "#,
+    // 6 — why an answer went wrong, and how sure the app is of a point's state.
+    // Both are overlays: mastery stays a pure function of the tallies, so the
+    // numbers a user has already seen do not shift under them. Kept as one
+    // migration on purpose — `ADD COLUMN` is not idempotent, so a database that
+    // has already applied this half must never be asked to apply it again.
+    r#"
+    ALTER TABLE answer_attempts ADD COLUMN error_type TEXT NOT NULL DEFAULT '';
+    ALTER TABLE answer_attempts ADD COLUMN ink_summary TEXT NOT NULL DEFAULT '';
+
+    CREATE TABLE IF NOT EXISTS point_evidence (
+        workspace_id TEXT NOT NULL,
+        point_id     TEXT NOT NULL,
+        state        TEXT NOT NULL,
+        note         TEXT NOT NULL DEFAULT '',
+        updated_at   INTEGER NOT NULL,
+        PRIMARY KEY (workspace_id, point_id)
+    );
+    "#,
 ];

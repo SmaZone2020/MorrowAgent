@@ -115,6 +115,11 @@ export function DiagnosticResult({
               lastAttemptAt: 0,
             });
             const needsWork = levelOf(mastery) === "learning";
+            // The package may ship the mistakes this question invites. When it
+            // does, a wrong answer names the likely reason instead of leaving
+            // the row with only "错误"; when it does not, nothing is invented.
+            const likely =
+              verdict === "wrong" ? entry.commonErrors[0]?.description : undefined;
 
             return (
               <li
@@ -126,6 +131,11 @@ export function DiagnosticResult({
                 </span>
                 {needsWork ? (
                   <span className="text-sm text-muted-foreground">需巩固</span>
+                ) : null}
+                {likely ? (
+                  <span className="min-w-0 text-sm text-muted-foreground">
+                    常见错因：{likely}
+                  </span>
                 ) : null}
                 <AnimatedBadge
                   status={VERDICT_STATUS[verdict]}

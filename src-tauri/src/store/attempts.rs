@@ -35,6 +35,10 @@ pub struct StoredAttempt {
     pub IsCorrect: bool,
     #[serde(rename = "createdAt")]
     pub CreatedAt: i64,
+    #[serde(rename = "errorType")]
+    pub ErrorType: String,
+    #[serde(rename = "inkSummary")]
+    pub InkSummary: String,
 }
 
 impl Store {
@@ -44,8 +48,9 @@ impl Store {
             .execute(
                 "INSERT INTO answer_attempts
                  (id, question_id, knowledge_point_id, question_version,
-                  question_snapshot, answer, is_correct, created_at, workspace_id)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                  question_snapshot, answer, is_correct, created_at, workspace_id,
+                  error_type, ink_summary)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
                 params![
                     attempt.Id,
                     attempt.QuestionId,
@@ -55,7 +60,9 @@ impl Store {
                     attempt.Answer,
                     i64::from(attempt.IsCorrect),
                     now(),
-                    workspace_id
+                    workspace_id,
+                    attempt.ErrorType,
+                    attempt.InkSummary
                 ],
             )
             .map_err(|error| format!("记录作答失败：{}", error))?;
@@ -74,7 +81,8 @@ impl Store {
         let mut statement = connection
             .prepare(
                 "SELECT id, question_id, knowledge_point_id, question_version,
-                        question_snapshot, answer, is_correct, created_at
+                        question_snapshot, answer, is_correct, created_at,
+                        error_type, ink_summary
                  FROM (
                      SELECT *, ROW_NUMBER() OVER (
                          PARTITION BY question_id
@@ -94,6 +102,25 @@ impl Store {
 
         rows.collect::<Result<Vec<_>, _>>()
             .map_err(|error| format!("解析错题失败：{}", error))
+    }
+
+    /// Sets (or clears) the reason an attempt went wrong. Only the newest wrong
+    /// attempt of a question carries the label the wrong book shows, so the
+    /// update is scoped to one row.
+    pub fn set_error_type(
+        &self,
+        workspace_id: &str,
+        attempt_id: &str,
+        error_type: &str,
+    ) -> Result<(), String> {
+        self.lock()?
+            .execute(
+                "UPDATE answer_attempts SET error_type = ?1
+                 WHERE id = ?2 AND workspace_id = ?3",
+                params![error_type, attempt_id, workspace_id],
+            )
+            .map_err(|error| format!("记录错误类型失败：{}", error))?;
+        Ok(())
     }
 
     pub fn forget_attempt(&self, workspace_id: &str, question_id: &str) -> Result<(), String> {
@@ -151,6 +178,8 @@ fn read_attempt(row: &rusqlite::Row<'_>) -> rusqlite::Result<StoredAttempt> {
         Answer: row.get(5)?,
         IsCorrect: row.get::<_, i64>(6)? != 0,
         CreatedAt: row.get(7)?,
+        ErrorType: row.get(8)?,
+        InkSummary: row.get(9)?,
     })
 }
 
@@ -181,6 +210,8 @@ mod tests {
             QuestionSnapshot: "题干".to_string(),
             Answer: "B".to_string(),
             IsCorrect: correct,
+            ErrorType: String::new(),
+            InkSummary: String::new(),
         }
     }
 
