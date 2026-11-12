@@ -394,10 +394,62 @@ function patchAnimatedBadge(source) {
   );
 }
 
+// The toast is the one surface that reports work which happens outside the
+// page the learner is looking at, so it has to speak the app's scale and its
+// status colours: beUI's emerald reads as a different product, and its 12px
+// body text is the size the project reserves for nothing.
+const TOAST_STATUS_ANCHOR = `  success: "text-emerald-600 bg-emerald-500/10 dark:text-emerald-400",`;
+
+const TOAST_STATUS_PATCH = `  success: "text-success bg-success/10",`;
+
+const TOAST_DESCRIPTION_ANCHOR = `                      "mt-0.5 line-clamp-2 text-xs leading-4 text-muted-foreground",`;
+
+const TOAST_DESCRIPTION_PATCH = `                      "mt-0.5 line-clamp-2 text-sm leading-5 text-muted-foreground",`;
+
+const TOAST_ACTION_ANCHOR = `                    "mt-2 inline-flex h-7 items-center rounded-full bg-muted/80 px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted",`;
+
+const TOAST_ACTION_PATCH = `                    "mt-2 inline-flex h-8 items-center rounded-full bg-muted/80 px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted",`;
+
+const TOAST_MESSAGES_ANCHOR = `export const animatedToastStackMessages = {
+  dismiss: "Dismiss toast",
+};`;
+
+const TOAST_MESSAGES_PATCH = `export const animatedToastStackMessages = {
+  dismiss: "关闭提示",
+};`;
+
+function patchAnimatedToastStack(source) {
+  let out = replaceOnce(
+    source,
+    TOAST_STATUS_ANCHOR,
+    TOAST_STATUS_PATCH,
+    "animated-toast-stack success palette",
+  );
+  out = replaceOnce(
+    out,
+    TOAST_DESCRIPTION_ANCHOR,
+    TOAST_DESCRIPTION_PATCH,
+    "animated-toast-stack description size",
+  );
+  out = replaceOnce(
+    out,
+    TOAST_ACTION_ANCHOR,
+    TOAST_ACTION_PATCH,
+    "animated-toast-stack action size",
+  );
+  return replaceOnce(
+    out,
+    TOAST_MESSAGES_ANCHOR,
+    TOAST_MESSAGES_PATCH,
+    "animated-toast-stack labels",
+  );
+}
+
 const patches = {
   "components/motion/animated-sidebar.tsx": patchAnimatedSidebar,
   "components/motion/animated-badge.tsx": patchAnimatedBadge,
   "components/agents/streaming-response.tsx": patchStreamingResponse,
+  "components/motion/animated-toast-stack.tsx": patchAnimatedToastStack,
 };
 
 export function applyBeuiPatches(relativePath, source) {

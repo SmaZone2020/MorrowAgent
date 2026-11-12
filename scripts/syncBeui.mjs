@@ -58,6 +58,10 @@ const slugs = [
   // Picking attachments is the registry's upload workspace: drop or browse, a
   // row per file with its size, and image thumbnails that open a preview.
   "attachment-upload",
+  // Long work that outlives a click (saving a key, pulling models, deleting an
+  // old key) reports itself as a toast: one stack, status morphs in place, and
+  // the row can be swiped away without hunting for a close button.
+  "animated-toast-stack",
 ];
 
 function rewriteSpecifiers(source) {
