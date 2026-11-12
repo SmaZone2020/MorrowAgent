@@ -51,11 +51,11 @@ fn the_shipped_archive_lists_posix_names_and_installs() {
     let work = workspace("install");
     let packages = work.join("packages");
     let staging = package::staging_path(&packages);
-    let report = package::inspect(&archive, &staging).expect("inspect");
+    let report = package::inspect(&archive, &staging, &packages).expect("inspect");
     assert!(report.Ok, "checks failed: {:#?}", report.Checks);
     let stats = report.Stats.as_ref().expect("stats");
     assert_eq!(stats.Points, 72);
-    assert_eq!(stats.Questions, 33);
+    assert_eq!(stats.Questions, 153);
 
     let installed = package::install(&staging, &packages).expect("install");
     assert_eq!(installed.Manifest.Id, "cn.morrow.calculus.shaanxi-upgrade");
