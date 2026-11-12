@@ -1,4 +1,14 @@
-# 团队任务看板（初始建议）
+<div align="center">
+
+# Task Board · 团队任务看板
+
+**How a four-person team splits product, design, content and engineering work.**
+
+[![Reference](https://img.shields.io/badge/REFERENCE-6b7280?style=flat-square)](#) [![中文正文](https://img.shields.io/badge/%E6%AD%A3%E6%96%87-%E4%B8%AD%E6%96%87-2f6f5e?style=flat-square)](#)
+
+</div>
+
+> This document is written in Chinese. The title and summary above are the English entry point.
 
 ## 团队规模
 

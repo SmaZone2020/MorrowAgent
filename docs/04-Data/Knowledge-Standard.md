@@ -1,10 +1,37 @@
-# 11 知识库数据标准
+<div align="center">
+
+# Knowledge Standard · 11 知识库数据标准
+
+**Field-level rules for knowledge points, questions, solutions and exam sources, and where each constraint is enforced.**
+
+[![Essential](https://img.shields.io/badge/ESSENTIAL-2f6f5e?style=flat-square)](#) [![中文正文](https://img.shields.io/badge/%E6%AD%A3%E6%96%87-%E4%B8%AD%E6%96%87-2f6f5e?style=flat-square)](#)
+
+</div>
+
+> This document is written in Chinese. The title and summary above are the English entry point.
 
 ## 1. 目标
 
 确保四人及未来社区贡献者生产的数据可以被统一解析、检索、关联和升级。
 
 可执行的细则集中在 `prompts/conventions.md`：ID 规则、难度标尺、数学表述、版权口径都在那里。本文只说明字段与约束的边界。
+
+## 1.1 目录约定
+
+知识库源文件与构建产物统一放在 `data/` 下，`data/pdf/` 存放真题扫描件（不入版本库）。
+
+| 路径 | 内容 |
+|---|---|
+| `data/yaml/` | 全部 YAML 源文件，平铺存放，不建子目录 |
+| `data/json/knowledge.json` | 构建产物，由 `pnpm build:knowledge` 生成，不手改 |
+
+平铺后文件名必须全局唯一，命名规则为 `{学科}_{章节}_{文档类型}.yaml`：
+
+- 知识点：`math_higher_limits_knowledge-points.yaml`
+- 题目：`math_higher_limits_questions.yaml`
+- 真题登记：`math_higher_exam_2023_shaanxi_zsb.yaml`（一份卷一个文件）
+
+新增章节时按同一规则起名，不要省略章节段，否则会与既有文件重名。
 
 ## 2. ID 规范
 
@@ -77,8 +104,8 @@
 
 已确认口径：**授权不明的真题只登记元数据与链接，不收录题干原文。**
 
-- 真题台账单独存 `exam-sources.yaml`，顶层键 `exam_sources`，由 `schemas/exam-source.schema.json` 校验。
-- 题目引用真题必须填 `source_exam_id`，且该登记项的 `license` 必须是 `public_domain`；否则校验脚本直接报错。
+- 真题台账单独存 `data/yaml/math_higher_exam_{年份}_{地区}_{卷别}.yaml`，流程为「一题一条，一份卷一个文件」，顶层键 `exam_sources`，由 `schemas/exam-source.schema.json` 校验。
+- 题目引用真题必须填 `source_exam_id`；`real_exam` 还要求该登记项的 `license` 为 `public_domain`，否则校验脚本直接报错。`adapted_exam` 题干自写，只需登记项存在即可挂靠。
 - `license` 缺省为 `metadata_only`，表示只允许登记元数据。
 - 改编题（`adapted_exam`）题干自写，但仍需挂 `source_exam_id` 并填 `adaptation_note`。
 - 公开可访问不代表可以自由再分发。授权不明确时，先记录元数据或链接，不直接打包传播。

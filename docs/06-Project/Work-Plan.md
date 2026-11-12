@@ -1,4 +1,14 @@
-# 开发计划表
+<div align="center">
+
+# Work Plan · 开发计划表
+
+**The engineering backlog: what is done, what is in progress, and how each item is verified.**
+
+[![Reference](https://img.shields.io/badge/REFERENCE-6b7280?style=flat-square)](#) [![中文正文](https://img.shields.io/badge/%E6%AD%A3%E6%96%87-%E4%B8%AD%E6%96%87-2f6f5e?style=flat-square)](#)
+
+</div>
+
+> This document is written in Chinese. The title and summary above are the English entry point.
 
 > 状态：进行中
 > 更新：2026-11-10

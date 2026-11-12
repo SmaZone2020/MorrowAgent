@@ -1,4 +1,14 @@
-# 待确认事项
+<div align="center">
+
+# Open Questions · 待确认事项
+
+**Points that are not settled. Anything listed here must not be treated as a confirmed requirement.**
+
+[![Reference](https://img.shields.io/badge/REFERENCE-6b7280?style=flat-square)](#) [![中文正文](https://img.shields.io/badge/%E6%AD%A3%E6%96%87-%E4%B8%AD%E6%96%87-2f6f5e?style=flat-square)](#)
+
+</div>
+
+> This document is written in Chinese. The title and summary above are the English entry point.
 
 > 记录现有文档与讨论中**尚未定案**的点。任何未在此处或 `docs/DECISIONS.md` 中确认的细节，都不得被当作已确认需求。
 

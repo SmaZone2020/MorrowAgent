@@ -1,4 +1,14 @@
-# 05 UI/UX 设计规范（初稿）
+<div align="center">
+
+# UI/UX Guidelines · 05 UI/UX 设计规范
+
+**Design principles, dashboard priorities, and the rules the Lumi workspace follows.**
+
+[![Essential](https://img.shields.io/badge/ESSENTIAL-2f6f5e?style=flat-square)](#) [![中文正文](https://img.shields.io/badge/%E6%AD%A3%E6%96%87-%E4%B8%AD%E6%96%87-2f6f5e?style=flat-square)](#)
+
+</div>
+
+> This document is written in Chinese. The title and summary above are the English entry point.
 
 ## 1. 设计原则
 

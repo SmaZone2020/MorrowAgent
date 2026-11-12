@@ -1,4 +1,14 @@
-# 01 产品立项说明书
+<div align="center">
+
+# Product Overview · 01 产品立项说明书
+
+**What Morrow Agent is, the problems it addresses, and the value hierarchy it is built on.**
+
+[![Reference](https://img.shields.io/badge/REFERENCE-6b7280?style=flat-square)](#) [![中文正文](https://img.shields.io/badge/%E6%AD%A3%E6%96%87-%E4%B8%AD%E6%96%87-2f6f5e?style=flat-square)](#)
+
+</div>
+
+> This document is written in Chinese. The title and summary above are the English entry point.
 
 - 版本：0.1.0
 - 状态：初稿，待评审

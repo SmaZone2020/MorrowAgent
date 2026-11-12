@@ -1,4 +1,14 @@
-# MVP 验收标准
+<div align="center">
+
+# MVP Acceptance Criteria · MVP 验收标准
+
+**What has to be true before the competition build counts as finished.**
+
+[![Essential](https://img.shields.io/badge/ESSENTIAL-2f6f5e?style=flat-square)](#) [![中文正文](https://img.shields.io/badge/%E6%AD%A3%E6%96%87-%E4%B8%AD%E6%96%87-2f6f5e?style=flat-square)](#)
+
+</div>
+
+> This document is written in Chinese. The title and summary above are the English entry point.
 
 ## 1. 产品体验
 

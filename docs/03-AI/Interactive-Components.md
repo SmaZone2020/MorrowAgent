@@ -1,4 +1,14 @@
-# 07 AI 交互组件规范
+<div align="center">
+
+# Interactive Component Spec · 07 AI 交互组件规范
+
+**The contract between Lumi and the front-end components: what can be rendered, and what events come back.**
+
+[![Essential](https://img.shields.io/badge/ESSENTIAL-2f6f5e?style=flat-square)](#) [![中文正文](https://img.shields.io/badge/%E6%AD%A3%E6%96%87-%E4%B8%AD%E6%96%87-2f6f5e?style=flat-square)](#)
+
+</div>
+
+> This document is written in Chinese. The title and summary above are the English entry point.
 
 - 版本：0.1.0
 - 状态：产品规范初稿；通信字段需与工程实现共同评审

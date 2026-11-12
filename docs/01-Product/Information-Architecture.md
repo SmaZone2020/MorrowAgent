@@ -1,4 +1,14 @@
-# 03 信息架构与页面清单
+<div align="center">
+
+# Information Architecture · 03 信息架构与页面清单
+
+**Top-level navigation, the page inventory, and what each page is responsible for.**
+
+[![Reference](https://img.shields.io/badge/REFERENCE-6b7280?style=flat-square)](#) [![中文正文](https://img.shields.io/badge/%E6%AD%A3%E6%96%87-%E4%B8%AD%E6%96%87-2f6f5e?style=flat-square)](#)
+
+</div>
+
+> This document is written in Chinese. The title and summary above are the English entry point.
 
 ## 1. 顶层导航
 

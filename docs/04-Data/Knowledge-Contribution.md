@@ -1,4 +1,14 @@
-# 12 Morrow-Knowledge 贡献与版本规范
+<div align="center">
+
+# Knowledge Contribution and Versioning · 12 Morrow-Knowledge 贡献与版本规范
+
+**How the public knowledge repository is contributed to, reviewed, versioned and published.**
+
+[![Reference](https://img.shields.io/badge/REFERENCE-6b7280?style=flat-square)](#) [![中文正文](https://img.shields.io/badge/%E6%AD%A3%E6%96%87-%E4%B8%AD%E6%96%87-2f6f5e?style=flat-square)](#)
+
+</div>
+
+> This document is written in Chinese. The title and summary above are the English entry point.
 
 ## 1. 仓库定位
 

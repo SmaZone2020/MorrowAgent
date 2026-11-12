@@ -1,4 +1,14 @@
-# 10 数据模型与实体关系设计
+<div align="center">
+
+# Data Model · 10 数据模型与实体关系设计
+
+**The core entities, their relationships, and the boundary between public content and personal data.**
+
+[![Reference](https://img.shields.io/badge/REFERENCE-6b7280?style=flat-square)](#) [![中文正文](https://img.shields.io/badge/%E6%AD%A3%E6%96%87-%E4%B8%AD%E6%96%87-2f6f5e?style=flat-square)](#)
+
+</div>
+
+> This document is written in Chinese. The title and summary above are the English entry point.
 
 - 状态：概念模型，非最终数据库 Schema
 

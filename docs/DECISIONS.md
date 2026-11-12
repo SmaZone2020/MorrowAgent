@@ -1,4 +1,14 @@
-# 产品决策记录
+<div align="center">
+
+# Decision Log · 产品决策记录
+
+**Every decision that has been confirmed, with its ID and status. The single source of truth for "we already decided this".**
+
+[![Essential](https://img.shields.io/badge/ESSENTIAL-2f6f5e?style=flat-square)](#) [![中文正文](https://img.shields.io/badge/%E6%AD%A3%E6%96%87-%E4%B8%AD%E6%96%87-2f6f5e?style=flat-square)](#)
+
+</div>
+
+> This document is written in Chinese. The title and summary above are the English entry point.
 
 | ID    | 决策                                   | 状态           |
 | ----- | ------------------------------------ | ------------ |

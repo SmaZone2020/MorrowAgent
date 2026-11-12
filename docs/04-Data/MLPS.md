@@ -1,4 +1,15 @@
-# Morrow Learning Package Specification（MLPS）
+<div align="center">
+
+# Morrow Learning Package Specification (MLPS) · Morrow 学习包规范
+
+**The format, schema, versioning and distribution rules behind every `.morrow` learning package.**
+
+[![Essential](https://img.shields.io/badge/ESSENTIAL-2f6f5e?style=flat-square)](#) [![中文正文](https://img.shields.io/badge/%E6%AD%A3%E6%96%87-%E4%B8%AD%E6%96%87-2f6f5e?style=flat-square)](#)
+
+</div>
+
+> This document is written in Chinese. The title and summary above are the English entry point.
+> For a task-oriented walkthrough of producing a package, read [`Package-Authoring-Guide.md`](Package-Authoring-Guide.md). This document is the specification; that one is the manual.
 
 ## Morrow 学习包格式与数据标准
 

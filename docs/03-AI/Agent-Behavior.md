@@ -1,4 +1,14 @@
-# 06 Lumi Agent 行为规范
+<div align="center">
+
+# Lumi Agent Behaviour · 06 Lumi Agent 行为规范
+
+**How Lumi decides between answering, guiding, diagnosing and drilling — and what it must never claim.**
+
+[![Essential](https://img.shields.io/badge/ESSENTIAL-2f6f5e?style=flat-square)](#) [![中文正文](https://img.shields.io/badge/%E6%AD%A3%E6%96%87-%E4%B8%AD%E6%96%87-2f6f5e?style=flat-square)](#)
+
+</div>
+
+> This document is written in Chinese. The title and summary above are the English entry point.
 
 ## 1. 角色定义
 

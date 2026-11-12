@@ -1,4 +1,14 @@
-# 14 API 与组件通信协议（草案）
+<div align="center">
+
+# Communication Protocol · 14 API 与组件通信协议
+
+**How the client, the model providers, Lumi and the interactive components talk to each other.**
+
+[![Reference](https://img.shields.io/badge/REFERENCE-6b7280?style=flat-square)](#) [![中文正文](https://img.shields.io/badge/%E6%AD%A3%E6%96%87-%E4%B8%AD%E6%96%87-2f6f5e?style=flat-square)](#)
+
+</div>
+
+> This document is written in Chinese. The title and summary above are the English entry point.
 
 ## 1. 通信对象
 

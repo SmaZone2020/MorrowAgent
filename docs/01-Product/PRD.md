@@ -1,4 +1,14 @@
-# 02 产品需求文档（PRD）
+<div align="center">
+
+# Product Requirements Document · 02 产品需求文档（PRD）
+
+**Roles, feature scope, non-functional requirements and MVP priority for the first release.**
+
+[![Essential](https://img.shields.io/badge/ESSENTIAL-2f6f5e?style=flat-square)](#) [![中文正文](https://img.shields.io/badge/%E6%AD%A3%E6%96%87-%E4%B8%AD%E6%96%87-2f6f5e?style=flat-square)](#)
+
+</div>
+
+> This document is written in Chinese. The title and summary above are the English entry point.
 
 - 版本：0.1.0
 - 状态：初稿；范围需在原型评审后冻结

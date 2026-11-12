@@ -1,4 +1,14 @@
-# 13 技术架构设计（决策框架）
+<div align="center">
+
+# Technical Architecture · 13 技术架构设计
+
+**Architecture goals, logical layering, and the technical decisions the implementation settled on.**
+
+[![Reference](https://img.shields.io/badge/REFERENCE-6b7280?style=flat-square)](#) [![中文正文](https://img.shields.io/badge/%E6%AD%A3%E6%96%87-%E4%B8%AD%E6%96%87-2f6f5e?style=flat-square)](#)
+
+</div>
+
+> This document is written in Chinese. The title and summary above are the English entry point.
 
 - 状态：待技术评审；本文件不锁定技术栈
 

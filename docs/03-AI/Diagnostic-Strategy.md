@@ -1,4 +1,14 @@
-# 09 智能诊断与教学策略规范
+<div align="center">
+
+# Diagnostic Strategy · 09 智能诊断与教学策略规范
+
+**From "this question is wrong" to "which knowledge point, which error type, and what to teach next".**
+
+[![Essential](https://img.shields.io/badge/ESSENTIAL-2f6f5e?style=flat-square)](#) [![中文正文](https://img.shields.io/badge/%E6%AD%A3%E6%96%87-%E4%B8%AD%E6%96%87-2f6f5e?style=flat-square)](#)
+
+</div>
+
+> This document is written in Chinese. The title and summary above are the English entry point.
 
 ## 1. 诊断目标
 
