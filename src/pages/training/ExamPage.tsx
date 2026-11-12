@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/vendor/beui/components/motion/button";
 import { Panel } from "@/components/Panel";
 import { EmptyState } from "@/components/EmptyState";
-import { useScrollMemory } from "@/features/uiState";
-import { workspaceScope } from "@/features/uiState/scope";
+import { usePersistedState, useScrollMemory } from "@/features/uiState";
+import { appScope, workspaceScope } from "@/features/uiState/scope";
 import {
   useKnowledge,
   useWorkspaceId,
@@ -46,6 +46,13 @@ export function ExamPage() {
   const scrollRef = useScrollMemory<HTMLDivElement>(
     workspaceScope(workspaceId, "exam.scrollTop"),
   );
+  // The sitting also writes this flag through `ExamSession`; the page keeps a
+  // second copy that follows the same value, so a stale flag — left over from a
+  // window closed mid-paper — is cleared by whichever side sees no sitting.
+  const [, setExamActive] = usePersistedState<string | null>(
+    appScope("exam.active"),
+    null,
+  );
 
   useEffect(() => {
     setLoaded(false);
@@ -62,6 +69,14 @@ export function ExamPage() {
     () => (active ? paperFromIds(questions, active.questionIds) : null),
     [questions, active],
   );
+
+  // No sitting on screen means no paper owns the window. This is what recovers
+  // the shell after the flag outlived its sitting: without it, a crash or a
+  // closed window would leave every later page without a sidebar forever.
+  const sitting = active && paper && !active.submittedAt;
+  useEffect(() => {
+    if (!sitting) setExamActive(null);
+  }, [sitting, setExamActive]);
 
   const refresh = async () => {
     const rows = await loadExams(workspaceId);
@@ -122,7 +137,7 @@ export function ExamPage() {
 
   // A sitting owns the window: no page padding, and the status bar is meant to
   // sit against the top edge.
-  if (active && paper && !active.submittedAt) {
+  if (sitting) {
     return (
       <ExamSession
         run={active}

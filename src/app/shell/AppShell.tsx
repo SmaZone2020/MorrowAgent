@@ -68,7 +68,7 @@ export function AppShell() {
   );
   // A timed paper takes over the window: the rail and the breadcrumb would both
   // offer a way out of a paper that is being timed.
-  const [examActive] = usePersistedState<string | null>(
+  const [examActive, setExamActive] = usePersistedState<string | null>(
     appScope("exam.active"),
     null,
   );
@@ -81,6 +81,15 @@ export function AppShell() {
   // one tree and hiding only the furniture leaves the paper mounted, so the
   // sitting that just started is still the sitting on screen.
   const showChrome = !examActive;
+  // The flag only means something while the exam page is on screen: a window
+  // closed mid-paper leaves it behind, and without this guard every later page
+  // would open without a rail or a breadcrumb, forever. The exam page keeps its
+  // own copy of the flag while a sitting is mounted, so clearing here cannot
+  // race a real sitting — that page rewrites the flag on its next render.
+  const onExamPage = location.pathname.endsWith("/exam");
+  useEffect(() => {
+    if (examActive !== null && !onExamPage) setExamActive(null);
+  }, [examActive, onExamPage, setExamActive]);
   // The key is kept after closing so the flyout can animate out with its real
   // contents still mounted; only `flyoutOpen` controls visibility.
   const [flyoutKey, setFlyoutKey] = useState<string | null>(null);
