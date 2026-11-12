@@ -1,10 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Key } from "@gravity-ui/icons";
+import { ArrowRotateLeft, Key, Wallet } from "@gravity-ui/icons";
 import { Button } from "@/vendor/beui/components/motion/button";
 import { Input } from "@/vendor/beui/components/motion/input";
-import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
+import { Loader } from "@/vendor/beui/components/motion/loader";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/vendor/beui/components/motion/select";
 import {
   AnimatedToastStack,
   useAnimatedToastStack,
@@ -16,11 +23,11 @@ import { useProviderStatus } from "@/features/settings/providerStatus";
 import { useSearchKey } from "@/features/settings/searchStore";
 import { openExternalUrl } from "@/features/rich/openExternal";
 import { ChoiceTabs } from "@/pages/settings/SettingsBlocks";
+import { prettyModelName } from "@/pages/settings/ProviderRow";
 import {
   connectDeepSeekKey,
   readDeepSeekKeyPlan,
   signInDeepSeek,
-  type DeepSeekAccount,
 } from "@/features/onboarding/deepseekLogin";
 
 const PLATFORM_URL = "https://platform.deepseek.com/api_keys";
@@ -64,10 +71,14 @@ export function ProviderQuickSetup({
   const [key, setKey] = useState("");
   const [seeded, setSeeded] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [account, setAccount] = useState<DeepSeekAccount | null>(null);
+  const [connected, setConnected] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const ready = useRef(onReady);
   ready.current = onReady;
+
+  const balance = useSearchKey((state) => state.balance);
+  const checking = useSearchKey((state) => state.checking);
+  const refreshBalance = useSearchKey((state) => state.refreshBalance);
 
   const { toasts, showToast, updateToast, dismissToast } =
     useAnimatedToastStack({
@@ -85,11 +96,19 @@ export function ProviderQuickSetup({
     if (configured) ready.current(true);
   }, [configured]);
 
+  // A key may already be stored from an earlier run, in which case nothing in
+  // this step triggers a balance read; the card would otherwise show a dash.
+  const storedKey = target?.apiKey.trim() ?? "";
+  useEffect(() => {
+    if (storedKey) void refreshBalance();
+  }, [storedKey, refreshBalance]);
+
   if (!target) {
     return (
-      <AnimatedBadge status="loading" size="sm" contentKey="providers">
-        正在读取供应商
-      </AnimatedBadge>
+      <span className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Loader variant="dots" size={16} label="正在读取供应商" />
+        <span aria-hidden="true">正在读取供应商</span>
+      </span>
     );
   }
 
@@ -103,6 +122,7 @@ export function ProviderQuickSetup({
     const search = useSearchKey.getState();
     await search.hydrate();
     void search.refreshBalance();
+    setConnected(true);
     ready.current(true);
     return {
       status: "success" as const,
@@ -150,24 +170,31 @@ export function ProviderQuickSetup({
     }
   };
 
+  /**
+   * Signing in always starts from a clean slate.
+   *
+   * The backend wipes the built-in browser's DeepSeek cookies and storages
+   * before it shows the form, so the platform cannot silently recognise the
+   * previous account and skip the login entirely. What it cannot reach is the
+   * key this app already adopted; that one is replaced on the way out by
+   * `connectDeepSeekKey`, which overwrites both the provider and search blobs.
+   */
   const signIn = async () => {
     if (busy) return;
     setBusy(true);
     const toastId = showToast({
       status: "loading",
       title: "等待登录",
-      description: "在弹出的窗口里用手机号完成验证。",
+      description: "在弹出的窗口里完成验证。",
       duration: 0,
     });
 
     try {
-      const who = await signInDeepSeek();
-      setAccount(who);
+      await signInDeepSeek();
       updateToast(toastId, {
         status: "loading",
         title: "已登录",
         description: "正在检查账号下已有的 Key…",
-        duration: 0,
       });
 
       const plan = await readDeepSeekKeyPlan();
@@ -278,38 +305,119 @@ export function ProviderQuickSetup({
     }
   };
 
-  const label = account?.mobile || account?.email || "";
+  const signedIn = connected || Boolean(target.apiKey.trim());
+
+  const balanceText = checking
+    ? "读取中"
+    : balance
+      ? balance.balanceInfos
+          .filter((info) => Number(info.totalBalance) > 0)
+          .map((info) => `${info.totalBalance} ${info.currency}`)
+          .join(" · ") || "0 CNY"
+      : "—";
+
+  /** Switching the model here is the same act as switching it in settings. */
+  const chooseModel = (model: string) => {
+    void saveBook({
+      providers,
+      activeProviderId: target.id,
+      activeModel: model,
+    });
+  };
 
   return (
     <>
       <div className="flex flex-col gap-4">
-        <ChoiceTabs
-          label="连接方式"
-          value={mode}
-          onChange={(next) => setMode(next)}
-          options={[
-            { value: "login", label: "官方账号登录" },
-            { value: "manual", label: "填写 APIKey" },
-          ]}
-        />
+        <div className="flex items-center justify-between gap-3">
+          <ChoiceTabs
+            label="连接方式"
+            value={mode}
+            onChange={(next) => setMode(next)}
+            options={[
+              { value: "login", label: "官方账号登录" },
+              { value: "manual", label: "填写 APIKey" },
+            ]}
+          />
+          {mode === "login" && signedIn ? (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="shrink-0 text-sm"
+              disabled={busy}
+              onClick={() => void signIn()}
+            >
+              重新登录
+            </Button>
+          ) : null}
+        </div>
 
         {mode === "login" ? (
-          <div className="flex flex-col gap-3">
+          signedIn ? (
+            <div className="flex flex-col gap-4 rounded-xl border border-border bg-card/60 p-3">
+              <div className="flex items-center justify-between gap-6">
+                <span className="flex items-center gap-1 text-sm font-medium text-foreground">
+                  余额
+                  <InfoHint label="DeepSeek 当前账户余额。" />
+                </span>
+                <span className="flex items-center gap-2">
+                  <Wallet aria-hidden="true" className="size-4 text-muted-foreground" />
+                  <span className="text-sm tabular-nums text-foreground">
+                    {balanceText}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    aria-label="刷新余额"
+                    className="size-8 rounded-lg p-0"
+                    disabled={busy || checking}
+                    onClick={() => void refreshBalance()}
+                  >
+                    <ArrowRotateLeft className="size-4" />
+                  </Button>
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between gap-4">
+                <span className="flex items-center gap-1 text-sm font-medium text-foreground">
+                  模型
+                </span>
+                <Select
+                  value={activeModel ?? ""}
+                  onValueChange={chooseModel}
+                  disabled={busy || target.models.length === 0}
+                  className="w-[180px]"
+                >
+                  <SelectTrigger className="rounded-xl">
+                    <SelectValue placeholder="没有可用模型" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {target.models.map((model) => (
+                      <SelectItem key={model} value={model}>
+                        {prettyModelName(model)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
               <Button
                 className="w-full rounded-xl text-sm"
                 disabled={busy}
                 onClick={() => void signIn()}
               >
                 <Key className="size-4" />
-                {busy ? "处理中" : label ? "重新登录并创建 Key" : "登录 DeepSeek"}
+                {busy ? "处理中" : "登录 DeepSeek"}
               </Button>
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm leading-6 text-muted-foreground">
-                Key 名为「Morrow Agent」，之后可以在开放平台单独删除。
-              </p>
-              <InfoHint label="登录窗口是 DeepSeek 官方页面，手机号、验证码和密钥都在它的服务器上处理，Morrow 只接收登录结果用来创建 Key。" />
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm leading-6 text-muted-foreground">
+                  Key 名为「Morrow Agent」，之后可以在开放平台单独删除。
+                </p>
+                <InfoHint label="登录窗口是 DeepSeek 官方页面，Morrow 只接收登录结果用来创建 Key。" />
+              </div>
             </div>
-          </div>
+          )
         ) : (
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2">
