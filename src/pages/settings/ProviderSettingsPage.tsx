@@ -13,7 +13,6 @@ import type { TestState } from "@/pages/settings/ProviderEditor";
 import {
   newProviderId,
   stripKey,
-  type DraftProvider,
   type ProviderDraft,
 } from "@/pages/settings/providerDraft";
 import { useProviderStatus } from "@/features/settings/providerStatus";
@@ -43,6 +42,9 @@ export function ProviderSettingsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
+  // Nothing is written until a key has been touched or a field has changed, so
+  // merely opening the page must not rewrite the blob.
+  const touched = useRef(false);
 
   useEffect(() => {
     setKeys((current) => {
@@ -63,23 +65,61 @@ export function ProviderSettingsPage() {
     activeProviderId,
     activeModel,
   };
-  const base = draft ?? storedDraft;
+  // A draft written before the builtin existed lacks it, and the builtin cannot
+  // be deleted, so a draft without it is always stale: using the stored list in
+  // that case is what brings DeepSeek back instead of hiding it behind an old
+  // remembered draft.
+  const draftIsStale =
+    draft !== null &&
+    providers.some(
+      (provider) =>
+        provider.builtin === true &&
+        !draft.providers.some((entry) => entry.id === provider.id),
+    );
+  const base = draft && !draftIsStale ? draft : storedDraft;
   const profiles: StoredProviderProfile[] = base.providers.map((entry) => ({
     ...entry,
     apiKey: keys[entry.id] ?? "",
   }));
   const editing = profiles.find((entry) => entry.id === editingId) ?? null;
 
-  const patchProvider = (id: string, patch: Partial<DraftProvider>) =>
+  // The key is not part of the remembered draft — interface state is a plain
+  // file and a credential must not sit in it — so a change to it has to take
+  // the same route as the rest: update the in-memory copy and let the autosave
+  // below read from it.
+  const patchProvider = (id: string, patch: Partial<StoredProviderProfile>) => {
+    touched.current = true;
+    const { apiKey, ...rest } = patch;
+    if (apiKey !== undefined) {
+      setKeys((current) => ({ ...current, [id]: apiKey }));
+    }
+    // A key-only edit still has to save: it is the most common edit there is.
+    if (Object.keys(rest).length === 0) {
+      setDraft((current) => (current && !draftIsStale ? current : storedDraft));
+      return;
+    }
+
     setDraft((current) => {
-      const source = current ?? storedDraft;
+      const source = current && !draftIsStale ? current : storedDraft;
       return {
         ...source,
-        providers: source.providers.map((entry) =>
-          entry.id === id ? { ...entry, ...patch } : entry,
-        ),
+        providers: source.providers.map((entry) => {
+          if (entry.id !== id) return entry;
+          if (!entry.builtin) return { ...entry, ...rest };
+          // The builtin's identity is fixed; only its key, models and vision
+          // flag are the user's. The backend enforces the same rule, this just
+          // keeps the draft from displaying a change that would be undone.
+          const {
+            name: _name,
+            baseUrl: _baseUrl,
+            protocol: _protocol,
+            ...editable
+          } = rest;
+          return { ...entry, ...editable };
+        }),
       };
     });
+  };
 
   const createProvider = (values: {
     name: string;
@@ -88,10 +128,11 @@ export function ProviderSettingsPage() {
     protocol: NonNullable<StoredProviderProfile["protocol"]>;
   }) => {
     const id = newProviderId();
+    touched.current = true;
     setCreating(false);
     setKeys((current) => ({ ...current, [id]: values.apiKey }));
     setDraft((current) => {
-      const source = current ?? storedDraft;
+      const source = current && !draftIsStale ? current : storedDraft;
       return {
         ...source,
         providers: [
@@ -103,18 +144,25 @@ export function ProviderSettingsPage() {
             protocol: values.protocol,
             models: [],
             supportsVision: true,
+            builtin: false,
           },
         ],
-        // The first provider has nothing to be active against yet.
+        // A provider added by hand never steals the role from an existing one.
         activeProviderId: source.activeProviderId ?? id,
       };
     });
   };
 
   const removeProvider = (id: string) => {
+    const target = profiles.find((entry) => entry.id === id);
+    // The builtin row is not the user's to remove: Lumi needs an endpoint to
+    // answer at all, and re-adding DeepSeek by hand would lose the thinking
+    // switch and the balance read.
+    if (target?.builtin) return;
+    touched.current = true;
     setEditingId((current) => (current === id ? null : current));
     setDraft((current) => {
-      const source = current ?? storedDraft;
+      const source = current && !draftIsStale ? current : storedDraft;
       const remaining = source.providers.filter((entry) => entry.id !== id);
       // Removing the active provider must hand the role to a survivor, or the
       // app would sit on "configured" with nothing behind it.
@@ -137,6 +185,7 @@ export function ProviderSettingsPage() {
     setTests((current) => ({ ...current, [id]: next }));
 
   const fetchModels = async (profile: StoredProviderProfile) => {
+    touched.current = true;
     setTest(profile.id, { status: "testing" });
     try {
       const list = await listModels({
@@ -150,7 +199,7 @@ export function ProviderSettingsPage() {
       // A failed fetch leaves the saved list alone; a successful one replaces it
       // so a removed model cannot linger in the picker.
       setDraft((current) => {
-        const source = current ?? storedDraft;
+        const source = current && !draftIsStale ? current : storedDraft;
         return {
           ...source,
           providers: source.providers.map((entry) =>
@@ -175,14 +224,38 @@ export function ProviderSettingsPage() {
 
   const useModel = (providerId: string, model: string) =>
     setDraft((current) => {
-      const source = current ?? storedDraft;
+      const source = current && !draftIsStale ? current : storedDraft;
       return { ...source, activeProviderId: providerId, activeModel: model };
     });
 
+  // Enabling a provider is one decision, not two: the row has to end up both
+  // selected and pointed at a model it actually lists, or the app would sit on
+  // "configured" with nothing to send.
+  const activateProvider = (profile: StoredProviderProfile) => {
+    touched.current = true;
+    setDraft((current) => {
+      const source = current && !draftIsStale ? current : storedDraft;
+      const keepsModel =
+        source.activeProviderId === profile.id &&
+        profile.models.includes(source.activeModel ?? "");
+      return {
+        ...source,
+        activeProviderId: profile.id,
+        activeModel: keepsModel
+          ? source.activeModel
+          : (profile.models[0] ?? null),
+      };
+    });
+  };
+
   // With no save button, every edit settles into the store on its own. The
-  // draft is the trigger: it is null until the first change.
+  // draft is the trigger for most of them; a key edit is the exception, because
+  // the key never enters the draft, so it makes `keys` the trigger too.
   const pending = useRef<ProviderDraft | null>(null);
-  pending.current = draft;
+  // The draft actually on screen: a stale remembered one is not what the user
+  // is editing, and saving it would resurrect the provider list it describes.
+  const effectiveDraft: ProviderDraft | null = draftIsStale ? storedDraft : draft;
+  pending.current = effectiveDraft;
   const keySnapshot = useRef(keys);
   keySnapshot.current = keys;
   // Guards against re-saving the same book, which would otherwise write on
@@ -190,17 +263,18 @@ export function ProviderSettingsPage() {
   const lastSaved = useRef("");
 
   useEffect(() => {
-    if (!draft) return;
+    if (!effectiveDraft) return;
+    if (!touched.current) return;
     // A stored provider whose key has not been seeded yet would be saved with an
     // empty key, wiping the credential. Draft-only providers have no stored key
     // to protect, so they save right away.
     const seeded = (id: string) =>
       keys[id] !== undefined || !providers.some((profile) => profile.id === id);
-    if (!draft.providers.every((entry) => seeded(entry.id))) return;
+    if (!effectiveDraft.providers.every((entry) => seeded(entry.id))) return;
 
     const signature = JSON.stringify({
-      draft,
-      keys: draft.providers.map((entry) => keys[entry.id] ?? ""),
+      draft: effectiveDraft,
+      keys: effectiveDraft.providers.map((entry) => keys[entry.id] ?? ""),
     });
     if (signature === lastSaved.current) return;
 
@@ -230,7 +304,7 @@ export function ProviderSettingsPage() {
       }
     }, AUTOSAVE_MS);
     return () => window.clearTimeout(timer);
-  }, [draft, keys, saveBook]);
+  }, [effectiveDraft, keys, providers, saveBook]);
 
   return (
     <SettingsPageShell
@@ -269,12 +343,12 @@ export function ProviderSettingsPage() {
               profile={profile}
               activeModel={base.activeModel}
               isActiveProvider={profile.id === base.activeProviderId}
+              onActivate={() => activateProvider(profile)}
               onEdit={() => setEditingId(profile.id)}
             />
           ))
         )}
       </SettingsGroup>
-
       {saveError || saving ? (
         <p
           className={`text-sm ${saveError ? "text-destructive" : "text-muted-foreground"}`}

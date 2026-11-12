@@ -1,3 +1,4 @@
+pub mod builtin;
 pub mod protocol;
 pub mod search;
 pub mod secret;

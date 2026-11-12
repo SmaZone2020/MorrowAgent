@@ -1,6 +1,5 @@
 import { Input } from "@/vendor/beui/components/motion/input";
 import { Button } from "@/vendor/beui/components/motion/button";
-import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
 import { Switch } from "@/vendor/beui/components/motion/switch";
 import { InfoHint } from "@/components/InfoHint";
 import {
@@ -71,40 +70,26 @@ export function ProviderEditor({
         />
       </div>
 
-      <Input
-        label="API Key"
-        type="password"
-        value={profile.apiKey}
-        onChange={(apiKey) => onChange({ apiKey })}
-        placeholder="sk-..."
-        spellCheck={false}
-        autoComplete="off"
-      />
-
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex items-end gap-2">
+        <Input
+          label="API Key"
+          type="password"
+          value={profile.apiKey}
+          onChange={(apiKey) => onChange({ apiKey })}
+          placeholder="sk-..."
+          spellCheck={false}
+          autoComplete="off"
+          className="min-w-0 flex-1"
+        />
         <Button
           size="sm"
           variant="secondary"
-          className="text-sm"
+          className="mb-1.5 shrink-0 text-sm"
           disabled={busy || !profile.baseUrl.trim() || !profile.apiKey.trim()}
           onClick={onFetchModels}
         >
           {test.status === "testing" ? "拉取中" : "拉取模型"}
         </Button>
-        {test.status === "ok" ? (
-          <AnimatedBadge status="success" size="sm" contentKey={test.count}>
-            {test.count} 个
-          </AnimatedBadge>
-        ) : null}
-        {profile.models.length > 0 ? (
-          <AnimatedBadge
-            status="neutral"
-            size="sm"
-            contentKey={profile.models.length}
-          >
-            {profile.models.length} 个已存
-          </AnimatedBadge>
-        ) : null}
       </div>
       {test.status === "error" ? (
         <p className="text-sm leading-6 text-destructive">{test.message}</p>

@@ -38,8 +38,14 @@ export interface AccountBalance {
 }
 
 interface SearchStore {
-  /** Whether a key is stored. The key itself never enters the webview twice. */
+  /** Whether a key is available at all. The key itself never enters the webview. */
   ready: boolean;
+  /**
+   * Where that key came from: one typed on this page, or the builtin provider's
+   * key. The page says which, because "已配置" without saying by what is how a
+   * learner ends up editing the wrong field.
+   */
+  source: "search" | "provider" | null;
   /** Only while the settings page is open, to prove the key works. */
   checking: boolean;
   balance: AccountBalance | null;
@@ -55,36 +61,47 @@ interface SearchStore {
  * The DeepSeek search credential, kept apart from the chat providers.
  *
  * Chat and search are separate purchases: a learner can run Lumi on any
- * OpenAI-compatible endpoint and still pay DeepSeek per search. One flag is all
- * the UI needs — `ready` — because the backend reads the key itself.
+ * OpenAI-compatible endpoint and still pay DeepSeek per search. But they are the
+ * same account when both are DeepSeek, so the backend falls back to the builtin
+ * provider's key rather than asking for the same string twice; `source` reports
+ * which of the two is in force.
  */
 export const useSearchKey = create<SearchStore>((set, get) => ({
   ready: false,
+  source: null,
   checking: false,
   balance: null,
   error: null,
 
   hydrate: async () => {
     if (!isTauriRuntime) {
-      set({ ready: false });
+      set({ ready: false, source: null });
       return;
     }
     try {
-      const key = await invoke<string | null>("search_load_key");
-      set({ ready: Boolean(key) });
+      const status = await invoke<{
+        configured: boolean;
+        source: "search" | "provider" | null;
+      }>("search_key_status");
+      set({ ready: status.configured, source: status.source });
     } catch {
-      set({ ready: false });
+      set({ ready: false, source: null });
     }
   },
 
   saveKey: async (key) => {
     await invoke("search_save_key", { key });
-    set({ ready: Boolean(key.trim()), balance: null, error: null });
+    set({
+      ready: Boolean(key.trim()),
+      source: key.trim() ? "search" : null,
+      balance: null,
+      error: null,
+    });
     if (key.trim()) await get().refreshBalance();
   },
 
   refreshBalance: async () => {
-    if (!isTauriRuntime || !get().ready) return;
+    if (!isTauriRuntime) return;
     set({ checking: true, error: null });
     try {
       const balance = await invoke<AccountBalance>("deepseek_balance");
@@ -100,7 +117,9 @@ export const useSearchKey = create<SearchStore>((set, get) => ({
 
   clear: async () => {
     await invoke("search_save_key", { key: "" });
-    set({ ready: false, balance: null, error: null });
+    set({ ready: false, source: null, balance: null, error: null });
+    // A provider key may still be there, which is what keeps search working.
+    await get().hydrate();
   },
 }));
 

@@ -12,6 +12,8 @@ export interface DraftProvider {
   models: string[];
   /** Absent means yes; the editor always writes an explicit value. */
   supportsVision?: boolean;
+  /** The shipped DeepSeek provider: fixed identity, no delete. */
+  builtin?: boolean;
 }
 
 export interface ProviderDraft {
@@ -30,5 +32,6 @@ export function stripKey(profile: StoredProviderProfile): DraftProvider {
     protocol: profile.protocol ?? "openai-chat",
     models: profile.models,
     supportsVision: profile.supportsVision !== false,
+    builtin: profile.builtin === true,
   };
 }

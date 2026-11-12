@@ -78,21 +78,23 @@ function canReach(
   return Boolean(active?.apiKey.trim() && active.baseUrl.trim() && activeModel);
 }
 
+/**
+ * The stored book always has at least the builtin DeepSeek row, so an empty
+ * list no longer means "nothing saved". The local `.env.local` credential is
+ * therefore a fallback for reachability, not a replacement for the list: the
+ * settings page must keep showing the builtin row so its key can be filled in.
+ */
 function fromBook(book: ProviderBook | null) {
   const providers = book ? book.providers.map(withProtocol) : [];
-  const saved = providers.length > 0;
-  const list = saved ? providers : debugFallback();
-  const activeProviderId = saved
-    ? book?.activeProviderId ?? providers[0]?.id ?? null
-    : list[0]?.id ?? null;
-  const activeModel = saved
-    ? book?.activeModel ?? null
-    : list[0]?.models[0] ?? null;
+  const list = providers.length > 0 ? providers : debugFallback();
+  const activeProviderId =
+    book?.activeProviderId ?? list[0]?.id ?? null;
+  const activeModel = book?.activeModel ?? list[0]?.models[0] ?? null;
   return {
     providers: list,
     activeProviderId,
     activeModel,
-    configured: canReach(list, activeProviderId, activeModel),
+    configured: canReach(list, activeProviderId, activeModel) || debugProfile() !== null,
   };
 }
 
@@ -126,18 +128,35 @@ export const useProviderStatus = create<ProviderStatus>((set) => ({
   },
 }));
 
-/** The credential to send with a request: saved book first, debug env second. */
+/**
+ * The credential to send with a request: saved book first, debug env second.
+ *
+ * The book always contains the builtin DeepSeek row now, so "a provider exists"
+ * no longer means "a provider is configured". A laptop running against
+ * `.env.local` still has that row, empty, and would otherwise lose its debug
+ * endpoint the moment the builtin shipped.
+ */
 export function activeProvider(): ActiveProviderConfig | null {
   const { providers, activeProviderId, activeModel } = useProviderStatus.getState();
   const profile = providers.find((entry) => entry.id === activeProviderId);
-  if (!profile || !activeModel) return null;
-  if (!profile.baseUrl.trim() || !profile.apiKey.trim()) return null;
+  if (profile && activeModel && profile.baseUrl.trim() && profile.apiKey.trim()) {
+    return {
+      profileId: profile.id,
+      baseUrl: profile.baseUrl,
+      apiKey: profile.apiKey,
+      model: activeModel,
+      protocol: profile.protocol,
+      supportsVision: profile.supportsVision,
+    };
+  }
+  const debug = debugProfile();
+  if (!debug) return null;
   return {
-    profileId: profile.id,
-    baseUrl: profile.baseUrl,
-    apiKey: profile.apiKey,
-    model: activeModel,
-    protocol: profile.protocol,
-    supportsVision: profile.supportsVision,
+    profileId: debug.id,
+    baseUrl: debug.baseUrl,
+    apiKey: debug.apiKey,
+    model: debug.models[0] ?? "",
+    protocol: debug.protocol,
+    supportsVision: debug.supportsVision,
   };
 }

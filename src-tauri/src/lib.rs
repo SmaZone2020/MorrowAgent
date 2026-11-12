@@ -72,7 +72,7 @@ fn provider_save(app: tauri::AppHandle, book: ProviderBook) -> Result<(), String
 }
 
 #[tauri::command]
-fn provider_load(app: tauri::AppHandle) -> Result<Option<ProviderBook>, String> {
+fn provider_load(app: tauri::AppHandle) -> Result<ProviderBook, String> {
     secret::load(&app)
 }
 
@@ -92,13 +92,56 @@ fn search_load_key(app: tauri::AppHandle) -> Result<Option<String>, String> {
     secret::load_search_key(&app)
 }
 
+/// The key search will actually use, and where it came from: a dedicated key
+/// saved on the search page, or the builtin provider's key. The webview only
+/// learns whether one exists — never the key itself.
+#[derive(serde::Serialize)]
+struct SearchKeyStatus {
+    #[serde(rename = "configured")]
+    Configured: bool,
+    #[serde(rename = "source")]
+    Source: Option<String>,
+}
+
+#[tauri::command]
+fn search_key_status(app: tauri::AppHandle) -> Result<SearchKeyStatus, String> {
+    let resolved = secret::resolve_search_key(&app)?;
+    Ok(match resolved {
+        Some((source, _)) => SearchKeyStatus {
+            Configured: true,
+            Source: Some(
+                match source {
+                    secret::KeySource::Search => "search",
+                    secret::KeySource::Provider => "provider",
+                }
+                .to_string(),
+            ),
+        },
+        None => SearchKeyStatus {
+            Configured: false,
+            Source: None,
+        },
+    })
+}
+
+/// The key search will run on, falling back to the builtin provider's key.
+///
+/// A learner who already pasted a DeepSeek key on the provider page should not
+/// have to paste it again on the search page; the dedicated key still wins when
+/// both exist, because one typed there is meant for search.
+fn search_key(app: &tauri::AppHandle) -> Result<String, String> {
+    secret::resolve_search_key(app)?
+        .map(|(_, key)| key)
+        .ok_or_else(|| "还没有配置 DeepSeek Key".to_string())
+}
+
 #[tauri::command]
 async fn search_web(
     app: tauri::AppHandle,
     state: State<'_, AppState>,
     request: provider::search::SearchRequest,
 ) -> Result<provider::search::SearchResponse, String> {
-    let key = secret::load_search_key(&app)?.ok_or_else(|| "还没有配置搜索密钥".to_string())?;
+    let key = search_key(&app)?;
     provider::search::search(&state.Client, &key, &request).await
 }
 
@@ -108,7 +151,7 @@ async fn fetch_page(
     state: State<'_, AppState>,
     request: provider::search::FetchRequest,
 ) -> Result<provider::search::FetchResponse, String> {
-    let key = secret::load_search_key(&app)?.ok_or_else(|| "还没有配置搜索密钥".to_string())?;
+    let key = search_key(&app)?;
     provider::search::fetch(&state.Client, &key, &request).await
 }
 
@@ -117,7 +160,7 @@ async fn deepseek_balance(
     app: tauri::AppHandle,
     state: State<'_, AppState>,
 ) -> Result<provider::search::BalanceResponse, String> {
-    let key = secret::load_search_key(&app)?.ok_or_else(|| "还没有配置搜索密钥".to_string())?;
+    let key = search_key(&app)?;
     provider::search::balance(&state.Client, &key).await
 }
 
@@ -699,6 +742,7 @@ pub fn run() {
             provider_clear,
             search_save_key,
             search_load_key,
+            search_key_status,
             search_web,
             fetch_page,
             deepseek_balance,

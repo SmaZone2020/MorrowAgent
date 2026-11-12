@@ -16,6 +16,12 @@ export interface StoredProviderProfile {
    * profile saved before this flag existed expects.
    */
   supportsVision?: boolean;
+  /**
+   * True for the provider the app ships with. A builtin cannot be removed,
+   * renamed or repointed: only its key, its models and the chosen model are
+   * the user's to change.
+   */
+  builtin?: boolean;
 }
 
 /** Everything the user configured, plus the one model currently in use. */

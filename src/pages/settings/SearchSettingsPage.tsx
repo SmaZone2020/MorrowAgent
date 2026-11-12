@@ -31,6 +31,7 @@ function formatBalance(infos: { currency: string; totalBalance: string }[]): str
  */
 export function SearchSettingsPage() {
   const ready = useSearchKey((state) => state.ready);
+  const source = useSearchKey((state) => state.source);
   const checking = useSearchKey((state) => state.checking);
   const balance = useSearchKey((state) => state.balance);
   const error = useSearchKey((state) => state.error);
@@ -91,9 +92,13 @@ export function SearchSettingsPage() {
               <Globe aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
               <span className="text-sm font-medium text-foreground">API Key</span>
             </div>
-            {ready ? (
+            {source === "search" ? (
               <AnimatedBadge status="success" size="sm">
                 已配置
+              </AnimatedBadge>
+            ) : source === "provider" ? (
+              <AnimatedBadge status="info" size="sm">
+                复用供应商 Key
               </AnimatedBadge>
             ) : (
               <AnimatedBadge status="neutral" size="sm">
@@ -106,7 +111,13 @@ export function SearchSettingsPage() {
             type="password"
             value={draft}
             onChange={setDraft}
-            placeholder={ready ? "已保存，输入新 Key 可替换" : "sk-..."}
+            placeholder={
+              source === "search"
+                ? "已保存，输入新 Key 可替换"
+                : source === "provider"
+                  ? "已复用 AI 供应商里的 DeepSeek Key"
+                  : "sk-..."
+            }
             spellCheck={false}
             autoComplete="off"
             classNames={{ field: "rounded-xl" }}
@@ -121,16 +132,7 @@ export function SearchSettingsPage() {
             >
               {saving ? "保存中" : "保存"}
             </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              className="text-sm"
-              onClick={() => void openExternalUrl(PLATFORM_URL)}
-            >
-              访问 DeepSeek 开放平台
-              <ArrowUpRightFromSquare className="size-4" />
-            </Button>
-            {ready ? (
+            {source === "search" ? (
               <Button
                 size="sm"
                 variant="ghost"
@@ -141,7 +143,22 @@ export function SearchSettingsPage() {
                 清除
               </Button>
             ) : null}
+            <Button
+              size="sm"
+              variant="secondary"
+              className="text-sm"
+              onClick={() => void openExternalUrl(PLATFORM_URL)}
+            >
+              DeepSeek 开放平台
+              <ArrowUpRightFromSquare className="size-4" />
+            </Button>
           </div>
+
+          {source === "provider" ? (
+            <p className="text-sm leading-6 text-muted-foreground">
+              正在复用「AI 供应商」里官方 DeepSeek 的 Key，那边改一次即可。
+            </p>
+          ) : null}
 
           {saveError ? (
             <p className="text-sm leading-6 text-destructive">{saveError}</p>

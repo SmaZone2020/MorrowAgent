@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+use super::builtin;
 use super::protocol::Protocol;
 
 /// One configured provider. The API key travels through here but is never
@@ -24,6 +25,11 @@ pub struct StoredProviderProfile {
     /// user turns it off for a text-only model, and then nothing is uploaded.
     #[serde(rename = "supportsVision", default = "default_true")]
     pub SupportsVision: bool,
+    /// True for the provider the app ships with. A builtin cannot be removed,
+    /// renamed or repointed at another endpoint; only its key, its models and
+    /// the selected model belong to the user.
+    #[serde(rename = "builtin", default)]
+    pub Builtin: bool,
 }
 
 fn default_true() -> bool {
@@ -57,8 +63,42 @@ struct LegacyProvider {
 
 impl ProviderBook {
     /// Drops a dangling pointer instead of leaving the app on "nothing active".
+    ///
+    /// The builtin provider is also re-established here: its name, endpoint and
+    /// protocol are not the user's to change, so whatever a hand-edited or
+    /// older blob says about them is overwritten. That is what keeps "DeepSeek"
+    /// from turning into a renamed, unreachable copy of itself.
     pub fn normalize(mut self) -> Self {
         self.Providers.retain(|provider| !provider.Id.is_empty());
+
+        let builtin_models = self
+            .Providers
+            .iter()
+            .find(|provider| provider.Id == builtin::DEEPSEEK_ID)
+            .map(|provider| provider.Models.clone())
+            .filter(|models| !models.is_empty())
+            .unwrap_or_else(builtin::default_models);
+
+        if let Some(provider) = self
+            .Providers
+            .iter_mut()
+            .find(|provider| provider.Id == builtin::DEEPSEEK_ID)
+        {
+            provider.Name = builtin::DEEPSEEK_NAME.to_string();
+            provider.BaseUrl = builtin::DEEPSEEK_BASE_URL.to_string();
+            provider.Protocol = Protocol::OpenaiChat;
+            provider.Builtin = true;
+            provider.Models = builtin_models.clone();
+        } else {
+            // A blob from before the builtin existed gains it on first load, so
+            // the app is usable the moment a key is pasted.
+            self.Providers.insert(0, builtin::builtin("", builtin_models));
+        }
+
+        // The builtin sits first: it is the provider most learners use, and a
+        // row that can be neither removed nor renamed should not wander.
+        self.Providers.sort_by_key(|provider| !provider.Builtin);
+
         let active = self
             .ActiveProviderId
             .as_ref()
@@ -100,6 +140,7 @@ fn migrate_legacy(legacy: LegacyProvider) -> ProviderBook {
             vec![legacy.Model.clone()]
         },
         SupportsVision: true,
+        Builtin: false,
     };
     ProviderBook {
         ActiveModel: Some(legacy.Model),
@@ -217,10 +258,12 @@ pub fn save(app: &tauri::AppHandle, book: &ProviderBook) -> Result<(), String> {
     std::fs::write(blob_path(app)?, cipher).map_err(|error| format!("写入失败：{}", error))
 }
 
-pub fn load(app: &tauri::AppHandle) -> Result<Option<ProviderBook>, String> {
+pub fn load(app: &tauri::AppHandle) -> Result<ProviderBook, String> {
     let path = blob_path(app)?;
     if !path.exists() {
-        return Ok(None);
+        // A new install still has the builtin provider, without a key. The
+        // settings page then shows one row to fill in rather than an empty list.
+        return Ok(ProviderBook::default().normalize());
     }
     let cipher = std::fs::read(&path).map_err(|error| format!("读取失败：{}", error))?;
     let plain = platform::unprotect(&cipher)?;
@@ -233,11 +276,11 @@ pub fn load(app: &tauri::AppHandle) -> Result<Option<ProviderBook>, String> {
     if value.get("providers").is_some() {
         let book: ProviderBook =
             serde_json::from_value(value).map_err(|error| format!("配置已损坏：{}", error))?;
-        return Ok(Some(book.normalize()));
+        return Ok(book.normalize());
     }
     let legacy: LegacyProvider =
         serde_json::from_value(value).map_err(|error| format!("配置已损坏：{}", error))?;
-    Ok(Some(migrate_legacy(legacy).normalize()))
+    Ok(migrate_legacy(legacy).normalize())
 }
 
 pub fn clear(app: &tauri::AppHandle) -> Result<(), String> {
@@ -285,4 +328,30 @@ pub fn load_search_key(app: &tauri::AppHandle) -> Result<Option<String>, String>
     } else {
         Some(trimmed.to_string())
     })
+}
+
+pub enum KeySource {
+    /// A key saved on the search page.
+    Search,
+    /// Reused from the builtin provider, whose key pays for both chat and search.
+    Provider,
+}
+
+/// The key search runs on, and where it came from.
+///
+/// A learner who already pasted a DeepSeek key on the provider page should not
+/// have to paste the same string twice. The dedicated key wins when both exist,
+/// because a key entered on the search page is clearly meant for search.
+pub fn resolve_search_key(app: &tauri::AppHandle) -> Result<Option<(KeySource, String)>, String> {
+    if let Some(key) = load_search_key(app)? {
+        return Ok(Some((KeySource::Search, key)));
+    }
+    let book = load(app)?;
+    let provider = book
+        .Providers
+        .iter()
+        .find(|provider| provider.Id == super::builtin::DEEPSEEK_ID)
+        .map(|provider| provider.ApiKey.trim().to_string())
+        .filter(|key| !key.is_empty());
+    Ok(provider.map(|key| (KeySource::Provider, key)))
 }
