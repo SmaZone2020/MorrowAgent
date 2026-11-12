@@ -1,3 +1,4 @@
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
@@ -14,40 +15,37 @@ use super::types::ProviderConfig;
 /// completions, while `platform.deepseek.com` owns the account, its keys and its
 /// balance. Signing in and minting a key are console calls, so they live here.
 const CONSOLE: &str = "https://platform.deepseek.com";
+const CONSOLE_HOST: &str = "platform.deepseek.com";
 const SIGN_IN_URL: &str = "https://platform.deepseek.com/sign_in";
+const SIGN_IN_PATH: &str = "/sign_in";
 
 /// The name the app gives the key it mints. Re-running the flow finds this name
 /// again, which is what makes the "replace the old one?" question answerable.
 pub const KEY_NAME: &str = "Morrow Agent";
 
-/// Marks the token hand-off inside the sign-in window's document title.
+/// The console session cookie, kept in memory only.
 ///
-/// The console page is a foreign origin with no IPC bridge, so the only channel
-/// back to Rust is something the page already has: its title. An initialization
-/// script lifts the token out of `localStorage` and writes it here; the window
-/// builder listens for title changes and takes it from there. Nothing is
-/// injected into the remote page's own code and no remote origin is granted
-/// access to this app's commands.
-const TOKEN_PREFIX: &str = "MORROW_DS_TOKEN:";
-const CANCEL: &str = "__MORROW_CANCELLED__";
-
-/// The console token for this process only.
+/// The console signs every API call with a cookie, not a bearer token, and the
+/// cookie is HttpOnly: the page cannot read it either. Tauri can, through the
+/// webview's own cookie store, and that is the one place worth taking it from —
+/// once the sign-in window has done its job it is closed, and every later call
+/// is an ordinary background request with that cookie attached.
 ///
 /// It is deliberately not persisted: it exists to mint one API key during
-/// onboarding and then has no further use. A stale console credential on disk
-/// would be a much bigger liability than the convenience is worth.
+/// onboarding and then has no further use. A console credential on disk would be
+/// a much bigger liability than the convenience is worth.
 fn session() -> &'static Mutex<Option<String>> {
     static SESSION: OnceLock<Mutex<Option<String>>> = OnceLock::new();
     SESSION.get_or_init(|| Mutex::new(None))
 }
 
-fn set_token(token: Option<String>) {
+fn remember(cookie: String) {
     if let Ok(mut guard) = session().lock() {
-        *guard = token;
+        *guard = Some(cookie);
     }
 }
 
-fn token() -> Result<String, String> {
+fn cookie() -> Result<String, String> {
     session()
         .lock()
         .ok()
@@ -55,10 +53,36 @@ fn token() -> Result<String, String> {
         .ok_or_else(|| "登录状态已失效，请重新登录".to_string())
 }
 
+fn forget() {
+    if let Ok(mut guard) = session().lock() {
+        *guard = None;
+    }
+}
+
+fn random_id() -> String {
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|span| span.as_nanos())
+        .unwrap_or(0);
+    let mut state = nanos ^ ((std::process::id() as u128) << 40) | 1;
+    let mut hex = String::with_capacity(32);
+    for _ in 0..32 {
+        state ^= state << 13;
+        state ^= state >> 7;
+        state ^= state << 17;
+        hex.push(char::from_digit((state % 16) as u32, 16).unwrap_or('0'));
+    }
+    format!(
+        "{}-{}-{}-{}-{}",
+        &hex[0..8],
+        &hex[8..12],
+        &hex[12..16],
+        &hex[16..20],
+        &hex[20..32]
+    )
+}
+
 /// A stable per-install device id, which the console's risk control reads.
-///
-/// It only has to be the same string on every launch, so a persisted random hex
-/// id is enough; no cryptographic property is claimed.
 fn device_id(app: &tauri::AppHandle) -> String {
     let path = app
         .path()
@@ -85,29 +109,6 @@ fn device_id(app: &tauri::AppHandle) -> String {
     fresh
 }
 
-fn random_id() -> String {
-    let nanos = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|span| span.as_nanos())
-        .unwrap_or(0);
-    let mut state = nanos ^ ((std::process::id() as u128) << 40) | 1;
-    let mut hex = String::with_capacity(32);
-    for _ in 0..32 {
-        state ^= state << 13;
-        state ^= state >> 7;
-        state ^= state << 17;
-        hex.push(char::from_digit((state % 16) as u32, 16).unwrap_or('0'));
-    }
-    format!(
-        "{}-{}-{}-{}-{}",
-        &hex[0..8],
-        &hex[8..12],
-        &hex[12..16],
-        &hex[16..20],
-        &hex[20..32]
-    )
-}
-
 // ---------------------------------------------------------------------------
 // HTTP
 // ---------------------------------------------------------------------------
@@ -120,11 +121,37 @@ struct Reply {
     data: serde_json::Value,
 }
 
-/// The console rejects a bare curl-style client, so the browser identity the
-/// web app sends travels with every call.
-fn headers(builder: reqwest::RequestBuilder, device: &str) -> reqwest::RequestBuilder {
-    builder
-        .header("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36")
+/// Console errors arrive as shouting constants. A learner gets a sentence.
+fn explain(reply: &Reply) -> String {
+    match reply.biz_msg.as_str() {
+        "RECAPTCHA_VERIFY_FAILED" => "人机验证没有通过，请重新登录".to_string(),
+        "SMS_SEND_TOO_FREQUENT" => "验证码发得太频繁，请稍后再试".to_string(),
+        "SMS_CODE_INCORRECT" => "验证码不对".to_string(),
+        "SMS_EXPIRED" => "验证码已过期，请重新获取".to_string(),
+        "EXCEED_MAXIMUM_KEY_NUM" => "API Key 数量已达上限，请先去开放平台删掉几个".to_string(),
+        "API_KEY_NAME_TOO_LONG" => "Key 名称太长".to_string(),
+        "IDENTITY_VERIFICATION_REQUIRED" => "需要先在开放平台完成实名认证".to_string(),
+        other if !other.is_empty() => format!("DeepSeek 拒绝了这次操作：{other}"),
+        _ => "DeepSeek 拒绝了这次操作".to_string(),
+    }
+}
+
+/// The console rejects a bare curl-style client, so the browser identity the web
+/// app sends travels with every call.
+async fn call(
+    client: &reqwest::Client,
+    device: &str,
+    method: reqwest::Method,
+    path: &str,
+    body: Option<serde_json::Value>,
+) -> Result<Reply, String> {
+    let url = format!("{CONSOLE}{path}");
+    let mut builder = client
+        .request(method, url)
+        .header(
+            "user-agent",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+        )
         .header("x-client-platform", "web")
         .header("x-client-version", "1.0.1")
         .header("x-client-bundle-id", "com.deepseek.chat")
@@ -132,21 +159,12 @@ fn headers(builder: reqwest::RequestBuilder, device: &str) -> reqwest::RequestBu
         .header("x-client-timezone-offset", "28800")
         .header("x-device-id", device)
         .header("x-device-model", "")
-}
+        // The console's WAF compares the origin of console calls against its own
+        // front end; a request without these looks like a script and is refused.
+        .header("origin", CONSOLE)
+        .header("referer", format!("{CONSOLE}/usage"))
+        .header("cookie", cookie()?);
 
-async fn call(
-    client: &reqwest::Client,
-    device: &str,
-    token: Option<&str>,
-    method: reqwest::Method,
-    path: &str,
-    body: Option<serde_json::Value>,
-) -> Result<Reply, String> {
-    let url = format!("{CONSOLE}{path}");
-    let mut builder = headers(client.request(method, url), device);
-    if let Some(token) = token {
-        builder = builder.bearer_auth(token);
-    }
     if let Some(body) = body {
         builder = builder.json(&body);
     }
@@ -189,23 +207,8 @@ async fn call(
     })
 }
 
-/// Console errors arrive as shouting constants. A learner gets a sentence.
-fn explain(reply: &Reply) -> String {
-    match reply.biz_msg.as_str() {
-        "RECAPTCHA_VERIFY_FAILED" => "人机验证没有通过，请重新登录".to_string(),
-        "SMS_SEND_TOO_FREQUENT" => "验证码发得太频繁，请稍后再试".to_string(),
-        "SMS_CODE_INCORRECT" => "验证码不对".to_string(),
-        "SMS_EXPIRED" => "验证码已过期，请重新获取".to_string(),
-        "EXCEED_MAXIMUM_KEY_NUM" => "API Key 数量已达上限，请先去开放平台删掉几个".to_string(),
-        "API_KEY_NAME_TOO_LONG" => "Key 名称太长".to_string(),
-        "IDENTITY_VERIFICATION_REQUIRED" => "需要先在开放平台完成实名认证".to_string(),
-        other if !other.is_empty() => format!("DeepSeek 拒绝了这次操作：{other}"),
-        _ => "DeepSeek 拒绝了这次操作".to_string(),
-    }
-}
-
 // ---------------------------------------------------------------------------
-// Sign-in window
+// Sign-in
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone, Serialize)]
@@ -216,86 +219,34 @@ pub struct DeepSeekAccount {
     pub Email: String,
 }
 
-/// Lifts the console's token into the document title once the sign-in is over.
+/// Collects the console cookies a session consists of.
 ///
-/// The console moves to `/usage` when a login succeeds, so leaving the sign-in
-/// page is the real completion signal. Gating on it fixes two problems at once:
-///
-/// - The page stores device fingerprints and risk-control ids in `localStorage`
-///   before anyone logs in, and several of them are long base64 runs that look
-///   exactly like a token. An earlier version accepted the first long string it
-///   found, reported a fingerprint as the token within a second of the page
-///   loading, and the window closed itself on a credential that never existed.
-/// - A token can also linger from a previous session. Reporting it while the
-///   sign-in form is still on screen would end the flow before the learner had
-///   a chance to pick an account.
-///
-/// So: only keys whose own name says "token", only values shaped like the 40+
-/// character JWT the console issues, and only after the URL has left `/sign_in`.
-const TITLE_BRIDGE: &str = r#"
-(function () {
-  if (window.top !== window) return;
-  var PREFIX = "MORROW_DS_TOKEN:";
-  var SIGN_IN = "/sign_in";
-  var SHAPE = /^[A-Za-z0-9._-]{40,}$/;
-  function pick(raw) {
-    if (!raw) return null;
-    var value = raw;
-    try {
-      var parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === "object") {
-        value = parsed.value || parsed.token || null;
-      }
-    } catch (error) {}
-    if (typeof value !== "string") return null;
-    value = value.trim();
-    return SHAPE.test(value) ? value : null;
-  }
-  function token() {
-    try {
-      var direct = pick(localStorage.getItem("userToken"));
-      if (direct) return direct;
-      for (var i = 0; i < localStorage.length; i++) {
-        var key = localStorage.key(i);
-        if (!key || key.toLowerCase().indexOf("token") === -1) continue;
-        var candidate = pick(localStorage.getItem(key));
-        if (candidate) return candidate;
-      }
-    } catch (error) {}
-    return null;
-  }
-  // Anything but the sign-in page means the console let us through.
-  function signedIn() {
-    var path = location.pathname || "/";
-    return path.indexOf(SIGN_IN) !== 0;
-  }
-  setInterval(function () {
-    if (!signedIn()) return;
-    var value = token();
-    if (!value) return;
-    // Keep re-asserting: the console is a router app and rewrites its own title
-    // on navigation, which would otherwise overwrite the hand-off before the
-    // window gets a chance to read it.
-    if (document.title === PREFIX + value) return;
-    document.title = PREFIX + value;
-  }, 500);
-})();
-"#;
+/// Every cookie the console set for its own host is sent back, not a guessed
+/// subset: which one carries the session is the platform's business, and the
+/// only thing this app needs to know is that the jar it copies is the jar the
+/// browser would have sent. `cookies_for_url` reaches HttpOnly entries that page
+/// scripts cannot see, which is exactly the case here.
+fn session_cookies(window: &tauri::WebviewWindow) -> Result<String, String> {
+    let url = CONSOLE
+        .parse()
+        .map_err(|_| "登录地址无效".to_string())?;
+    let cookies = window
+        .cookies_for_url(url)
+        .map_err(|error| format!("无法读取登录状态：{error}"))?;
 
-/// Whether a reported value could be a console token at all.
-///
-/// A second gate behind the script: the title channel is a plain string, and a
-/// page is free to set any title it likes. Rejecting a malformed value here
-/// leaves the window open and the script still polling, instead of closing on
-/// something that would only fail later at the first API call.
-fn plausible_token(value: &str) -> bool {
-    value.len() >= 40
-        && value
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'))
+    let jar = cookies
+        .iter()
+        .map(|entry| format!("{}={}", entry.name(), entry.value()))
+        .collect::<Vec<_>>()
+        .join("; ");
+
+    if jar.is_empty() {
+        return Err("没有读到登录状态，请重试".to_string());
+    }
+    Ok(jar)
 }
 
-/// Opens the official sign-in page and waits for it to yield a token.
+/// Opens the platform's own sign-in page, waits for it to finish, closes it.
 ///
 /// The page is the platform's own, so the phone number, the captcha and the SMS
 /// all happen on infrastructure that already knows how to do them: the captcha
@@ -303,38 +254,21 @@ fn plausible_token(value: &str) -> bool {
 /// the risk control that decides which captcha to show keeps working when it
 /// changes. The alternative — reimplementing the captcha in this app — would
 /// mean loading a third-party fingerprinting script into our own page.
+///
+/// Completion is judged by the URL: the console leaves `/sign_in` the moment a
+/// session exists, including the case where a live cookie means the form was
+/// never shown. Nothing is read out of `localStorage` — the console keeps no
+/// token there, and the fingerprints it does keep look exactly like one.
+///
+/// The window closes as soon as the cookies are in hand; every later console
+/// call is a plain background request.
 pub async fn sign_in(app: tauri::AppHandle) -> Result<DeepSeekAccount, String> {
-    let (tx, rx) = std::sync::mpsc::channel::<String>();
-    let sink = Arc::new(Mutex::new(tx));
+    forget();
 
     let label = format!(
         "deepseek-sign-in-{}",
         random_id().split('-').next().unwrap_or("1")
     );
-
-    // Every candidate token goes into the same queue; the loop below decides
-    // whether it is real. Nothing here closes the window: a value only ends the
-    // flow once the console has confirmed it describes an account.
-    let send = {
-        let sink = sink.clone();
-        move |value: String| {
-            if let Ok(guard) = sink.lock() {
-                let _ = guard.send(value);
-            }
-        }
-    };
-
-    let on_title = {
-        let send = send.clone();
-        move |_window: tauri::WebviewWindow, title: String| {
-            let Some(token) = title.strip_prefix(TOKEN_PREFIX) else {
-                return;
-            };
-            if plausible_token(token) {
-                send(token.to_string());
-            }
-        }
-    };
 
     let window = WebviewWindowBuilder::new(
         &app,
@@ -349,78 +283,80 @@ pub async fn sign_in(app: tauri::AppHandle) -> Result<DeepSeekAccount, String> {
     .inner_size(520.0, 780.0)
     .min_inner_size(420.0, 620.0)
     .center()
-    .initialization_script(TITLE_BRIDGE)
-    .on_document_title_changed(on_title)
     .build()
     .map_err(|error| format!("无法打开登录窗口：{error}"))?;
 
-    // Closing the window is how a learner says "not now".
+    let closed = Arc::new(AtomicBool::new(false));
     window.on_window_event({
-        let send = send.clone();
+        let closed = closed.clone();
         move |event| {
             if matches!(event, tauri::WindowEvent::Destroyed) {
-                send(CANCEL.to_string());
+                closed.store(true, Ordering::SeqCst);
             }
         }
     });
 
-    let inbox = Arc::new(Mutex::new(rx));
+    // Waiting on the URL covers both arrivals: a fresh login (the form submits,
+    // the console routes to /usage) and a restored one (the window opens and
+    // redirects before the first paint).
     let deadline = Instant::now() + Duration::from_secs(600);
-    let device = device_id(&app);
-    let client = reqwest::Client::new();
-
-    let account = loop {
-        let left = deadline.saturating_duration_since(Instant::now());
-        if left.is_zero() {
+    loop {
+        if closed.load(Ordering::SeqCst) {
+            return Err("已取消登录".to_string());
+        }
+        if Instant::now() > deadline {
             let _ = app.get_webview_window(&label).map(|w| w.close());
             return Err("登录超时，请重试".to_string());
         }
 
-        let inbox = inbox.clone();
-        let received = tauri::async_runtime::spawn_blocking(move || {
-            inbox
-                .lock()
-                .ok()
-                .and_then(|guard| guard.recv_timeout(left).ok())
-        })
-        .await
-        .map_err(|error| format!("登录等待中断：{error}"))?;
+        tauri::async_runtime::spawn_blocking(|| std::thread::sleep(Duration::from_millis(300)))
+            .await
+            .ok();
 
-        let Some(value) = received else {
+        let Ok(url) = window.url() else {
             continue;
         };
-
-        if value == CANCEL {
-            return Err("已取消登录".to_string());
+        // The host check keeps the blank page a new window starts on from
+        // counting as "already past the sign-in form".
+        if url.host_str() != Some(CONSOLE_HOST) {
+            continue;
         }
-
-        // The token is proven before the window goes away: the console answers
-        // 40003 for a stale or invented one, and in that case the page stays up
-        // so the learner can finish signing in instead of the flow dying on a
-        // string that only looked like a credential.
-        let verified = call(
-            &client,
-            &device,
-            Some(&value),
-            reqwest::Method::GET,
-            "/auth-api/v0/users/current",
-            None,
-        )
-        .await;
-
-        if let Ok(reply) = verified {
-            set_token(Some(value));
-            break DeepSeekAccount {
-                Mobile: reply.data["mobile_number"]
-                    .as_str()
-                    .unwrap_or("")
-                    .to_string(),
-                Email: reply.data["email"].as_str().unwrap_or("").to_string(),
-            };
+        if !url.path().starts_with(SIGN_IN_PATH) {
+            break;
         }
-    };
+    }
 
+    let jar = session_cookies(&window)?;
+    remember(jar);
+
+    // Done with the window: the session now lives in this process.
     let _ = app.get_webview_window(&label).map(|w| w.close());
+
+    // The account read is cosmetic: a session that cannot describe itself still
+    // works for minting a key, so a failure here must not undo the sign-in.
+    let device = device_id(&app);
+    let client = reqwest::Client::new();
+    let account = match call(
+        &client,
+        &device,
+        reqwest::Method::GET,
+        "/auth-api/v0/users/current",
+        None,
+    )
+    .await
+    {
+        Ok(reply) if reply.biz_code == 0 => DeepSeekAccount {
+            Mobile: reply.data["mobile_number"]
+                .as_str()
+                .unwrap_or("")
+                .to_string(),
+            Email: reply.data["email"].as_str().unwrap_or("").to_string(),
+        },
+        _ => DeepSeekAccount {
+            Mobile: String::new(),
+            Email: String::new(),
+        },
+    };
 
     Ok(account)
 }
@@ -459,7 +395,6 @@ async fn list_keys(client: &reqwest::Client, device: &str) -> Result<KeyPlan, St
     let reply = call(
         client,
         device,
-        Some(&token()?),
         reqwest::Method::GET,
         "/api/v0/users/get_api_keys",
         None,
@@ -541,7 +476,6 @@ pub async fn create_and_adopt(
         let reply = call(
             &client,
             &device,
-            Some(&token()?),
             reqwest::Method::POST,
             "/api/v0/users/edit_api_keys",
             Some(serde_json::json!({
@@ -562,7 +496,6 @@ pub async fn create_and_adopt(
     let created = call(
         &client,
         &device,
-        Some(&token()?),
         reqwest::Method::POST,
         "/api/v0/users/edit_api_keys",
         Some(serde_json::json!({
@@ -631,7 +564,7 @@ pub async fn create_and_adopt(
     // it twice.
     secret::save_search_key(&app, &api_key)?;
 
-    set_token(None);
+    forget();
 
     Ok(ConnectedKey {
         Models: models,
@@ -640,7 +573,7 @@ pub async fn create_and_adopt(
     })
 }
 
-/// Forgets the console token when the flow ends without minting anything.
+/// Forgets the console cookie when the flow ends without minting anything.
 pub fn sign_out() {
-    set_token(None);
+    forget();
 }

@@ -193,7 +193,7 @@ async fn deepseek_connect_key(
     provider::deepseek::create_and_adopt(app, replace).await
 }
 
-/// Drops the console token without minting anything.
+/// Drops the console session without minting anything.
 #[tauri::command]
 fn deepseek_sign_out() {
     provider::deepseek::sign_out();
