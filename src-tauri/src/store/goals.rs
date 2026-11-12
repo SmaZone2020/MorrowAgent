@@ -177,6 +177,7 @@ mod tests {
             IsCorrect: correct,
             ErrorType: String::new(),
             InkSummary: String::new(),
+            Source: String::new(),
         }
     }
 

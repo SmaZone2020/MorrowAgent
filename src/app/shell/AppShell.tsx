@@ -65,6 +65,12 @@ export function AppShell() {
     appScope("sidebar.expanded"),
     activeEntry?.item.children ? activeEntry.item.key : null,
   );
+  // A mock exam takes over the window: the rail and the breadcrumb would both
+  // offer a way out of a paper that is being timed.
+  const [examActive] = usePersistedState<string | null>(
+    appScope("exam.active"),
+    null,
+  );
   // The key is kept after closing so the flyout can animate out with its real
   // contents still mounted; only `flyoutOpen` controls visibility.
   const [flyoutKey, setFlyoutKey] = useState<string | null>(null);
@@ -80,6 +86,18 @@ export function AppShell() {
   useEffect(() => {
     if (!collapsed) setFlyoutOpen(false);
   }, [collapsed]);
+
+  // A timed paper owns the whole window: no rail, no breadcrumb, and its own
+  // scrolling pane so the status bar can stick to the top.
+  if (examActive) {
+    return (
+      <div className="flex h-full min-h-0 w-full min-w-0">
+        <main className="scrollbar-thin relative flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto bg-background">
+          <Outlet />
+        </main>
+      </div>
+    );
+  }
 
   if (layer.kind !== "workspace") {
     return (

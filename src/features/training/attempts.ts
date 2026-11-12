@@ -16,6 +16,8 @@ export interface WrongAttempt {
   errorType: string;
   /** JSON summary of the scratchpad work, empty when nothing was drawn. */
   inkSummary: string;
+  /** Empty for practice, `exam:<runId>` for a mock exam. */
+  source: string;
 }
 
 export interface PointStats {
@@ -39,13 +41,20 @@ export async function recordAttempt(
   question: Question,
   answer: string,
   isCorrect: boolean,
-  extra?: { errorType?: string; inkSummary?: string },
+  extra?: {
+    errorType?: string;
+    inkSummary?: string;
+    /** Empty for practice, `exam:<runId>` for a mock exam. */
+    source?: string;
+    /** Stable id, so re-recording the same answer corrects the row. */
+    id?: string;
+  },
 ): Promise<void> {
   if (!isTauriRuntime) return;
   await invoke("attempt_record", {
     workspaceId,
     attempt: {
-      id: crypto.randomUUID(),
+      id: extra?.id ?? crypto.randomUUID(),
       questionId: question.id,
       knowledgePointId: question.knowledgeTags[0] ?? "",
       questionVersion: question.version ?? "",
@@ -54,6 +63,7 @@ export async function recordAttempt(
       isCorrect,
       errorType: extra?.errorType ?? "",
       inkSummary: extra?.inkSummary ?? "",
+      source: extra?.source ?? "",
     },
   });
 }

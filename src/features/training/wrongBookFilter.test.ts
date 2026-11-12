@@ -27,6 +27,7 @@ function attempt(
     createdAt: NOW - daysAgo * DAY,
     errorType,
     inkSummary: "",
+    source: "",
   };
 }
 

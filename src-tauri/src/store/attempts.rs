@@ -39,18 +39,29 @@ pub struct StoredAttempt {
     pub ErrorType: String,
     #[serde(rename = "inkSummary")]
     pub InkSummary: String,
+    /// Empty for practice, `exam:<runId>` for a mock exam.
+    #[serde(rename = "source")]
+    pub Source: String,
 }
 
 impl Store {
     pub fn record_attempt(&self, workspace_id: &str, attempt: NewAttempt) -> Result<(), String> {
         let connection = self.lock()?;
+        // Upsert rather than insert: a mock exam re-records the same question
+        // when the reader changes a self-mark, and a duplicate id must correct
+        // the row instead of failing or counting the question twice.
         connection
             .execute(
                 "INSERT INTO answer_attempts
                  (id, question_id, knowledge_point_id, question_version,
                   question_snapshot, answer, is_correct, created_at, workspace_id,
-                  error_type, ink_summary)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+                  error_type, ink_summary, source)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
+                 ON CONFLICT(id) DO UPDATE SET
+                   answer = excluded.answer,
+                   is_correct = excluded.is_correct,
+                   error_type = excluded.error_type,
+                   ink_summary = excluded.ink_summary",
                 params![
                     attempt.Id,
                     attempt.QuestionId,
@@ -62,7 +73,8 @@ impl Store {
                     now(),
                     workspace_id,
                     attempt.ErrorType,
-                    attempt.InkSummary
+                    attempt.InkSummary,
+                    attempt.Source
                 ],
             )
             .map_err(|error| format!("记录作答失败：{}", error))?;
@@ -82,7 +94,7 @@ impl Store {
             .prepare(
                 "SELECT id, question_id, knowledge_point_id, question_version,
                         question_snapshot, answer, is_correct, created_at,
-                        error_type, ink_summary
+                        error_type, ink_summary, source
                  FROM answer_attempts
                  WHERE workspace_id = ?1
                  ORDER BY created_at DESC, rowid DESC LIMIT ?2",
@@ -110,7 +122,7 @@ impl Store {
             .prepare(
                 "SELECT id, question_id, knowledge_point_id, question_version,
                         question_snapshot, answer, is_correct, created_at,
-                        error_type, ink_summary
+                        error_type, ink_summary, source
                  FROM (
                      SELECT *, ROW_NUMBER() OVER (
                          PARTITION BY question_id
@@ -208,6 +220,7 @@ fn read_attempt(row: &rusqlite::Row<'_>) -> rusqlite::Result<StoredAttempt> {
         CreatedAt: row.get(7)?,
         ErrorType: row.get(8)?,
         InkSummary: row.get(9)?,
+        Source: row.get(10)?,
     })
 }
 
@@ -240,6 +253,7 @@ mod tests {
             IsCorrect: correct,
             ErrorType: String::new(),
             InkSummary: String::new(),
+            Source: String::new(),
         }
     }
 

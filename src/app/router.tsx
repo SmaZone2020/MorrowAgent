@@ -17,6 +17,7 @@ import { WrongBookPage } from "@/pages/WrongBookPage";
 import { ProfilePage } from "@/pages/ProfilePage";
 import { DrillPage } from "@/pages/training/DrillPage";
 import { DiagnosticPage } from "@/pages/training/DiagnosticPage";
+import { ExamPage } from "@/pages/training/ExamPage";
 import { PlanPage } from "@/pages/PlanPage";
 import { ReportPage } from "@/pages/ReportPage";
 
@@ -48,6 +49,7 @@ export const router = createHashRouter([
           { path: "report", element: <ReportPage /> },
           { path: "drill", element: <DrillPage /> },
           { path: "diagnostic", element: <DiagnosticPage /> },
+          { path: "exam", element: <ExamPage /> },
           { path: "wrong-book", element: <WrongBookPage /> },
           { path: "profile", element: <ProfilePage /> },
         ],

@@ -109,4 +109,9 @@ pub struct NewAttempt {
     /// "worked it out on paper" from "guessed".
     #[serde(rename = "inkSummary", default)]
     pub InkSummary: String,
+    /// Where the answer came from: empty for practice, `exam:<runId>` for a
+    /// mock exam. The wrong book keeps both, but a paper's mistakes deserve to
+    /// be read together.
+    #[serde(rename = "source", default)]
+    pub Source: String,
 }

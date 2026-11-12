@@ -102,4 +102,30 @@ pub const MIGRATIONS: &[&str] = &[
         PRIMARY KEY (workspace_id, point_id)
     );
     "#,
+    // 7 — mock exam sittings. The answers stay on the run until it is submitted
+    // so a half-finished paper never becomes an attempt: a learner's working
+    // mid-exam is not evidence of what they know. `question_ids`, `answers` and
+    // `marks` are JSON because the paper is read whole or not at all.
+    //
+    // `answer_attempts.source` rides along in the same migration: an attempt
+    // made during an exam has to say so, or the wrong book cannot tell practice
+    // from a paper.
+    r#"
+    CREATE TABLE IF NOT EXISTS exam_runs (
+        id             TEXT PRIMARY KEY,
+        workspace_id   TEXT NOT NULL,
+        question_ids   TEXT NOT NULL,
+        answers        TEXT NOT NULL DEFAULT '{}',
+        marks          TEXT NOT NULL DEFAULT '{}',
+        started_at     INTEGER NOT NULL,
+        submitted_at   INTEGER,
+        duration_limit INTEGER NOT NULL,
+        score          INTEGER
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_exams_workspace
+        ON exam_runs(workspace_id, started_at);
+
+    ALTER TABLE answer_attempts ADD COLUMN source TEXT NOT NULL DEFAULT '';
+    "#,
 ];

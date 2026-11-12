@@ -5,6 +5,8 @@ import { AnimatedSidebarTrigger } from "@/vendor/beui/components/motion/animated
 import { Tooltip } from "@/vendor/beui/components/motion/tooltip";
 import { House, LayoutSideContentLeft } from "@gravity-ui/icons";
 import { resolveShellLayer } from "@/app/shell/navHelpers";
+import { usePersistedState } from "@/features/uiState/usePersistedState";
+import { appScope } from "@/features/uiState/scope";
 import {
   closeWindow,
   isTauriRuntime,
@@ -29,8 +31,15 @@ export function TitleBar() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const layer = resolveShellLayer(pathname);
-  const sidebarToggleDisabled = layer.kind !== "workspace";
-  const homeDisabled = layer.kind === "shelf";
+  // A timed paper takes the window: both controls would offer a way out of it,
+  // so they are disabled rather than removed and the bar keeps its shape.
+  const [examActive] = usePersistedState<string | null>(
+    appScope("exam.active"),
+    null,
+  );
+  const inExam = examActive !== null;
+  const sidebarToggleDisabled = layer.kind !== "workspace" || inExam;
+  const homeDisabled = layer.kind === "shelf" || inExam;
   const [maximized, setMaximized] = useState(false);
 
   useEffect(() => {
@@ -70,7 +79,13 @@ export function TitleBar() {
           Morrow Agent
         </span>
         <Tooltip
-          content={homeDisabled ? "已经在书架" : "返回书架"}
+          content={
+            inExam
+              ? "考试进行中"
+              : homeDisabled
+                ? "已经在书架"
+                : "返回书架"
+          }
           side="bottom"
         >
           <button
@@ -85,7 +100,13 @@ export function TitleBar() {
           </button>
         </Tooltip>
         <Tooltip
-          content={sidebarToggleDisabled ? "当前页面没有侧边栏" : "收起或展开侧边栏"}
+          content={
+            inExam
+              ? "考试进行中"
+              : sidebarToggleDisabled
+                ? "当前页面没有侧边栏"
+                : "收起或展开侧边栏"
+          }
           side="bottom"
         >
           <AnimatedSidebarTrigger

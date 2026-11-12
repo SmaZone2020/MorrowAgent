@@ -16,8 +16,8 @@ use package::ValidationReport;
 use provider::secret::{self, ProviderBook};
 use provider::types::{ChatRequest, ModelInfo, ProviderConfig};
 use store::{
-    ConversationSummary, NewAttempt, NewMessage, PointEvidence, PointStats, Store, StoreStats,
-    StoredAttempt, StoredMessage, StudyGoal, TrendPoint, Workspace,
+    ConversationSummary, ExamRun, NewAttempt, NewMessage, PointEvidence, PointStats, Store,
+    StoreStats, StoredAttempt, StoredMessage, StudyGoal, TrendPoint, Workspace,
 };
 use tauri::Manager;
 use tauri::State;
@@ -260,6 +260,59 @@ fn attempt_trend(
     days: Option<i64>,
 ) -> Result<Vec<TrendPoint>, String> {
     state.attempt_trend(&workspace_id, days.unwrap_or(14))
+}
+
+#[tauri::command]
+fn exam_start(
+    state: State<'_, Store>,
+    workspace_id: String,
+    question_ids: Vec<String>,
+    duration: i64,
+) -> Result<ExamRun, String> {
+    state.start_exam(&workspace_id, &question_ids, duration)
+}
+
+#[tauri::command]
+fn exam_save(
+    state: State<'_, Store>,
+    id: String,
+    answers: std::collections::BTreeMap<String, String>,
+) -> Result<(), String> {
+    state.save_exam(&id, &answers)
+}
+
+#[tauri::command]
+fn exam_submit(
+    state: State<'_, Store>,
+    id: String,
+    answers: std::collections::BTreeMap<String, String>,
+    score: i64,
+) -> Result<ExamRun, String> {
+    state.submit_exam(&id, &answers, score)
+}
+
+#[tauri::command]
+fn exam_grade(
+    state: State<'_, Store>,
+    id: String,
+    marks: std::collections::BTreeMap<String, bool>,
+    score: i64,
+) -> Result<ExamRun, String> {
+    state.grade_exam(&id, &marks, score)
+}
+
+#[tauri::command]
+fn exam_list(
+    state: State<'_, Store>,
+    workspace_id: String,
+    limit: Option<i64>,
+) -> Result<Vec<ExamRun>, String> {
+    state.exams(&workspace_id, limit.unwrap_or(20))
+}
+
+#[tauri::command]
+fn exam_load(state: State<'_, Store>, id: String) -> Result<Option<ExamRun>, String> {
+    state.exam(&id)
 }
 
 #[tauri::command]
@@ -627,6 +680,12 @@ pub fn run() {
             goal_load,
             goal_save,
             attempt_trend,
+            exam_start,
+            exam_save,
+            exam_submit,
+            exam_grade,
+            exam_list,
+            exam_load,
             prefs_load,
             prefs_save,
             ui_state_load,
