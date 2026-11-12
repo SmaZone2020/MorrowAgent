@@ -190,7 +190,7 @@ export function PlanPage() {
         ) : (
           <div className="flex flex-col gap-4">
             <SquircleWrapper radius={22} className="w-full">
-              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 p-4">
                 <span className="text-2xl font-semibold tabular-nums text-foreground">
                   {questions}
                 </span>

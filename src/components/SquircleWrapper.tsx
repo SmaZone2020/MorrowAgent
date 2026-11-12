@@ -26,7 +26,6 @@ export function SquircleWrapper({
         // The card token, not a fixed white: a squircle on a dark page must
         // not glow. A caller can still override it per instance.
         backgroundColor: "var(--card)",
-        padding: 16,
         ...style,
       }}
     >

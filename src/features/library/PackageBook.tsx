@@ -55,7 +55,7 @@ export function PackageBook({
         type="button"
         onClick={onOpen}
         className={cn(
-          "relative flex aspect-[3/4] w-full flex-col justify-end overflow-hidden rounded-r-2xl rounded-l-md border text-left outline-none",
+          "relative flex aspect-[3/4] w-52 flex-col justify-end overflow-hidden rounded-r-2xl rounded-l-md border text-left outline-none",
           recent ? "border-ring/60" : "border-border/70",
           "shadow-[0_1px_2px_rgb(56_66_72/0.08),0_12px_28px_-12px_rgb(56_66_72/0.45)]",
           "transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_2px_4px_rgb(56_66_72/0.10),0_20px_40px_-14px_rgb(56_66_72/0.5)]",
@@ -126,18 +126,16 @@ export function PackageBook({
 
 /**
  * An empty shelf states the fact, not a paragraph: Lumi asks the question with
- * its face, the label answers it, and the details live behind the question mark.
+ * its face, the label answers it, and the explanation lives behind the info
+ * glyph rather than under the label as a second line of text.
  */
 export function EmptyShelf() {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 px-6 py-14 -mt-24">
+    <div className="flex flex-col items-center justify-center gap-3 px-6 py-14 -mt-30">
       <LumiMood state="confused" surface="page" className="size-28" />
       <div className="flex items-center gap-1">
-        <span className="text-sm font-medium text-foreground">暂无书籍</span>
-        <InfoHint
-          icon="question"
-          label="学习包是一个独立的学习工作区，导入后才有 Lumi、知识库与训练记录。"
-        />
+        <span className="text-lg font-medium text-foreground">暂无资料</span>
+        <InfoHint label="学习包是独立的学习区，导入后才有 Lumi、知识库与训练记录。" />
       </div>
     </div>
   );

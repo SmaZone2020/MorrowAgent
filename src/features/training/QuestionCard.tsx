@@ -21,7 +21,8 @@ import { scaledText } from "@/features/training/textScale";
 import { usePreferences } from "@/features/settings/preferencesStore";
 import { useWorkspaceId } from "@/features/workspace/WorkspaceContext";
 import { workspaceScope } from "@/features/uiState/scope";
-import { SquircleWrapper } from "@/components/SquircleWrapper";
+import { Eye } from "lucide-react";
+import { Tooltip } from "@/vendor/beui/components/motion/tooltip";
 
 type Phase = "answering" | "submitted";
 
@@ -148,128 +149,132 @@ export function QuestionCard({
             : "wrong";
 
   return (
-    <SquircleWrapper className="flex flex-col gap-6 p-6">
-<Card
-      variant="outlined"
-      size="compact"
-    >
+    <Card className="border-none bg-transparent shadow-none">
       <CardHeader>
-        <CardTitle as="h2">
-          <SectionTitle title={`第 ${index} / ${total} 题`} />
-        </CardTitle>
-      </CardHeader>
-
-      <CardContent className="flex flex-col gap-4">
-        <div className="flex flex-col gap-3">
-          <MathText
-            className="block leading-[2] text-foreground"
-            style={scaledText(scale)}
-          >
-            {question.content}
-          </MathText>
-          <ContentFigures images={stemImages} />
-        </div>
-
-        {isChoice ? (
-          <AnswerOptions
-            question={question}
-            selected={selected}
-            locked={phase === "submitted"}
-            reveal={revealExplanation}
-            scale={scale}
-            onSelect={setSelected}
+        <CardTitle className="flex items-center gap-2">
+          <SectionTitle
+            className="text-[18px]"
+            title={`第 ${index} / ${total} 题`}
           />
-        ) : (
-          <div className="flex flex-col gap-3">
-            <AnswerInput
-              value={answer}
-              locked={phase === "submitted"}
-              multiline={selfAssessed}
-              scale={scale}
-              onChange={setSelected}
-              onSubmit={submit}
-            />
-            {/* A calculation is worked out, not guessed; the board is where
-                that happens and where the reader checks it against the steps. */}
-            {selfAssessed ? (
-              <ScratchpadPanel
-                height={220}
-                persistKey={workspaceScope(
-                  workspaceId,
-                  `drill.ink.${question.id}`,
-                )}
-                onReady={(read) => {
-                  inkSummary.current = read;
-                }}
-              />
-            ) : null}
-          </div>
-        )}
-
-        {revealExplanation ? (
-          <QuestionExplanation
-            question={question}
-            verdict={verdict}
-            scale={scale}
-          />
-        ) : null}
-
-        <div className="flex items-center justify-end gap-2">
-          {phase === "answering" && !showExplanation ? (
-            <>
+          {/* Revealing is one-way, so the control disappears once the answer is
+              out — a button that does nothing is worse than no button. */}
+          {showExplanation ? null : (
+            <Tooltip content="显示答案">
               <Button
-                size="sm"
-                variant="secondary"
-                className="text-sm"
+                variant="ghost"
+                size="icon"
+                aria-label="显示答案"
                 onClick={() => {
                   setShowExplanation(true);
                   onRevealed?.();
                 }}
               >
-                看答案
+                <Eye className="size-4.5" />
               </Button>
-              <Button
-                disabled={!answer.trim()}
-                onClick={submit}
-                className="px-6"
-              >
-                提交
-              </Button>
-            </>
-          ) : null}
+            </Tooltip>
+          )}
+        </CardTitle>
+      </CardHeader>
 
-          {phase === "submitted" && selfAssessed && !selfVerdict ? (
-            <>
-              <Button
-                size="sm"
-                variant="secondary"
-                className="text-sm"
-                onClick={() => mark(false)}
-              >
-                我做错了
-              </Button>
-              <Button size="sm" className="text-sm" onClick={() => mark(true)}>
-                我做对了
-              </Button>
-            </>
-          ) : null}
-
-          {revealExplanation && onNext ? (
-            // A self-assessed question waits for its mark: skipping it would
-            // leave the attempt unrecorded and the mastery count short.
-            <Button
-              className="px-6"
-              disabled={
-                phase === "submitted" && selfAssessed && !selfVerdict
-              }
-              onClick={onNext}
+        <CardContent className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3">
+            <MathText
+              className="block leading-[2] text-foreground"
+              style={scaledText(scale)}
             >
-              {nextLabel}
-            </Button>
+              {question.content}
+            </MathText>
+            <ContentFigures images={stemImages} />
+          </div>
+
+          {isChoice ? (
+            <AnswerOptions
+              question={question}
+              selected={selected}
+              locked={phase === "submitted"}
+              reveal={revealExplanation}
+              scale={scale}
+              onSelect={setSelected}
+            />
+          ) : (
+            <div className="flex flex-col gap-3">
+              <AnswerInput
+                value={answer}
+                locked={phase === "submitted"}
+                multiline={selfAssessed}
+                scale={scale}
+                onChange={setSelected}
+                onSubmit={submit}
+              />
+              {/* A calculation is worked out, not guessed; the board is where
+                  that happens and where the reader checks it against the steps. */}
+              {selfAssessed ? (
+                <ScratchpadPanel
+                  height={220}
+                  persistKey={workspaceScope(
+                    workspaceId,
+                    `drill.ink.${question.id}`,
+                  )}
+                  onReady={(read) => {
+                    inkSummary.current = read;
+                  }}
+                />
+              ) : null}
+            </div>
+          )}
+
+          {revealExplanation ? (
+            <QuestionExplanation
+              question={question}
+              verdict={verdict}
+              scale={scale}
+            />
           ) : null}
-        </div>
-      </CardContent>
-    </Card>
-    </SquircleWrapper>
+
+          <div className="flex items-center justify-end gap-2">
+            {phase === "answering" && !showExplanation ? (
+              <>
+                <Button
+                  disabled={!answer.trim()}
+                  onClick={submit}
+                  className="px-6"
+                >
+                  提交
+                </Button>
+              </>
+            ) : null}
+
+            {phase === "submitted" && selfAssessed && !selfVerdict ? (
+              <>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="text-sm"
+                  onClick={() => mark(false)}
+                >
+                  我做错了
+                </Button>
+                <Button size="sm" className="text-sm" onClick={() => mark(true)}>
+                  我做对了
+                </Button>
+              </>
+            ) : null}
+
+            {revealExplanation && onNext ? (
+              // A self-assessed question waits for its mark: skipping it would
+              // leave the attempt unrecorded and the mastery count short.
+              <Button
+                className="px-6"
+                disabled={
+                  phase === "submitted" && selfAssessed && !selfVerdict
+                }
+                onClick={onNext}
+              >
+                {nextLabel}
+              </Button>
+            ) : null}
+          </div>
+        </CardContent>
+      </Card>
   );
 }

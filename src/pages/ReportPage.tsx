@@ -130,7 +130,9 @@ export function ReportPage() {
         ) : (
           <div className="flex flex-col gap-3">
             <SquircleWrapper radius={22} className="w-full">
-              <TrendChart points={series} label={`最近 ${days} 天的作答数`} />
+              <div className="p-4">
+                <TrendChart points={series} label={`最近 ${days} 天的作答数`} />
+              </div>
             </SquircleWrapper>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
               <span className="tabular-nums">作答 {totals.attempts} 次</span>

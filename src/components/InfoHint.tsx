@@ -20,7 +20,6 @@ export function InfoHint({
   return (
     <Tooltip content={label} side={side}>
       <Button
-        size="sm"
         variant="ghost"
         aria-label={label}
         className="size-6 shrink-0 rounded-full p-0 text-muted-foreground hover:text-foreground"
