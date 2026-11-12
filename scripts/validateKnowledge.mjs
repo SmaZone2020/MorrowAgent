@@ -212,10 +212,9 @@ function resolveReferences(report) {
     }
   }
 
-  // A question may only point at a registered exam source. The license check
-  // is the enforcement point for "unlicensed papers stay metadata-only": if a
-  // question quotes a paper whose license was never cleared, the bundle would
-  // ship text we have no right to redistribute.
+  // A question may only point at a registered exam source. Only `real_exam`
+  // quotes paper text, so only it needs a cleared license: an `adapted_exam`
+  // stem is self-written and merely cites the registry entry for provenance.
   for (const ref of report.pendingExamSources) {
     const source = report.examSources.get(ref.id);
 
@@ -224,9 +223,9 @@ function resolveReferences(report) {
       continue;
     }
 
-    if (source.license !== "public_domain") {
+    if (ref.sourceType === "real_exam" && source.license !== "public_domain") {
       errors.push(
-        `${ref.file} 题 ${ref.owner} 引用了真题 ${ref.id}，但其 license 为 ${source.license}，不得引用题干`,
+        `${ref.file} 题 ${ref.owner} 以 real_exam 引用了真题 ${ref.id}，但其 license 为 ${source.license}，不得收录题干原文`,
       );
     }
   }
@@ -276,9 +275,35 @@ function findPrerequisiteCycles(report) {
   return errors;
 }
 
+/**
+ * Where the YAML sources live.
+ *
+ * `data/yaml` is the current convention, but the directory is gitignored and a
+ * fresh clone has none of it. Falling back to the older `knowledge/` root keeps
+ * an existing checkout working, and the error below says what to do when
+ * neither exists, rather than reporting a missing path as if it were a typo.
+ */
+function defaultRoot() {
+  for (const candidate of ["data/yaml", "knowledge"]) {
+    const full = join(projectRoot, candidate);
+    try {
+      if (statSync(full).isDirectory()) return full;
+    } catch {
+      // Not there; try the next one.
+    }
+  }
+  return null;
+}
+
 function main() {
   const targets = process.argv.slice(2);
-  const roots = targets.length > 0 ? targets : [join(projectRoot, "knowledge")];
+  const fallback = defaultRoot();
+  if (targets.length === 0 && !fallback) {
+    return fail(
+      "没有知识库源目录：请把 YAML 放进 data/yaml/（约定见 prompts/conventions.md），或把目录作为参数传入",
+    );
+  }
+  const roots = targets.length > 0 ? targets : [fallback];
 
   let files = [];
   for (const root of roots) {

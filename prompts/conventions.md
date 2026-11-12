@@ -22,6 +22,7 @@
 | 知识点 | `math_higher_{章节 slug}_{snake_case}` | `math_higher_limits_one_sided_limit` |
 | 题目 | `math_higher_q_{6 位数字}` | `math_higher_q_000001` |
 | 真题登记 | `math_higher_exam_{年份}_{地区}_{卷别 slug}` | `math_higher_exam_2023_shaanxi_zsb` |
+| 真题登记（按题） | `math_higher_exam_{年份}_{地区}_{卷别 slug}_q{两位题号}` | `math_higher_exam_2023_shaanxi_zsb_q07` |
 
 - 只用 `[a-z0-9_]`，不得含中文、连字符、大写字母。
 - 用教材通行的英文术语，不用拼音（地区名除外）。
@@ -123,13 +124,27 @@ images:
 
 已确认口径：**授权不明的真题只登记元数据与链接，不收录题干原文。**
 
-- `real_exam`：题干来自可再分发的试卷才允许入库，且必须填 `source_exam_id`。
-- `adapted_exam`：自写题干、保留考点，必须填 `source_exam_id` 与 `adaptation_note`（改了什么、为什么）。
+- `real_exam`：题干来自可再分发的试卷才允许入库，且必须填 `source_exam_id`；登记项 `license` 非 `public_domain` 时校验脚本拒绝。
+- `adapted_exam`：自写题干、保留考点，必须填 `source_exam_id` 与 `adaptation_note`（改了什么、为什么）。题干自写，不受登记项 `license` 限制，只需登记项存在。
 - `ai_generated`：原创命题，`source_reference` 写批次号，不得填 `source_exam_id`。
 - 禁止编造年份、卷别、页码、作者、出版社。无法确认就降级为 `ai_generated` 或写进待确认清单。
 - 教材引用只写能确认的通行表述，如 `同济大学《高等数学》第七版 第一章`。
 
-## 7. 交付格式
+## 7. 落盘目录
+
+知识库源文件全部平铺在 `data/yaml/`，不建子目录；构建产物在 `data/json/knowledge.json`，由 `pnpm build:knowledge` 生成，不手改。
+
+| 输出 | 文件名 |
+|---|---|
+| 知识点 | `{学科}_{章节}_knowledge-points.yaml` |
+| 题目 | `{学科}_{章节}_questions.yaml` |
+| 真题登记 | `{学科}_exam_{年份}_{地区}_{卷别}.yaml`，一份卷一个文件 |
+
+- 平铺后文件名全局唯一，**不得省略章节段**，否则会覆盖其他章节的同名文件。
+- 一份卷一个文件；真题登记按题粒度，一个文件内含该卷全部题目的登记项。
+- 新增学科或章节时按同规则起名，不另开子目录。
+
+## 8. 交付格式
 
 每次输出后附三行：
 

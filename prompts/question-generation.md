@@ -19,7 +19,7 @@
 |---|---|---|
 | `SUBJECT_ID` | 学科 ID | `math_higher` |
 | `CHAPTER_ID` | 章节 ID，题目 `knowledge_tags` 必须落在其下 | `math_higher_limits` |
-| `POINT_IDS` | 本次可用的知识点清单（必须来自已入库数据） | 见 `knowledge/*/knowledge-points.yaml` |
+| `POINT_IDS` | 本次可用的知识点清单（必须来自已入库数据） | 见 `data/yaml/math_higher_*_knowledge-points.yaml` |
 | `BATCH` | 批次号，写入 `source_reference` | `ai_batch_001` |
 | `COUNT` | 本批题量 | `20` |
 | `ID_START` | 本次 ID 起始序号 | `000001` |
@@ -111,9 +111,9 @@ questions:
 
 已确认口径：**授权不明的真题只登记元数据，不收录题干原文。**
 
-- 要用真题：先在 `exam_sources.yaml` 里登记一条 `math_higher_exam_*`，再在题目上挂 `source_exam_id`。
+- 要用真题：先在 `exam_sources` 里登记一条 `math_higher_exam_*`，再在题目上挂 `source_exam_id`。
 - 授权不明时：只能出改编题（`adapted_exam`），题干自己写，并填 `adaptation_note`。
-- 已确认的真题全文与题号，见 `knowledge/*/exam-sources.yaml`；未登记就不要凭记忆补年份和卷别。
+- 已确认的真题全文与题号，见 `data/yaml/math_higher_exam_*.yaml`；未登记就不要凭记忆补年份和卷别。
 
 ## 质量自检清单
 

@@ -12,7 +12,6 @@
     "region",
     "exam",
     "question_numbers",
-    "link",
     "license"
   ],
   "properties": {
@@ -48,7 +47,7 @@
     "link": {
       "type": "string",
       "pattern": "^https?://",
-      "description": "可公开访问的试卷或答案出处链接"
+      "description": "可公开访问的试卷或答案出处链接。授权不明且无可核实链接时留空，并在 notes 写明来源渠道，不得编造 URL"
     },
     "license": {
       "type": "string",

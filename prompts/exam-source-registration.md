@@ -53,7 +53,7 @@ exam_sources:
 | `region` | 是 | string | 地区或组织单位 |
 | `exam` | 是 | string | 试卷全称，≥4 字 |
 | `question_numbers` | 是 | string[] | 按试卷原样书写，如 `一、3`、`17` |
-| `link` | 是 | string | 可公开访问的 `http(s)` 链接 |
+| `link` | 否 | string | 可公开访问的 `http(s)` 链接；无可核实链接时留空，并在 `notes` 写来源渠道 |
 | `license` | 是 | enum | `metadata_only` / `unclear` / `public_domain` |
 | `notes` | 否 | string | 待核实事项，不得含题干 |
 
@@ -67,7 +67,7 @@ exam_sources:
 
 1. **一题一条**：同卷不同题各登记一条，便于题目精确挂靠。
 2. **不合并**：不要把「2023 与 2024 合卷」写进一条，年份字段会失真。
-3. **链接可为空的风险**：`link` 必填；找不到可信链接时不要造 URL，改为不登记并写进待确认清单。
+3. **链接可留空**：`link` 非必填；找不到可信链接时不要造 URL，留空并把来源渠道写进 `notes`。
 4. **题号原样**：用试卷写法，不要自行换算成 1–20 的连续编号。
 5. **不推断**：卷别名称拿不准时，写进 `notes`，不要把猜测写进 `exam`。
 
@@ -75,7 +75,7 @@ exam_sources:
 
 - [ ] 顶层只有 `exam_sources` 一个键。
 - [ ] 所有 `id` 唯一，且包含年份与地区 slug。
-- [ ] 每条都有 `link`，且是 `http(s)` 开头。
+- [ ] `link` 若填写则以 `http(s)` 开头；留空时 `notes` 已写明来源渠道。
 - [ ] 没有任何题干原文、答案或解析。
 - [ ] `license` 缺省为 `metadata_only`。
 - [ ] `question_numbers` 与试卷写法一致。

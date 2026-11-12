@@ -11,15 +11,8 @@ import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
 
 const projectRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
-const knowledgeRoot = join(projectRoot, "knowledge");
-const outFile = join(
-  projectRoot,
-  "src",
-  "features",
-  "knowledge",
-  "generated",
-  "knowledge.json",
-);
+const knowledgeRoot = join(projectRoot, "data", "yaml");
+const outFile = join(projectRoot, "data", "json", "knowledge.json");
 
 function collectYamlFiles(target) {
   const stats = statSync(target);
@@ -113,6 +106,14 @@ function pickQuestion(question) {
 }
 
 function main() {
+  if (!existsSync(knowledgeRoot)) {
+    console.error(
+      `\u2717 没有知识库源目录：${relative(projectRoot, knowledgeRoot)}（约定见 prompts/conventions.md）`,
+    );
+    process.exitCode = 1;
+    return;
+  }
+
   const files = collectYamlFiles(knowledgeRoot);
   const chapters = new Map();
   const questions = [];
