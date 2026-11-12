@@ -120,8 +120,9 @@ export function createTurnActions(runtime: ConversationRuntime) {
       // Trim back to the last user message: everything after it was a failed
       // or rejected attempt at the same answer.
       const trimmed = [...get().turns];
+      const dropped: string[] = [];
       while (trimmed.length && trimmed[trimmed.length - 1]?.role === "assistant") {
-        trimmed.pop();
+        dropped.push(trimmed.pop()!.id);
       }
       if (!trimmed.length) return;
 
@@ -133,26 +134,32 @@ export function createTurnActions(runtime: ConversationRuntime) {
       };
 
       set({ turns: [...trimmed, replyTurn], sending: true });
+      // The rejected answers leave the transcript for good, otherwise a reload
+      // would bring them back next to the new one.
+      for (const id of dropped) void deleteMessage(id).catch(() => undefined);
       await request(replyTurn, 0);
     },
 
-    deleteTurn: (turnId: string) => {
+    deleteTurns: (turnIds: string[]) => {
       const conversationId = get().conversationId;
-      if (!conversationId) return;
+      if (!conversationId || turnIds.length === 0) return;
 
-      const target = get().turns.find((turn) => turn.id === turnId);
-      if (!target) return;
+      const doomed = new Set(turnIds);
+      const removed = get().turns.filter((turn) => doomed.has(turn.id));
+      if (removed.length === 0) return;
 
       // Dropping the reply that is still arriving would leave a requesting
       // turn with nothing to write into, so stop it first.
-      if (target.pending) stop();
+      if (removed.some((turn) => turn.pending)) stop();
 
       // A parked turn owns the whole group of calls; deleting any part of it
       // leaves results that can never be sent, so the pause goes with it.
-      if (get().pending?.turnId === turnId) get().dismissQuiz();
+      const parked = get().pending?.turnId;
+      if (parked && doomed.has(parked)) get().dismissQuiz();
 
-      const remaining = get().turns.filter((turn) => turn.id !== turnId);
-      const wasEditing = get().editingTurnId === turnId;
+      const remaining = get().turns.filter((turn) => !doomed.has(turn.id));
+      const editing = get().editingTurnId;
+      const wasEditing = editing !== null && doomed.has(editing);
 
       if (remaining.length === 0) {
         // An empty transcript is just an empty row in the history list.
@@ -176,7 +183,7 @@ export function createTurnActions(runtime: ConversationRuntime) {
         editingTurnId: wasEditing ? null : get().editingTurnId,
       });
 
-      void deleteMessage(turnId).catch(() => undefined);
+      for (const id of turnIds) void deleteMessage(id).catch(() => undefined);
       // Deleting the first question changes the derived title.
       void get().refreshList();
     },

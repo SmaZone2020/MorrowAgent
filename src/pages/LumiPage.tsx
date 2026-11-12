@@ -70,7 +70,7 @@ export function LumiPage() {
   const send = useConversation((state) => state.send);
   const stop = useConversation((state) => state.stop);
   const regenerate = useConversation((state) => state.regenerate);
-  const deleteTurn = useConversation((state) => state.deleteTurn);
+  const deleteTurns = useConversation((state) => state.deleteTurns);
   const beginEdit = useConversation((state) => state.beginEdit);
   const cancelEdit = useConversation((state) => state.cancelEdit);
   const editingTurnId = useConversation((state) => state.editingTurnId);
@@ -155,9 +155,9 @@ export function LumiPage() {
             pending={pending}
             onAnswerQuiz={(callId, output) => void answerQuiz(callId, output)}
             onRetry={() => void regenerate()}
-            onDelete={(turnId) => {
-              if (turnId === editingTurnId) leaveEdit();
-              deleteTurn(turnId);
+            onDelete={(turnIds) => {
+              if (editingTurnId && turnIds.includes(editingTurnId)) leaveEdit();
+              deleteTurns(turnIds);
             }}
             onEdit={startEdit}
             editingTurnId={editingTurnId}

@@ -102,7 +102,7 @@ export function DrillLumiPanel({
   const stop = useDrillConversation((state) => state.stop);
   const regenerate = useDrillConversation((state) => state.regenerate);
   const startNew = useDrillConversation((state) => state.startNew);
-  const deleteTurn = useDrillConversation((state) => state.deleteTurn);
+  const deleteTurns = useDrillConversation((state) => state.deleteTurns);
   const beginEdit = useDrillConversation((state) => state.beginEdit);
   const cancelEdit = useDrillConversation((state) => state.cancelEdit);
   const editingTurnId = useDrillConversation((state) => state.editingTurnId);
@@ -192,9 +192,9 @@ export function DrillLumiPanel({
           <MessageList
             turns={turns}
             onRetry={() => void regenerate()}
-            onDelete={(turnId) => {
-              if (turnId === editingTurnId) cancelEdit();
-              deleteTurn(turnId);
+            onDelete={(turnIds) => {
+              if (editingTurnId && turnIds.includes(editingTurnId)) cancelEdit();
+              deleteTurns(turnIds);
             }}
             onEdit={startEdit}
             editingTurnId={editingTurnId}

@@ -75,8 +75,8 @@ export interface ConversationState {
   dismissQuiz: () => void;
   /** Ask again for the last user message, dropping the answers after it. */
   regenerate: () => Promise<void>;
-  /** Removes a single turn; the rest of the transcript stays. */
-  deleteTurn: (turnId: string) => void;
+  /** Removes one message, which is every turn it was assembled from. */
+  deleteTurns: (turnIds: string[]) => void;
   /** Marks a user turn for rewriting. The next send replaces it and everything after. */
   beginEdit: (turnId: string) => void;
   cancelEdit: () => void;
