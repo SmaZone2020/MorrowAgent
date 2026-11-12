@@ -216,21 +216,27 @@ pub struct DeepSeekAccount {
     pub Email: String,
 }
 
-/// Lifts the console's token into the document title.
+/// Lifts the console's token into the document title once the sign-in is over.
 ///
-/// The web app keeps it in `localStorage.userToken` as JSON. Only that key is
-/// trusted: the console also stores device fingerprints and risk-control ids
-/// there, and several of them are long base64 runs that look exactly like a
-/// token. An earlier version scanned every key and accepted the first long
-/// string it found, which reported a fingerprint as the token within a second of
-/// the page loading — the window then closed itself and the flow failed with a
-/// credential that was never a credential. So: the documented key first, then
-/// only keys whose own name says "token", and every candidate has to have the
-/// shape of the 64+ character JWT the console actually issues.
+/// The console moves to `/usage` when a login succeeds, so leaving the sign-in
+/// page is the real completion signal. Gating on it fixes two problems at once:
+///
+/// - The page stores device fingerprints and risk-control ids in `localStorage`
+///   before anyone logs in, and several of them are long base64 runs that look
+///   exactly like a token. An earlier version accepted the first long string it
+///   found, reported a fingerprint as the token within a second of the page
+///   loading, and the window closed itself on a credential that never existed.
+/// - A token can also linger from a previous session. Reporting it while the
+///   sign-in form is still on screen would end the flow before the learner had
+///   a chance to pick an account.
+///
+/// So: only keys whose own name says "token", only values shaped like the 40+
+/// character JWT the console issues, and only after the URL has left `/sign_in`.
 const TITLE_BRIDGE: &str = r#"
 (function () {
   if (window.top !== window) return;
   var PREFIX = "MORROW_DS_TOKEN:";
+  var SIGN_IN = "/sign_in";
   var SHAPE = /^[A-Za-z0-9._-]{40,}$/;
   function pick(raw) {
     if (!raw) return null;
@@ -245,7 +251,7 @@ const TITLE_BRIDGE: &str = r#"
     value = value.trim();
     return SHAPE.test(value) ? value : null;
   }
-  function read() {
+  function token() {
     try {
       var direct = pick(localStorage.getItem("userToken"));
       if (direct) return direct;
@@ -258,15 +264,21 @@ const TITLE_BRIDGE: &str = r#"
     } catch (error) {}
     return null;
   }
+  // Anything but the sign-in page means the console let us through.
+  function signedIn() {
+    var path = location.pathname || "/";
+    return path.indexOf(SIGN_IN) !== 0;
+  }
   setInterval(function () {
-    var token = read();
-    if (!token) return;
+    if (!signedIn()) return;
+    var value = token();
+    if (!value) return;
     // Keep re-asserting: the console is a router app and rewrites its own title
     // on navigation, which would otherwise overwrite the hand-off before the
     // window gets a chance to read it.
-    if (document.title === PREFIX + token) return;
-    document.title = PREFIX + token;
-  }, 700);
+    if (document.title === PREFIX + value) return;
+    document.title = PREFIX + value;
+  }, 500);
 })();
 "#;
 
