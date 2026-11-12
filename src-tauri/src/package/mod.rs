@@ -82,7 +82,10 @@ fn check(key: &str, label: &str, details: Vec<String>) -> CheckLine {
 /// The full pre-install sweep. Reading is done against a temporary extraction,
 /// because checksums and cross-file references cannot be judged from headers
 /// alone; the caller is responsible for deleting that directory.
-pub fn inspect(archive_path: &Path, staging: &Path) -> Result<ValidationReport, String> {
+///
+/// `packages_root` is only read, never written: it answers whether an older copy
+/// is already installed so the dialog can say "update" instead of "install".
+pub fn inspect(archive_path: &Path, staging: &Path, packages_root: &Path) -> Result<ValidationReport, String> {
     let mut checks = Vec::new();
     let file = archive_path.to_string_lossy().to_string();
 
@@ -242,13 +245,19 @@ pub fn inspect(archive_path: &Path, staging: &Path) -> Result<ValidationReport, 
     let stats = loaded.as_ref().ok().map(|loaded| loaded.Stats.clone());
     let ok = checks.iter().all(|line| line.Ok);
 
+    // A same-id copy that is older than this file turns the install button into
+    // "update"; the store keeps the workspace id either way, so history stays.
+    let update = ok
+        && installed_version(packages_root, &manifest.Package.Id)
+            .is_some_and(|existing| compare_versions(&manifest.Package.Version, &existing) > 0);
+
     Ok(ValidationReport {
         File: file,
         Ok: ok,
         Checks: checks,
         Summary: Some(summary),
         Stats: stats,
-        Update: false,
+        Update: update,
         // A failed report leaves no staging directory: the caller deletes it,
         // and handing back a path would invite an install from unproven bytes.
         Staging: if ok {
@@ -360,6 +369,13 @@ fn current_version(target: &Path) -> Option<String> {
     Some(manifest.Package.Version)
 }
 
+/// The version already installed under `packages_root`, if any. The inspect
+/// command uses it to tell the dialog whether this file would replace an older
+/// copy, which is what decides between "安装" and "更新".
+pub fn installed_version(packages_root: &Path, package_id: &str) -> Option<String> {
+    current_version(&packages_root.join(package_id))
+}
+
 fn nonce() -> u128 {
     use std::time::{SystemTime, UNIX_EPOCH};
     SystemTime::now()
@@ -398,8 +414,9 @@ mod tests {
         export(&sample_root(), &archive).expect("export");
 
         let staging = staging_path(&work.join("packages"));
-        let report = inspect(&archive, &staging).expect("inspect");
+        let report = inspect(&archive, &staging, &work.join("packages")).expect("inspect");
         assert!(report.Ok, "{:?}", report.Checks);
+        assert!(!report.Update, "nothing is installed yet");
         assert_eq!(report.Stats.as_ref().map(|stats| stats.Points), Some(72));
 
         let installed = install(&staging, &work.join("packages")).expect("install");
@@ -409,10 +426,10 @@ mod tests {
         let content = open(std::path::Path::new(&installed.RootPath))
             .expect("open")
             .expect("present");
-        assert_eq!(content.Stats.Questions, 33);
-        assert_eq!(content.Solutions.len(), 33);
-        // The first chapter is the one place where every point has a question,
-        // so the diagnostic paper has something to ask from the start.
+        assert_eq!(content.Stats.Questions, 153);
+        assert_eq!(content.Solutions.len(), 153);
+        // Every point now carries at least two questions, so the diagnostic
+        // paper can cover the whole outline instead of one chapter.
         let covered: std::collections::HashSet<&str> = content
             .Questions
             .iter()
@@ -420,6 +437,11 @@ mod tests {
             .map(String::as_str)
             .collect();
         assert!(covered.contains("calculus.book.ch01.continuity"));
+        assert_eq!(
+            covered.len(),
+            72,
+            "the diagnostic paper draws from every point"
+        );
         let solved = content
             .Solutions
             .iter()
@@ -440,7 +462,7 @@ mod tests {
         let first = work.join("first.morrow");
         export(&sample_root(), &first).expect("export first");
         let staging = staging_path(&packages);
-        inspect(&first, &staging).expect("inspect first");
+        inspect(&first, &staging, &packages).expect("inspect first");
         let installed = install(&staging, &packages).expect("install first");
 
         // A second identical build lands as the same version and reports no
@@ -448,7 +470,11 @@ mod tests {
         let second = work.join("second.morrow");
         export(&sample_root(), &second).expect("export second");
         let staging = staging_path(&packages);
-        let report = inspect(&second, &staging).expect("inspect second");
+        let report = inspect(&second, &staging, &packages).expect("inspect second");
+        assert!(
+            !report.Update,
+            "the same version is a reinstall, not an update"
+        );
         let version = report
             .Summary
             .as_ref()
@@ -476,7 +502,7 @@ mod tests {
         super::archive::pack(&source, &archive).expect("pack");
 
         let staging = staging_path(&work.join("packages"));
-        let report = inspect(&archive, &staging).expect("inspect");
+        let report = inspect(&archive, &staging, &work.join("packages")).expect("inspect");
         assert!(!report.Ok);
         let integrity = report
             .Checks
@@ -494,7 +520,12 @@ mod tests {
         let archive = work.join("fake.morrow");
         std::fs::write(&archive, b"nope").expect("write");
 
-        let report = inspect(&archive, &staging_path(&work.join("packages"))).expect("inspect");
+        let report = inspect(
+            &archive,
+            &staging_path(&work.join("packages")),
+            &work.join("packages"),
+        )
+        .expect("inspect");
         assert!(!report.Ok);
         assert_eq!(report.Checks.len(), 1);
         assert_eq!(report.Checks[0].Key, "container");

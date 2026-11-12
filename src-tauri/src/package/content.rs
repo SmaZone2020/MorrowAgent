@@ -784,7 +784,7 @@ images:
         // 10 textbook chapters, a reference appendix and 2 hand-written ones.
         assert_eq!(content.Stats.Chapters, 13);
         assert_eq!(content.Stats.Points, 72);
-        assert_eq!(content.Stats.Questions, 33);
+        assert_eq!(content.Stats.Questions, 153);
         assert!(content.Points.iter().all(|point| !point.Body.is_empty()));
         assert!(content
             .Questions
