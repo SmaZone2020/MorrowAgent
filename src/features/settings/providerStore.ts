@@ -39,7 +39,7 @@ export const emptyProviderBook: ProviderBook = {
 
 function requireRuntime(): void {
   if (!isTauriRuntime) {
-    throw new Error("密钥存储由 Tauri 后端提供，浏览器预览中不可用。");
+    throw new Error("密钥存储需要桌面应用。");
   }
 }
 

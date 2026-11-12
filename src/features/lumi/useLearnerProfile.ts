@@ -5,6 +5,8 @@ import { useGoal } from "@/features/plan/useGoal";
 import { loadPointStats } from "@/features/training/attempts";
 import { masteryOf, weakestFirst } from "@/features/training/mastery";
 import { asTeachingStyle } from "@/features/lumi/teachingStyle";
+import { asPersona } from "@/features/lumi/persona";
+import { ageFrom } from "@/features/settings/birthday";
 import { setLearnerProfile } from "@/features/lumi/learnerProfile";
 import type { LearnerProfile } from "@/features/lumi/prompts/registry";
 
@@ -18,16 +20,23 @@ const WEAKEST_LIMIT = 5;
  * disagrees with the page the learner just looked at. A read failure leaves the
  * previous profile in place: an out-of-date weak list is still better than a
  * prompt that pretends it knows nothing.
+ *
+ * Style, persona and the name to use are preferences rather than per-package
+ * settings: they describe the learner, not the book, and a tutor whose manner
+ * changed with every package would feel like a different tutor.
  */
 export function useLearnerProfile() {
   const index = useKnowledge();
   const workspaceId = index.view.workspaceId;
   const { goal } = useGoal(workspaceId);
-  const teachingStyle = usePreferences((state) => state.teachingStyle);
-  const style = asTeachingStyle(teachingStyle);
+  const style = usePreferences((state) => state.teachingStyle);
+  const persona = usePreferences((state) => state.persona);
+  const nickname = usePreferences((state) => state.nickname);
+  const birthday = usePreferences((state) => state.birthday);
   // `goal` is a new object whenever the hook re-reads; the fields are what the
   // prompt actually uses, so they are the dependency rather than the object.
   const { targetScore, examDate, minutesPerDay, note } = goal;
+  const age = ageFrom(birthday);
 
   useEffect(() => {
     let alive = true;
@@ -63,7 +72,10 @@ export function useLearnerProfile() {
             name: index.pointsById.get(entry.pointId)?.name ?? entry.pointId,
             score: entry.attempts === 0 ? null : entry.score,
           })),
-          teachingStyle: style,
+          teachingStyle: asTeachingStyle(style),
+          persona: asPersona(persona),
+          nickname,
+          age,
         };
         setLearnerProfile(workspaceId, profile);
       })
@@ -81,5 +93,8 @@ export function useLearnerProfile() {
     note,
     goal.difficultyFocus,
     style,
+    persona,
+    nickname,
+    age,
   ]);
 }

@@ -34,6 +34,9 @@ describe("prompt registry", () => {
         { id: "b", name: "导数", score: null },
       ],
       teachingStyle: "socratic",
+      persona: "sharp",
+      nickname: "小明",
+      age: 17,
     });
 
     expect(prompt).toContain("微积分 v2.0.0");
@@ -41,6 +44,9 @@ describe("prompt registry", () => {
     expect(prompt).toContain("极限（32%）");
     expect(prompt).toContain("导数（未测）");
     expect(prompt).toContain("不直接给答案");
+    expect(prompt).toContain("称呼：小明");
+    expect(prompt).toContain("17 岁");
+    expect(prompt).toContain("不要寒暄");
   });
 
   it("omits the goal block when the learner has not set one", () => {

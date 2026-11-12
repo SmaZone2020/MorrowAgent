@@ -1,6 +1,8 @@
 import type { StudyGoal } from "@/features/plan/types";
 import type { TeachingStyle } from "@/features/lumi/teachingStyle";
 import { TEACHING_STYLE_HINT } from "@/features/lumi/teachingStyle";
+import type { Persona } from "@/features/lumi/persona";
+import { PERSONA_PROMPT } from "@/features/lumi/persona";
 import { artifactsPrompt, corePrompt, quizPrompt, referencePrompt } from "@/features/lumi/prompts/core";
 
 /**
@@ -17,6 +19,11 @@ export interface LearnerProfile {
   /** Weakest points, already ranked; `score` is null when never tested. */
   weakest: { id: string; name: string; score: number | null }[];
   teachingStyle: TeachingStyle;
+  persona: Persona;
+  /** What to call the learner; empty when nothing was chosen. */
+  nickname: string;
+  /** Whole years, or null when no birthday was given. */
+  age: number | null;
 }
 
 export const EMPTY_PROFILE: LearnerProfile = {
@@ -25,6 +32,9 @@ export const EMPTY_PROFILE: LearnerProfile = {
   goal: null,
   weakest: [],
   teachingStyle: "guided",
+  persona: "warm",
+  nickname: "",
+  age: null,
 };
 
 /** Which surface is asking, because the drill rail must not restate the stem. */
@@ -47,6 +57,16 @@ export interface PromptSpec {
  */
 function learnerBlock(profile: LearnerProfile): string {
   const lines: string[] = ["当前学习者："];
+
+  // Address and manner come first because they colour every sentence that
+  // follows; buried at the end they would only apply to the tail of a reply.
+  if (profile.nickname) {
+    lines.push(`- 称呼：${profile.nickname}（用这个称呼直接称呼他，不要每次都说）`);
+  }
+  if (profile.age !== null) {
+    lines.push(`- 年龄：${profile.age} 岁（按这个年龄调整举例与用词，不要提年龄本身）`);
+  }
+  lines.push(`- 说话风格：${PERSONA_PROMPT[profile.persona]}`);
 
   if (profile.packageName) {
     lines.push(

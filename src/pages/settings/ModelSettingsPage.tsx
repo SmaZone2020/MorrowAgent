@@ -1,123 +1,108 @@
-import { useState } from "react";
-import { Input } from "@/vendor/beui/components/motion/input";
+import { Check } from "@gravity-ui/icons";
 import {
   ChoiceTabs,
   SettingsGroup,
   SettingsPageShell,
-  SettingsRow,
 } from "@/pages/settings/SettingsBlocks";
+import { cn } from "@/vendor/beui/lib/utils";
 import { usePreferences } from "@/features/settings/preferencesStore";
+import { PersonaPicker } from "@/features/lumi/PersonaPicker";
+import { asPersona } from "@/features/lumi/persona";
+import {
+  asTeachingStyle,
+  TEACHING_STYLES,
+  TEACHING_STYLE_LABEL,
+} from "@/features/lumi/teachingStyle";
+import { REPLY_LENGTHS } from "@/features/settings/replyLength";
 
-// Presets instead of a slider: the two axes users actually reason about are
-// "steady for derivations" and "loose for brainstorming", and the numeric
-// fields stay available for anything in between.
-const PRESETS = [
-  { label: "严谨", temperature: 0.2, maxTokens: 1024 },
-  { label: "平衡", temperature: 0.6, maxTokens: 2048 },
-  { label: "发散", temperature: 1, maxTokens: 4096 },
-] as const;
-
+/**
+ * Which Lumi the learner talks to, how it teaches, and how long its answers run.
+ *
+ * This page used to expose temperature and a token ceiling. Both are real
+ * controls and neither is a decision a learner can make: nobody knows what 0.6
+ * means, and a count of tokens is a fact about billing rather than about study.
+ * They are still stored, still sent, and still tuned — but by presets that
+ * describe the outcome instead of the parameter.
+ *
+ * Everything here is app-wide. A tutor whose voice and method changed with every
+ * package would feel like a different tutor, so only the learning goal follows
+ * the book.
+ */
 export function ModelSettingsPage() {
-  const temperature = usePreferences((state) => state.temperature);
+  const persona = usePreferences((state) => state.persona);
+  const teachingStyle = usePreferences((state) => state.teachingStyle);
   const maxTokens = usePreferences((state) => state.maxTokens);
   const update = usePreferences((state) => state.update);
-
-  // Text state is local so a half-typed "0." does not get clamped mid-edit.
-  const [temperatureDraft, setTemperatureDraft] = useState(
-    String(temperature),
-  );
-  const [tokenDraft, setTokenDraft] = useState(String(maxTokens));
-
-  const commitTemperature = () => {
-    const value = Number(temperatureDraft);
-    if (!Number.isFinite(value) || value < 0 || value > 2) {
-      setTemperatureDraft(String(temperature));
-      return;
-    }
-    update({ temperature: value });
-    setTemperatureDraft(String(value));
-  };
-
-  const commitTokens = () => {
-    const value = Math.round(Number(tokenDraft));
-    if (!Number.isFinite(value) || value < 64 || value > 16384) {
-      setTokenDraft(String(maxTokens));
-      return;
-    }
-    update({ maxTokens: value });
-    setTokenDraft(String(value));
-  };
-
-  const activePreset = PRESETS.find(
-    (preset) =>
-      preset.temperature === temperature && preset.maxTokens === maxTokens,
-  );
+  const active = REPLY_LENGTHS.find((entry) => entry.maxTokens === maxTokens);
 
   return (
-    <SettingsPageShell title="生成参数">
-      <SettingsGroup title="预设">
-        <SettingsRow
-          title="回复风格"
-          hint="温度 0–2，越低越稳定，适合公式推导；回复上限 64–16384 tokens。"
-          control={
-            <ChoiceTabs
-              label="回复风格预设"
-              options={PRESETS.map((preset) => ({
-                value: preset.label,
-                label: preset.label,
-              }))}
-              value={activePreset?.label ?? ""}
-              onChange={(label) => {
-                const preset = PRESETS.find((entry) => entry.label === label);
-                if (!preset) return;
-                update({
-                  temperature: preset.temperature,
-                  maxTokens: preset.maxTokens,
-                });
-                setTemperatureDraft(String(preset.temperature));
-                setTokenDraft(String(preset.maxTokens));
-              }}
-            />
-          }
-        />
+    <SettingsPageShell title="Lumi 风格">
+      <SettingsGroup title="性格">
+        <div className="p-3">
+          <PersonaPicker
+            value={asPersona(persona)}
+            onChange={(next) => update({ persona: next })}
+          />
+        </div>
       </SettingsGroup>
 
-      <SettingsGroup title="数值">
-        <SettingsRow
-          title="温度"
-          control={
-            <Input
-              value={temperatureDraft}
-              onChange={setTemperatureDraft}
-              onBlur={commitTemperature}
-              inputMode="decimal"
-              aria-label="温度"
-              className="w-24"
-              classNames={{
-                field: "h-8 rounded-lg",
-                input: "pl-2 pr-2 text-right text-sm tabular-nums",
-              }}
-            />
-          }
-        />
-        <SettingsRow
-          title="回复上限"
-          hint="单位是 tokens，超出会被截断。"
-          control={
-            <Input
-              value={tokenDraft}
-              onChange={setTokenDraft}
-              onBlur={commitTokens}
-              inputMode="numeric"
-              aria-label="回复上限 tokens"
-              className="w-28"
-              classNames={{
-                field: "h-8 rounded-lg",
-                input: "pl-2 pr-2 text-right text-sm tabular-nums",
-              }}
-            />
-          }
-        />
+      <SettingsGroup title="讲解方式">
+        <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+          <p className="text-sm text-muted-foreground">
+            影响 Lumi 先讲还是先问，不改变模型与题目难度。
+          </p>
+          <ChoiceTabs
+            label="讲解方式"
+            options={TEACHING_STYLES.map((entry) => ({
+              value: entry,
+              label: TEACHING_STYLE_LABEL[entry],
+            }))}
+            value={asTeachingStyle(teachingStyle)}
+            onChange={(next) => update({ teachingStyle: next })}
+          />
+        </div>
+      </SettingsGroup>
+
+      <SettingsGroup title="回答长度">
+        <div className="grid gap-2 p-3 sm:grid-cols-3">
+          {REPLY_LENGTHS.map((entry) => {
+            const selected = active?.value === entry.value;
+            return (
+              <button
+                key={entry.value}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                onClick={() =>
+                  update({
+                    maxTokens: entry.maxTokens,
+                    temperature: entry.temperature,
+                  })
+                }
+                className={cn(
+                  "relative flex flex-col gap-0.5 rounded-xl border px-3 py-2.5 text-left outline-none transition-colors",
+                  "focus-visible:ring-2 focus-visible:ring-ring",
+                  selected
+                    ? "border-foreground/25 bg-muted"
+                    : "border-border/70 hover:bg-muted/50",
+                )}
+              >
+                <span className="text-sm font-medium text-foreground">
+                  {entry.label}
+                </span>
+                <span className="text-sm text-muted-foreground">
+                  {entry.detail}
+                </span>
+                {selected ? (
+                  <Check
+                    aria-hidden="true"
+                    className="absolute top-2 right-2 size-4 text-foreground"
+                  />
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
       </SettingsGroup>
     </SettingsPageShell>
   );

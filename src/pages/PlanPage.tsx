@@ -7,7 +7,6 @@ import { Panel } from "@/components/Panel";
 import { EmptyState } from "@/components/EmptyState";
 import { InfoHint } from "@/components/InfoHint";
 import { SquircleWrapper } from "@/components/SquircleWrapper";
-import { isTauriRuntime } from "@/app/shell/windowControls";
 import { workspacePath } from "@/app/navigation";
 import { useScrollMemory } from "@/features/uiState";
 import { workspaceScope } from "@/features/uiState/scope";
@@ -176,9 +175,7 @@ export function PlanPage() {
           </span>
         }
       >
-        {!isTauriRuntime ? (
-          <EmptyState mood="thinking" title="浏览器预览中不读取本地作答记录" />
-        ) : !goalLoaded || !statsLoaded ? (
+        {!goalLoaded || !statsLoaded ? (
           <p className="py-3 text-sm text-muted-foreground">读取中</p>
         ) : plan.tasks.length === 0 ? (
           <EmptyState

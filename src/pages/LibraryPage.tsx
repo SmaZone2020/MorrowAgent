@@ -13,6 +13,8 @@ import {
   useLibrary,
 } from "@/features/library/store";
 import type { Workspace } from "@/features/library/api";
+import { usePersistedState, useScrollMemory } from "@/features/uiState";
+import { appScope, shelfScope } from "@/features/uiState/scope";
 
 /**
  * Level 0: the shelf.
@@ -31,10 +33,25 @@ export function LibraryPage() {
   const [importing, setImporting] = useState(false);
   const [details, setDetails] = useState<Workspace | null>(null);
   const recentId = useMemo(() => lastWorkspaceId(), [workspaces]);
+  const scrollRef = useScrollMemory<HTMLDivElement>(shelfScope("scrollTop"));
+
+  // The wizard is offered once, and it is a page rather than a modal over this
+  // one: a first run should not have the empty shelf flashing behind it. `done`
+  // is written on finish and on skip alike, because a learner who closed it has
+  // answered. Waiting for the shelf to load keeps a returning user with a slow
+  // disk from being sent to setup by a first frame with no rows.
+  const [done] = usePersistedState(appScope("onboarding.done"), false);
+  const [offered, setOffered] = useState(false);
 
   useEffect(() => {
     void hydrate();
   }, [hydrate]);
+
+  useEffect(() => {
+    if (!loaded || offered) return;
+    if (!done && workspaces.length === 0) navigate("/onboarding", { replace: true });
+    setOffered(true);
+  }, [done, loaded, navigate, offered, workspaces.length]);
 
   const enter = (workspace: Workspace) => {
     if (workspace.orphaned) {
@@ -64,7 +81,10 @@ export function LibraryPage() {
         </Tooltip>
       </header>
 
-      <div className="scrollbar-thin mx-auto min-h-0 w-full max-w-6xl flex-1 overflow-y-auto px-5 py-5 sm:px-7 sm:py-6">
+      <div
+        ref={scrollRef}
+        className="scrollbar-thin mx-auto min-h-0 w-full max-w-6xl flex-1 overflow-y-auto px-5 py-5 sm:px-7 sm:py-6"
+      >
         {!loaded ? (
           <p className="text-sm text-muted-foreground">正在读取书架</p>
         ) : workspaces.length === 0 ? (

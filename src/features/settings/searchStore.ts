@@ -125,7 +125,7 @@ export const useSearchKey = create<SearchStore>((set, get) => ({
 
 function requireRuntime(): void {
   if (!isTauriRuntime) {
-    throw new Error("搜索由 Tauri 后端转发，浏览器预览中不可用。");
+    throw new Error("搜索请求需要桌面应用的后端转发。");
   }
 }
 

@@ -1,4 +1,5 @@
 import { Display, Moon, Sun } from "@gravity-ui/icons";
+import { Input } from "@/vendor/beui/components/motion/input";
 import {
   Select,
   SelectContent,
@@ -15,7 +16,6 @@ import {
   SettingsGroup,
   SettingsPageShell,
   SettingsRow,
-  ChoiceTabs,
 } from "@/pages/settings/SettingsBlocks";
 import { PercentStepper } from "@/components/PercentStepper";
 import {
@@ -30,10 +30,7 @@ import {
 import { useAppearance } from "@/features/appearance/useAppearance";
 import { useThemeReveal } from "@/features/appearance/useThemeReveal";
 import { usePreferences } from "@/features/settings/preferencesStore";
-import {
-  TEACHING_STYLES,
-  TEACHING_STYLE_LABEL,
-} from "@/features/lumi/teachingStyle";
+import { ageFrom } from "@/features/settings/birthday";
 
 const QUESTION_SCALE_MIN = 0.8;
 const QUESTION_SCALE_MAX = 1.6;
@@ -54,8 +51,10 @@ export function GeneralSettingsPage() {
   const { appearance, update: updateAppearance } = useAppearance();
   const reveal = useThemeReveal();
   const questionScale = usePreferences((state) => state.questionScale);
-  const teachingStyle = usePreferences((state) => state.teachingStyle);
+  const nickname = usePreferences((state) => state.nickname);
+  const birthday = usePreferences((state) => state.birthday);
   const updatePreferences = usePreferences((state) => state.update);
+  const age = ageFrom(birthday);
 
   // The palette has to be on the document before the view transition snapshots
   // it, so the paint happens inside the callback and the store write follows.
@@ -139,6 +138,47 @@ export function GeneralSettingsPage() {
         />
       </SettingsGroup>
 
+      <SettingsGroup title="关于你">
+        <SettingsRow
+          title="Lumi 怎么称呼你"
+          hint="会出现在 Lumi 的回复里；留空就用「你」。"
+          control={
+            <Input
+              value={nickname}
+              onChange={(value) => updatePreferences({ nickname: value.slice(0, 24) })}
+              placeholder="留空"
+              aria-label="Lumi 怎么称呼你"
+              className="w-44"
+              classNames={{
+                field: "h-8 rounded-lg",
+                input: "text-sm",
+              }}
+            />
+          }
+        />
+        <SettingsRow
+          title="出生日期"
+          hint={
+            age === null
+              ? "选填。只用来判断该用什么例子和语气，不会用来算倒计时。"
+              : `选填。只用来判断该用什么例子和语气，目前按 ${age} 岁理解。`
+          }
+          control={
+            <Input
+              type="date"
+              value={birthday}
+              onChange={(value) => updatePreferences({ birthday: value })}
+              aria-label="出生日期"
+              className="w-44"
+              classNames={{
+                field: "h-8 rounded-lg",
+                input: "text-sm tabular-nums",
+              }}
+            />
+          }
+        />
+      </SettingsGroup>
+
       <SettingsGroup title="训练">
         <SettingsRow
           title="题目字号"
@@ -153,21 +193,6 @@ export function GeneralSettingsPage() {
               onChange={(percent) =>
                 updatePreferences({ questionScale: percent / 100 })
               }
-            />
-          }
-        />
-        <SettingsRow
-          title="Lumi 讲解方式"
-          hint="只影响 Lumi 的讲法，不改变模型与题目难度。"
-          control={
-            <ChoiceTabs
-              label="Lumi 讲解方式"
-              options={TEACHING_STYLES.map((style) => ({
-                value: style,
-                label: TEACHING_STYLE_LABEL[style],
-              }))}
-              value={teachingStyle}
-              onChange={(value) => updatePreferences({ teachingStyle: value })}
             />
           }
         />

@@ -67,9 +67,7 @@ export class AiBridgeError extends Error {
 
 export function requireTauri(): void {
   if (!isTauriRuntime) {
-    throw new AiBridgeError(
-      "模型请求由 Tauri 后端转发；浏览器预览里无法调用，请用 pnpm tauri:dev。",
-    );
+    throw new AiBridgeError("模型请求需要桌面应用的后端转发。");
   }
 }
 

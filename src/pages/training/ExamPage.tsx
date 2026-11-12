@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/vendor/beui/components/motion/button";
 import { Panel } from "@/components/Panel";
 import { EmptyState } from "@/components/EmptyState";
-import { isTauriRuntime } from "@/app/shell/windowControls";
 import { useScrollMemory } from "@/features/uiState";
 import { workspaceScope } from "@/features/uiState/scope";
 import {
@@ -111,18 +110,11 @@ export function ExamPage() {
     );
   };
 
-  if (!isTauriRuntime || questions.length === 0) {
+  if (questions.length === 0) {
     return (
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 p-5 sm:p-7">
         <Panel title="模拟考试">
-          <EmptyState
-            mood={isTauriRuntime ? "confused" : "thinking"}
-            title={
-              isTauriRuntime
-                ? "这个学习包暂无题目"
-                : "浏览器预览中不读取考试记录"
-            }
-          />
+          <EmptyState mood="confused" title="这个学习包暂无题目" />
         </Panel>
       </div>
     );

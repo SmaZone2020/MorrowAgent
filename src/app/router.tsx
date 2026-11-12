@@ -2,6 +2,7 @@ import { createHashRouter, Navigate } from "react-router-dom";
 import { RootLayout } from "@/app/shell/RootLayout";
 import { WorkspaceRoute } from "@/app/shell/WorkspaceRoute";
 import { LibraryPage } from "@/pages/LibraryPage";
+import { OnboardingPage } from "@/pages/OnboardingPage";
 import { WorkspaceDashboardPage } from "@/pages/WorkspaceDashboardPage";
 import { LumiPage } from "@/pages/LumiPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
@@ -26,6 +27,7 @@ import { ReportPage } from "@/pages/ReportPage";
  * Three layers, nested by URL rather than by state:
  *
  *   /                    shelf      — pick a package
+ *   /onboarding          first run  — its own page, before the shelf
  *   /w/:workspaceId/*    workspace  — Lumi, knowledge, drill, records
  *   /settings/*          settings   — owns the whole window
  *
@@ -39,6 +41,7 @@ export const router = createHashRouter([
     element: <RootLayout />,
     children: [
       { index: true, element: <LibraryPage /> },
+      { path: "onboarding", element: <OnboardingPage /> },
       {
         path: "w/:workspaceId",
         element: <WorkspaceRoute />,

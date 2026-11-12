@@ -3,10 +3,11 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { AnimatedSidebarTrigger } from "@/vendor/beui/components/motion/animated-sidebar";
 import { Tooltip } from "@/vendor/beui/components/motion/tooltip";
-import { House, LayoutSideContentLeft } from "@gravity-ui/icons";
+import { House, LayoutSideContentLeft, Sparkles } from "@gravity-ui/icons";
 import { resolveShellLayer } from "@/app/shell/navHelpers";
 import { usePersistedState } from "@/features/uiState/usePersistedState";
 import { appScope } from "@/features/uiState/scope";
+import { useOnboardingRequest } from "@/features/onboarding/request";
 import {
   closeWindow,
   isTauriRuntime,
@@ -16,6 +17,13 @@ import {
 } from "@/app/shell/windowControls";
 
 const CONTROL_SIZE = "size-9";
+
+/**
+ * The wizard is dev-only furniture: it is a first-run flow, and a shipped build
+ * has no first run left to repeat. Keeping it behind `DEV` means a tester can
+ * replay it without resetting the database, and nobody else ever sees it.
+ */
+const CAN_REPLAY_ONBOARDING = import.meta.env.DEV;
 
 // The sidebar toggle lives beside the product name so the content header stays
 // a pure breadcrumb. The title bar renders inside the sidebar provider, which
@@ -39,8 +47,11 @@ export function TitleBar() {
   );
   const inExam = examActive !== null;
   const sidebarToggleDisabled = layer.kind !== "workspace" || inExam;
+  // The shelf has nowhere to go back to and setup is left through its own
+  // buttons, so both disable this; settings still uses it to return to the shelf.
   const homeDisabled = layer.kind === "shelf" || inExam;
   const [maximized, setMaximized] = useState(false);
+  const requestOnboarding = useOnboardingRequest((state) => state.request);
 
   useEffect(() => {
     if (!isTauriRuntime) return;
@@ -117,6 +128,24 @@ export function TitleBar() {
             <LayoutSideContentLeft aria-hidden="true" className="size-4.5" />
           </AnimatedSidebarTrigger>
         </Tooltip>
+        {CAN_REPLAY_ONBOARDING && !inExam ? (
+          <Tooltip content="初始化流程（开发模式）" side="bottom">
+            <button
+              type="button"
+              data-tauri-drag-region="false"
+              aria-label="初始化流程"
+              onClick={() => {
+                // Setup is its own page: from anywhere else the click has to
+                // land there first, then ask the page to start over.
+                navigate("/onboarding");
+                requestOnboarding();
+              }}
+              className="ml-1 inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <Sparkles aria-hidden="true" className="size-4.5" />
+            </button>
+          </Tooltip>
+        ) : null}
       </div>
 
       <div className="flex items-stretch">

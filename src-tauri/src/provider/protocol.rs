@@ -364,8 +364,10 @@ pub fn prepare(config: &ProviderConfig, request: &ChatRequest) -> Prepared {
             if let Some(system) = system {
                 body["system"] = serde_json::json!(system);
             }
-            // Anthropic requires max_tokens, so fall back to a sane ceiling.
-            body["max_tokens"] = serde_json::json!(request.MaxTokens.unwrap_or(2048));
+            // Anthropic requires max_tokens, so fall back to the same ceiling
+            // the app defaults to rather than to a smaller one that would cut a
+            // derivation short.
+            body["max_tokens"] = serde_json::json!(request.MaxTokens.unwrap_or(8192));
             body["messages"] = serde_json::json!(turns
                 .iter()
                 .map(|message| turn_value(config.Protocol, message))

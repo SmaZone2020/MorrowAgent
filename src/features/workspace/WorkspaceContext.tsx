@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/vendor/beui/components/motion/button";
 import { EmptyState } from "@/components/EmptyState";
-import { isTauriRuntime } from "@/app/shell/windowControls";
 import { useLibrary } from "@/features/library/store";
 import { WorkspaceMediaProvider } from "@/features/library/media";
 import { indexKnowledge, toKnowledgeView } from "@/features/knowledge/view";
@@ -62,11 +61,10 @@ export function WorkspaceProvider({
   const workspace = workspaces.find((entry) => entry.id === workspaceId);
   const missing = loaded && !workspace;
 
-  // The browser preview has neither packages nor a database, so a workspace URL
-  // there is expected to fail; say that instead of blaming the package.
-  const reason = !isTauriRuntime
-    ? "浏览器预览中没有学习包，请在桌面应用里打开"
-    : (contentError ?? (missing ? "没有找到这个学习包" : null));
+  // A URL can outlive its package: a book removed on another machine, or an
+  // entry opened from an old backup. The page names that instead of blaming the
+  // content, and offers the only route that still works.
+  const reason = contentError ?? (missing ? "没有找到这个学习包" : null);
 
   return (
     <div className="grid h-full place-items-center p-8">

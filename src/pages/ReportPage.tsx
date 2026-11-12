@@ -7,7 +7,6 @@ import { EmptyState } from "@/components/EmptyState";
 import { InfoHint } from "@/components/InfoHint";
 import { SquircleWrapper } from "@/components/SquircleWrapper";
 import { ChoiceTabs } from "@/pages/settings/SettingsBlocks";
-import { isTauriRuntime } from "@/app/shell/windowControls";
 import { workspacePath } from "@/app/navigation";
 import { useScrollMemory } from "@/features/uiState";
 import { workspaceScope } from "@/features/uiState/scope";
@@ -111,9 +110,7 @@ export function ReportPage() {
           />
         }
       >
-        {!isTauriRuntime ? (
-          <EmptyState mood="thinking" title="浏览器预览中不读取本地作答记录" />
-        ) : !loaded ? (
+        {!loaded ? (
           <p className="py-3 text-sm text-muted-foreground">读取中</p>
         ) : empty ? (
           <EmptyState
@@ -173,9 +170,7 @@ export function ReportPage() {
       </div>
 
       <Panel title="章节掌握度">
-        {!isTauriRuntime ? (
-          <EmptyState mood="thinking" title="浏览器预览中不读取本地作答记录" />
-        ) : !loaded ? (
+        {!loaded ? (
           <p className="py-3 text-sm text-muted-foreground">读取中</p>
         ) : axes.length < 3 ? (
           <EmptyState

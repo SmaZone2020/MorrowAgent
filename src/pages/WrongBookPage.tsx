@@ -6,7 +6,6 @@ import { Panel } from "@/components/Panel";
 import { EmptyState } from "@/components/EmptyState";
 import { MathText } from "@/components/MathText";
 import { Modal } from "@/components/Modal";
-import { isTauriRuntime } from "@/app/shell/windowControls";
 import { findPoint } from "@/features/knowledge";
 import { usePersistedState, useScrollMemory } from "@/features/uiState";
 import { workspaceScope } from "@/features/uiState/scope";
@@ -104,20 +103,16 @@ export function WrongBookPage() {
       <Panel
         title="错题本"
         action={
-          isTauriRuntime ? (
-            <AnimatedBadge
-              status={shown.length > 0 ? "warning" : "neutral"}
-              size="sm"
-              contentKey={shown.length}
-            >
-              {shown.length} 道
-            </AnimatedBadge>
-          ) : null
+          <AnimatedBadge
+            status={shown.length > 0 ? "warning" : "neutral"}
+            size="sm"
+            contentKey={shown.length}
+          >
+            {shown.length} 道
+          </AnimatedBadge>
         }
       >
-        {!isTauriRuntime ? (
-          <EmptyState mood="thinking" title="浏览器预览中不读取本地作答记录" />
-        ) : !loaded ? (
+        {!loaded ? (
           <p className="py-4 text-sm text-muted-foreground">读取中</p>
         ) : attempts.length === 0 ? (
           <EmptyState

@@ -13,7 +13,6 @@ import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
 import { Panel } from "@/components/Panel";
 import { InfoHint } from "@/components/InfoHint";
 import { EmptyState } from "@/components/EmptyState";
-import { isTauriRuntime } from "@/app/shell/windowControls";
 import { workspacePath } from "@/app/navigation";
 import { useLibrary } from "@/features/library/store";
 import { useCover } from "@/features/library/useCover";
@@ -204,9 +203,7 @@ export function WorkspaceDashboardPage() {
           </AnimatedBadge>
         }
       >
-        {!isTauriRuntime ? (
-          <EmptyState mood="thinking" title="浏览器预览中不读取本地作答记录" />
-        ) : !statsLoaded ? (
+        {!statsLoaded ? (
           <p className="py-3 text-sm text-muted-foreground">读取中</p>
         ) : view.points.length === 0 ? (
           <EmptyState mood="confused" title="这个学习包暂无知识点" />

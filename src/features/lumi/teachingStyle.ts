@@ -1,9 +1,10 @@
 /**
  * How Lumi is allowed to teach.
  *
- * This is a preference, not a prompt detail: a learner who is revising for an
- * exam wants the answer, and one who is learning wants to be asked. The prompt
- * registry reads it, the settings page writes it, and nothing else needs to know.
+ * This is a preference, not a prompt detail, and it is app-wide: a learner who
+ * is revising for an exam wants the answer whichever book they opened. The
+ * prompt registry reads it, the settings page and onboarding write it, and
+ * nothing else needs to know.
  */
 export const TEACHING_STYLES = ["guided", "direct", "socratic"] as const;
 

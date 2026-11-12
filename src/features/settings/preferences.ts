@@ -6,8 +6,14 @@ export interface Preferences {
   maxTokens: number;
   /** Drill text scale for questions and explanations, 1 = default size. */
   questionScale: number;
-  /** How Lumi teaches: `guided`, `direct` or `socratic`. */
+  /** How Lumi talks: `warm`, `sharp`, `rigorous` or `playful`. */
+  persona: string;
+  /** How Lumi teaches: `guided`, `direct` or `socratic`. Global on purpose. */
   teachingStyle: string;
+  /** What Lumi calls the learner; empty means nothing was chosen. */
+  nickname: string;
+  /** `YYYY-MM-DD` or empty. Used only to gauge what kind of learner this is. */
+  birthday: string;
   /**
    * How hard a thinking model should think: `off`, `low`, `high` or `max`.
    * Only DeepSeek understands the switch; other providers never see it.
@@ -27,9 +33,12 @@ export interface StoreStats {
 
 export const defaultPreferences: Preferences = {
   temperature: 0.6,
-  maxTokens: 2048,
+  maxTokens: 8192,
   questionScale: 1,
+  persona: "warm",
   teachingStyle: "guided",
+  nickname: "",
+  birthday: "",
   thinking: "high",
 };
 

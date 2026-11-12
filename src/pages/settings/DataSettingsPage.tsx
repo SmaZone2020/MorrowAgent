@@ -139,7 +139,7 @@ export function DataSettingsPage() {
           hint="所有对话、作答与统计都存在本机的 SQLite 文件里。"
           control={
             <span className="text-sm tabular-nums text-foreground">
-              {stats ? formatBytes(stats.sizeBytes) : "浏览器预览中不可用"}
+              {stats ? formatBytes(stats.sizeBytes) : "—"}
             </span>
           }
         />

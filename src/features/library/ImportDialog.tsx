@@ -1,7 +1,5 @@
-import { useEffect, useState } from "react";
-import { open as openFile } from "@tauri-apps/plugin-dialog";
-import { getCurrentWebview } from "@tauri-apps/api/webview";
-import { ArrowUpFromLine, CircleCheck, CircleXmark } from "@gravity-ui/icons";
+import { useState } from "react";
+import { CircleCheck, CircleXmark } from "@gravity-ui/icons";
 import { Button } from "@/vendor/beui/components/motion/button";
 import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
 import {
@@ -20,9 +18,13 @@ import {
   type ValidationReport,
 } from "@/features/library/api";
 import { useLibrary } from "@/features/library/store";
-
-/** The archive extensions a package may ship as. */
-const ACCEPTED = ["morrow", "7z"];
+import {
+  PackageDropZone,
+  isArchive,
+  pickArchive,
+  useArchiveDrop,
+} from "@/features/library/PackageDropZone";
+import { fileName } from "@/features/library/usePackageInstall";
 
 type Phase =
   | { kind: "choose"; file: string | null }
@@ -30,14 +32,6 @@ type Phase =
   | { kind: "report"; file: string; report: ValidationReport }
   | { kind: "installing"; report: ValidationReport }
   | { kind: "failed"; reason: string };
-
-function fileName(path: string): string {
-  return path.split(/[\\/]/).pop() ?? path;
-}
-
-function isArchive(path: string): boolean {
-  return ACCEPTED.includes(path.split(".").pop()?.toLowerCase() ?? "");
-}
 
 /**
  * Imports a `.morrow` archive in two steps, both inside one modal.
@@ -60,12 +54,10 @@ export function ImportDialog({
   const refresh = useLibrary((state) => state.refresh);
   const workspaces = useLibrary((state) => state.workspaces);
   const [phase, setPhase] = useState<Phase>({ kind: "choose", file: null });
-  const [dragging, setDragging] = useState(false);
   const [hint, setHint] = useState<string | null>(null);
 
   const reset = () => {
     setPhase({ kind: "choose", file: null });
-    setDragging(false);
     setHint(null);
   };
 
@@ -80,38 +72,13 @@ export function ImportDialog({
   };
 
   const pick = async () => {
-    const file = await openFile({
-      multiple: false,
-      filters: [{ name: "Morrow 学习包", extensions: ACCEPTED }],
-    });
-    if (typeof file === "string") accept(file);
+    const file = await pickArchive();
+    if (file) accept(file);
   };
 
-  // A file dropped on the window never reaches React: the native webview owns
-  // that gesture, so the paths arrive as an event instead of a DataTransfer.
-  useEffect(() => {
-    if (!open || !isTauriRuntime) return;
-    let unlisten: (() => void) | undefined;
-    void getCurrentWebview()
-      .onDragDropEvent((event) => {
-        if (event.payload.type === "enter" || event.payload.type === "over") {
-          setDragging(true);
-        } else if (event.payload.type === "leave") {
-          setDragging(false);
-        } else if (event.payload.type === "drop") {
-          setDragging(false);
-          const [path] = event.payload.paths;
-          if (path) accept(path);
-        }
-      })
-      .then((stop) => {
-        unlisten = stop;
-      });
-    return () => unlisten?.();
-    // `accept` only touches setters, so re-subscribing per render would just
-    // churn the native listener.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  // Dropping is only live while the choice view is up: dropping onto the report
+  // would silently swap the file being reviewed.
+  const dragging = useArchiveDrop(open && phase.kind === "choose", accept);
 
   const start = async (file: string) => {
     setPhase({ kind: "checking", file });
@@ -270,42 +237,12 @@ function ChooseStep({
 }) {
   return (
     <div className="flex flex-col gap-4">
-      <Alert variant="warning">
-        <AlertIcon />
-        <AlertContent>
-          <AlertTitle>请不要使用来源不明的学习包</AlertTitle>
-          <AlertDescription>
-            学习包里的教材与解析会原样提供给 Lumi 引用，来源不明的包可能夹带错误内容或不合适的材料。
-          </AlertDescription>
-        </AlertContent>
-      </Alert>
-
-      <Button
-        type="button"
-        variant="secondary"
-        disabled={!isTauriRuntime}
-        onClick={onPick}
-        className={[
-          "h-40 w-full flex-col gap-2 rounded-2xl border border-dashed text-sm font-normal",
-          dragging ? "border-foreground/60 bg-muted" : "border-border-strong",
-        ].join(" ")}
-      >
-        <ArrowUpFromLine className="size-6 text-muted-foreground" />
-        <span className="text-sm text-foreground">
-          {file ? fileName(file) : "拖入文件，或点击选择"}
-        </span>
-        <span className="text-sm text-muted-foreground">
-          支持 .morrow 与 .7z 学习包
-        </span>
-      </Button>
-
-      {hint ? <p className="text-sm text-destructive">{hint}</p> : null}
-
-      {!isTauriRuntime ? (
-        <AnimatedBadge status="warning" size="sm" contentKey="preview">
-          浏览器预览中不能导入学习包
-        </AnimatedBadge>
-      ) : null}
+      <PackageDropZone
+        file={file}
+        dragging={dragging}
+        hint={hint}
+        onPick={onPick}
+      />
     </div>
   );
 }

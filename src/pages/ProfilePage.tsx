@@ -7,7 +7,6 @@ import { Tooltip } from "@/vendor/beui/components/motion/tooltip";
 import { Panel } from "@/components/Panel";
 import { EmptyState } from "@/components/EmptyState";
 import { InfoHint } from "@/components/InfoHint";
-import { isTauriRuntime } from "@/app/shell/windowControls";
 import { findPoint } from "@/features/knowledge";
 import { useScrollMemory } from "@/features/uiState";
 import { workspaceScope } from "@/features/uiState/scope";
@@ -102,20 +101,16 @@ export function ProfilePage() {
       <Panel
         title="掌握度"
         action={
-          isTauriRuntime ? (
-            <AnimatedBadge
-              status={tested > 0 ? "info" : "neutral"}
-              size="sm"
-              contentKey={`${tested}-${index.view.points.length}`}
-            >
-              {tested} / {index.view.points.length}
-            </AnimatedBadge>
-          ) : null
+          <AnimatedBadge
+            status={tested > 0 ? "info" : "neutral"}
+            size="sm"
+            contentKey={`${tested}-${index.view.points.length}`}
+          >
+            {tested} / {index.view.points.length}
+          </AnimatedBadge>
         }
       >
-        {!isTauriRuntime ? (
-          <EmptyState mood="thinking" title="浏览器预览中不读取本地作答记录" />
-        ) : !loaded ? (
+        {!loaded ? (
           <p className="py-4 text-sm text-muted-foreground">读取中</p>
         ) : index.view.points.length === 0 ? (
           <EmptyState mood="confused" title="这个学习包暂无知识点" />

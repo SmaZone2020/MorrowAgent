@@ -62,7 +62,7 @@ export const settingsGroups: SettingsGroup[] = [
       },
       {
         key: "model",
-        label: "生成参数",
+        label: "Lumi 风格",
         path: "/settings/model",
         icon: Sliders,
       },
