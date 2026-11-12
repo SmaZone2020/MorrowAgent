@@ -2,7 +2,6 @@
 
 > 读者：要为 Morrow Agent 生产学习包的人，以及被要求「生成一个学习包」的 Agent。
 > 目标：看完就能产出一个**能装、能读、能出卷、能画像**的 `.morrow` 文件。
-> 权威性：本文的每条约束都来自代码。与 `MLPS.md`、`Knowledge-Standard.md` 冲突时**以本文为准**，差异见附录 A。
 
 ---
 
@@ -61,17 +60,17 @@ my-package/
 
 校验器在读取任何内容之前先查这九个（缺一个就报 `缺少必需文件`）：
 
-| 文件 | 作用 |
-|---|---|
-| `manifest.yaml` | 包自述：ID、版本、封面、各内容的索引路径 |
-| `README.md` | 人读说明。安装器另外单独要求它在压缩包根目录 |
-| `knowledge/index.yaml` | 章节与知识点挂载 |
-| `knowledge/relations.yaml` | 关系边（可以为空数组，但文件必须在） |
-| `questions/index.yaml` | 题目文件清单 |
-| `taxonomy/tags.yaml` | 标签词表，至少 1 条 |
-| `taxonomy/error-types.yaml` | 错误类型词表，至少 1 条 |
-| `citations/sources.yaml` | 来源登记 |
-| `checksums.sha256` | 全树完整性 |
+| 文件                          | 作用                     |
+| --------------------------- | ---------------------- |
+| `manifest.yaml`             | 包自述：ID、版本、封面、各内容的索引路径  |
+| `README.md`                 | 人读说明。安装器另外单独要求它在压缩包根目录 |
+| `knowledge/index.yaml`      | 章节与知识点挂载               |
+| `knowledge/relations.yaml`  | 关系边（可以为空数组，但文件必须在）     |
+| `questions/index.yaml`      | 题目文件清单                 |
+| `taxonomy/tags.yaml`        | 标签词表，至少 1 条            |
+| `taxonomy/error-types.yaml` | 错误类型词表，至少 1 条          |
+| `citations/sources.yaml`    | 来源登记                   |
+| `checksums.sha256`          | 全树完整性                  |
 
 `manifest.yaml` 里的 `contents.solutions` 是**唯一可选**的内容块。不声明它，题目依然可作答，只是没有解析步骤。
 
@@ -96,17 +95,17 @@ my-package/
 
 校验器会逐条追这些引用，任何一条指向不存在的东西都是错误：
 
-| 引用方 | 被引用方 | 说明 |
-|---|---|---|
-| 题目 `knowledge_points[]` | 知识点 | 每一个都必须是已定义知识点 |
-| 题目 `tags[]` | `taxonomy/tags.yaml` | 每一个都必须登记 |
-| 题目 `source.source_id` | `citations/sources.yaml` | 登记后才能引用 |
-| 知识点 `sources[]` | `citations/sources.yaml` | 同上 |
-| 关系 `from` / `to` | 知识点 | 两端都必须存在 |
-| 知识点 `prerequisites[]` | 知识点 | **只参与环检测，不查是否存在**（见下） |
-| `manifest.package.targets[]` | `taxonomy/tags.yaml` | 书架筛选器不能挂空标签 |
-| `manifest.package.cover.file` | `media/covers/` 下的真实文件 | 只收位图 |
-| 任意 `images[].path` | 包内真实文件 | 缺文件即失败 |
+| 引用方                           | 被引用方                     | 说明                    |
+| ----------------------------- | ------------------------ | --------------------- |
+| 题目 `knowledge_points[]`       | 知识点                      | 每一个都必须是已定义知识点         |
+| 题目 `tags[]`                   | `taxonomy/tags.yaml`     | 每一个都必须登记              |
+| 题目 `source.source_id`         | `citations/sources.yaml` | 登记后才能引用               |
+| 知识点 `sources[]`               | `citations/sources.yaml` | 同上                    |
+| 关系 `from` / `to`              | 知识点                      | 两端都必须存在               |
+| 知识点 `prerequisites[]`         | 知识点                      | **只参与环检测，不查是否存在**（见下） |
+| `manifest.package.targets[]`  | `taxonomy/tags.yaml`     | 书架筛选器不能挂空标签           |
+| `manifest.package.cover.file` | `media/covers/` 下的真实文件   | 只收位图                  |
+| 任意 `images[].path`            | 包内真实文件                   | 缺文件即失败                |
 
 注意两处**不被校验**、只能靠自觉的地方：
 
@@ -251,21 +250,21 @@ $x\to a$ 只说了"趋近 $a$"，没说从哪边来……
 
 字段约束：
 
-| 字段 | 必填 | 约束 |
-|---|---|---|
-| `id` | 是 | 必须与 `index.yaml` 里登记的 id 完全一致 |
-| `name` | 是 | 1–60 字 |
-| `chapter` | 是 | 必须等于它挂载的章节 id |
-| `tags` | 是 | ≥1 条，唯一，`^[a-z0-9][a-z0-9._-]*$` |
-| `difficulty` | 是 | 1–5 整数（只表示内容难度，不代表学生掌握度） |
-| `learning_objectives` | 是 | 1–8 条，每条 ≥4 字 |
-| `exam_importance` | 否 | `low` / `medium` / `high` / `critical`，缺省按最低排 |
-| `summary` | 否 | ≤400 字，用于列表与检索摘要 |
-| `prerequisites` | 否 | 知识点 id 列表，**只参与环检测，不校验目标是否存在** |
-| `sources` | 否 | 来源 id 列表，必须已登记 |
-| `common_errors` | 否 | 每条 ≥6 字 |
-| `images` | 否 | 见下 |
-| `version` | 否 | `x.y.z` |
+| 字段                    | 必填  | 约束                                            |
+| --------------------- | --- | --------------------------------------------- |
+| `id`                  | 是   | 必须与 `index.yaml` 里登记的 id 完全一致                 |
+| `name`                | 是   | 1–60 字                                        |
+| `chapter`             | 是   | 必须等于它挂载的章节 id                                 |
+| `tags`                | 是   | ≥1 条，唯一，`^[a-z0-9][a-z0-9._-]*$`              |
+| `difficulty`          | 是   | 1–5 整数（只表示内容难度，不代表学生掌握度）                      |
+| `learning_objectives` | 是   | 1–8 条，每条 ≥4 字                                 |
+| `exam_importance`     | 否   | `low` / `medium` / `high` / `critical`，缺省按最低排 |
+| `summary`             | 否   | ≤400 字，用于列表与检索摘要                              |
+| `prerequisites`       | 否   | 知识点 id 列表，**只参与环检测，不校验目标是否存在**                |
+| `sources`             | 否   | 来源 id 列表，必须已登记                                |
+| `common_errors`       | 否   | 每条 ≥6 字                                       |
+| `images`              | 否   | 见下                                            |
+| `version`             | 否   | `x.y.z`                                       |
 
 `images[]` 每项必填 `type`（`formula` / `figure` / `screenshot` / `other`）与 `path`；可选 `caption`（≤200）、`alt`（≤200）。`path` 是包内相对路径，**建议放在 `media/` 下**（放别处会给一条「打包时容易漏掉」的警告），文件必须真实存在。
 
@@ -355,17 +354,17 @@ files:
 
 `type` 有九种，但**答案类型必须与题型自洽**，这是校验器真会拦的：
 
-| `type` | 含义 | `answer.type` | `answer.value` 写法 | 选项 |
-|---|---|---|---|---|
-| `single_choice` | 单选 | **必须 `single`** | `["B"]`，恰好一个 | 必须有 |
-| `multiple_choice` | 多选 | `multiple` | `["A","C"]`，按选项顺序 | 必须有 |
-| `true_false` | 判断 | `boolean` 或 `single` | `["true"]` / `["false"]`；用 `single` 时必须给 A/B 两个选项并写 `["A"]` | `boolean` 可无；`single` 必须有 |
-| `fill_blank` | 填空 | `text` | `["$-1$"]` | 无 |
-| `calculation` | 计算 | `text` | `["$\\frac{3}{2}$"]` | 无 |
-| `proof` | 证明 | `text` | `["存在 $\\xi\\in(0,1)$ 使 …"]` | 无 |
-| `short_answer` | 简答 | `text` | 关键结论 | 无 |
-| `application` | 应用 | `text` | 最终结果 | 无 |
-| `ordering` | 排序 | `ordering` | 按期望顺序列出 | 必须有 |
+| `type`            | 含义  | `answer.type`        | `answer.value` 写法                                           | 选项                        |
+| ----------------- | --- | -------------------- | ----------------------------------------------------------- | ------------------------- |
+| `single_choice`   | 单选  | **必须 `single`**      | `["B"]`，恰好一个                                                | 必须有                       |
+| `multiple_choice` | 多选  | `multiple`           | `["A","C"]`，按选项顺序                                           | 必须有                       |
+| `true_false`      | 判断  | `boolean` 或 `single` | `["true"]` / `["false"]`；用 `single` 时必须给 A/B 两个选项并写 `["A"]` | `boolean` 可无；`single` 必须有 |
+| `fill_blank`      | 填空  | `text`               | `["$-1$"]`                                                  | 无                         |
+| `calculation`     | 计算  | `text`               | `["$\\frac{3}{2}$"]`                                        | 无                         |
+| `proof`           | 证明  | `text`               | `["存在 $\\xi\\in(0,1)$ 使 …"]`                                | 无                         |
+| `short_answer`    | 简答  | `text`               | 关键结论                                                        | 无                         |
+| `application`     | 应用  | `text`               | 最终结果                                                        | 无                         |
+| `ordering`        | 排序  | `ordering`           | 按期望顺序列出                                                     | 必须有                       |
 
 校验器的具体规则：
 
@@ -587,12 +586,12 @@ sources:
 
 **规模限制**：
 
-| 项 | 上限 |
-|---|---|
-| 文件数 | 20000 |
-| 解压后总大小 | 512 MB |
-| 解压后总大小 | 不超过可用内存的 1/4 |
-| 压缩比 | >200 倍只警告，不拒绝 |
+| 项      | 上限            |
+| ------ | ------------- |
+| 文件数    | 20000         |
+| 解压后总大小 | 512 MB        |
+| 解压后总大小 | 不超过可用内存的 1/4  |
+| 压缩比    | >200 倍只警告，不拒绝 |
 
 ---
 
@@ -643,12 +642,12 @@ node scripts/mlps/pack.mjs packages/my-package dist-packages/my-package.morrow
 
 `EXAM_SECTIONS` 是固定的真题结构：
 
-| 部分 | 题型 | 题位 | 每题分 |
-|---|---|---|---|
-| 一、选择题 | `single_choice` | 5 | 5 |
-| 二、填空题 | `fill_blank` | 5 | 5 |
-| 三、计算题 | `calculation` | 10 | 8 |
-| 四、应用题与证明题 | `proof` / `application` / `short_answer` | 2 | 10 |
+| 部分        | 题型                                       | 题位  | 每题分 |
+| --------- | ---------------------------------------- | --- | --- |
+| 一、选择题     | `single_choice`                          | 5   | 5   |
+| 二、填空题     | `fill_blank`                             | 5   | 5   |
+| 三、计算题     | `calculation`                            | 10  | 8   |
+| 四、应用题与证明题 | `proof` / `application` / `short_answer` | 2   | 10  |
 
 满分 150，时长 120 分钟。**每个部分内按难度从高到低取题**，取不满就在结果页标注「本卷缺 N 题」，不会静默缩小总分。
 
@@ -665,14 +664,14 @@ node scripts/mlps/pack.mjs packages/my-package dist-packages/my-package.morrow
 
 以 72 个知识点为例：
 
-| 项 | 建议量 |
-|---|---|
-| 知识点 | 每章 5–10 个，每点一篇 ≥400 字正文 |
-| 题目 | 每点 2 道，合计约 2×知识点数 |
-| 解析 | 与题目 1:1（强烈建议 100% 覆盖） |
-| 关系 | 每点至少 1 条前置或相关，总数为知识点数的 1.5–2 倍 |
-| 来源 | 每个引用到的教材/试卷都要登记 |
-| 标签 | 覆盖「章节」「题型」「难度」三个维度 |
+| 项   | 建议量                            |
+| --- | ------------------------------ |
+| 知识点 | 每章 5–10 个，每点一篇 ≥400 字正文        |
+| 题目  | 每点 2 道，合计约 2×知识点数              |
+| 解析  | 与题目 1:1（强烈建议 100% 覆盖）          |
+| 关系  | 每点至少 1 条前置或相关，总数为知识点数的 1.5–2 倍 |
+| 来源  | 每个引用到的教材/试卷都要登记                |
+| 标签  | 覆盖「章节」「题型」「难度」三个维度             |
 
 ---
 
@@ -719,16 +718,16 @@ node scripts/mlps/pack.mjs packages/my-package dist-packages/my-package.morrow
 
 `docs/04-Data/MLPS.md` 与 `Knowledge-Standard.md` 是早期设计稿，部分内容已被实现取代。写包时按右列来。
 
-| 项 | 旧文档 | 现在的真实约束 |
-|---|---|---|
-| 题目 ID | `math_higher_q_000001` | `calculus.limit.q.000001`（反向域名，禁止下划线） |
-| 题型的字段名 | `question_type` | `type` |
-| 难度 | 枚举 `easy/medium/hard` | 整数 1–5 |
-| 来源字段名 | `source_type` | `source.type` |
-| 答案解析 | 写在题目里 | 独立 `solutions/`，按 `question_id` 关联 |
-| 目录 | 有 `exams/`、`materials/`、`past-papers/`、`learning/`、`indexes/` | 客户端不读这些目录，写了也只是普通文件 |
-| 章节 | 多级 `chapters/` 目录树 | `knowledge/index.yaml` 平铺章节，正文在 `knowledge/concepts/` |
-| 打包格式 | 未定 | 7z 容器，扩展名 `.morrow`，条目在根目录 |
+| 项      | 旧文档                                                           | 现在的真实约束                                               |
+| ------ | ------------------------------------------------------------- | ----------------------------------------------------- |
+| 题目 ID  | `math_higher_q_000001`                                        | `calculus.limit.q.000001`（反向域名，禁止下划线）                 |
+| 题型的字段名 | `question_type`                                               | `type`                                                |
+| 难度     | 枚举 `easy/medium/hard`                                         | 整数 1–5                                                |
+| 来源字段名  | `source_type`                                                 | `source.type`                                         |
+| 答案解析   | 写在题目里                                                         | 独立 `solutions/`，按 `question_id` 关联                    |
+| 目录     | 有 `exams/`、`materials/`、`past-papers/`、`learning/`、`indexes/` | 客户端不读这些目录，写了也只是普通文件                                   |
+| 章节     | 多级 `chapters/` 目录树                                            | `knowledge/index.yaml` 平铺章节，正文在 `knowledge/concepts/` |
+| 打包格式   | 未定                                                            | 7z 容器，扩展名 `.morrow`，条目在根目录                            |
 
 `schemas/question.schema.json`（无 `mlps` 前缀）是更早的一版，字段名同样过时。**以 `schemas/mlps/*.schema.json` 为准。**
 
@@ -753,6 +752,6 @@ node scripts/mlps/coverage.mjs <包目录>
 node scripts/mlps/types.mjs <包目录>
 ```
 
-参考实现：`packages/cn.morrow.calculus.shaanxi-upgrade/`（13 章 / 72 知识点 / 33 题 / 33 解析 / 18 关系 / 9 来源）。它是唯一一个能完整通过校验的样例，拿不准格式时直接对照它。
+参考实现：`packages/cn.morrow.calculus.shaanxi-upgrade/`（13 章 / 72 知识点 / 153 题 / 153 解析 / 18 关系 / 9 来源）。它是唯一一个能完整通过校验的样例，拿不准格式时直接对照它。
 
 生成提示词：`prompts/conventions.md`（ID、难度、数学表述、版权口径）、`prompts/question-generation.md`（命题）。
