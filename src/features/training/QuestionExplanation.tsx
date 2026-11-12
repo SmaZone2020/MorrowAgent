@@ -17,7 +17,8 @@ export function QuestionExplanation({
   scale,
 }: {
   question: Question;
-  verdict: Verdict;
+  /** Omitted when nobody answered: a reference shows the answer, not a result. */
+  verdict?: Verdict;
   scale: number;
 }) {
   const explanationImages = imagesAt(question.images, "explanation");
@@ -25,8 +26,10 @@ export function QuestionExplanation({
 
   return (
     <div className="relative overflow-hidden rounded-xl bg-muted/50">
-      <AnswerVerdict verdict={verdict} />
-      <div className="relative flex flex-col gap-3 p-3 pr-16">
+      {verdict ? <AnswerVerdict verdict={verdict} /> : null}
+      <div
+        className={`relative flex flex-col gap-3 p-3 ${verdict ? "pr-16" : ""}`}
+      >
         <div className="flex flex-wrap items-baseline gap-2">
           <span className="text-base text-muted-foreground">正确答案</span>
           <MathText

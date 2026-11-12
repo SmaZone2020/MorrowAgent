@@ -3,6 +3,8 @@ import katex from "katex";
 import "katex/dist/katex.min.css";
 import { ExternalLink } from "@/features/rich/LinkGuard";
 import { ArtifactOverlay } from "@/features/rich/ArtifactFrame";
+import { QuestionReference } from "@/features/knowledge/QuestionReference";
+import { referenceAt } from "@/features/knowledge/reference";
 import { useMediaSource } from "@/features/library/media";
 
 type Inline =
@@ -12,7 +14,8 @@ type Inline =
   | { kind: "em"; children: Inline[] }
   | { kind: "link"; href: string; children: Inline[] }
   | { kind: "image"; src: string; alt: string }
-  | { kind: "math"; value: string; display: boolean };
+  | { kind: "math"; value: string; display: boolean }
+  | { kind: "question"; id: string };
 
 const INLINE_MATH = /^(\$[^$\n]+\$|\\\(.+?\\\))/;
 const LINK = /^\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/;
@@ -101,8 +104,24 @@ function parseInline(source: string): Inline[] {
       continue;
     }
 
+    // A question reference is a pointer into the package, so it becomes a chip
+    // instead of a run of hex in the sentence.
+    if (rest.startsWith("@")) {
+      const questionId = referenceAt(rest);
+      if (questionId) {
+        out.push({ kind: "question", id: questionId });
+        rest = rest.slice(questionId.length + 1);
+        continue;
+      }
+      // Not a question id: the character is prose, and stepping over it keeps
+      // the next token (math, a link) from being swallowed by the text run.
+      pushText("@");
+      rest = rest.slice(1);
+      continue;
+    }
+
     // Consume plain text up to the next thing that might start a token.
-    const marker = rest.slice(1).search(/[$`*_![\\]/);
+    const marker = rest.slice(1).search(/[$`*_![\\@]/);
     const scheme = rest.slice(1).search(/https?:\/\//);
     const candidates = [marker, scheme].filter((index) => index !== -1);
     const take = candidates.length === 0 ? rest.length : Math.min(...candidates) + 1;
@@ -203,6 +222,8 @@ function render(inline: Inline, key: string): ReactNode {
           dangerouslySetInnerHTML={{ __html: renderMath(inline.value, inline.display) }}
         />
       );
+    case "question":
+      return <QuestionReference key={key} id={inline.id} />;
   }
 }
 

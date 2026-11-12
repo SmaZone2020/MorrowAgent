@@ -18,6 +18,7 @@ import { LumiMark } from "@/features/lumi/LumiMark";
 import { TurnAttachments } from "@/features/lumi/AttachmentPreview";
 import { QuizTurn, isQuizCall } from "@/features/lumi/QuizTurn";
 import { TurnActions } from "@/features/lumi/TurnActions";
+import { TextWithReferences } from "@/features/knowledge/QuestionReference";
 import {
   callNames,
   deletionScope,
@@ -228,7 +229,7 @@ export function MessageList({
                 >
                   <TurnAttachments attachments={turn.attachments ?? []} />
                   <MessageBubbleContent className="whitespace-pre-wrap text-base">
-                    {turn.content}
+                    <TextWithReferences text={turn.content} />
                   </MessageBubbleContent>
                 </MessageBubble>
                 {editingTurnId === turn.id ? null : (

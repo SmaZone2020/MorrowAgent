@@ -102,6 +102,17 @@ export function useKnowledge(): KnowledgeIndex {
   return index;
 }
 
+/**
+ * The same index, or null when there is nothing loaded.
+ *
+ * A renderer that mentions questions can appear before a package is opened
+ * (the browser preview, an error page). Throwing there would turn a missing
+ * badge into a blank screen, so those callers ask for the optional form.
+ */
+export function useKnowledgeOptional(): KnowledgeIndex | null {
+  return useContext(WorkspaceContext);
+}
+
 /** The workspace id the current route belongs to. */
 export function useWorkspaceId(): string {
   return useKnowledge().view.workspaceId;
