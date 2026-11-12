@@ -144,3 +144,7 @@ dist
 /knowledge
 /packages
 /dist-packages
+
+# Authoring prompts are working material for producing content, not part of the
+# shipped project. They stay on the author's machine.
+/prompts
