@@ -1,17 +1,8 @@
 import { MathText } from "@/components/MathText";
 import { ContentFigures } from "@/components/ContentFigure";
 import { QuestionExplanation } from "@/features/training/QuestionExplanation";
+import { questionTypeLabel } from "@/features/knowledge/questionTypes";
 import { imagesAt, type Question } from "@/features/knowledge";
-
-const TYPE_LABEL: Record<string, string> = {
-  single_choice: "选择",
-  fill_blank: "填空",
-  calculation: "计算",
-  proof: "证明",
-  true_false: "判断",
-  short_answer: "简答",
-  application: "应用",
-};
 
 /**
  * A question read as a page, not as an exercise.
@@ -23,12 +14,12 @@ const TYPE_LABEL: Record<string, string> = {
  */
 export function QuestionPreview({ question }: { question: Question }) {
   const stemImages = imagesAt(question.images, "stem");
-  const kind = TYPE_LABEL[question.questionType] ?? "题目";
+  const kind = questionTypeLabel(question.questionType);
 
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-        <span>{kind}题</span>
+        <span>{kind}</span>
         <span aria-hidden="true">·</span>
         <span>难度 {question.difficulty}</span>
         {question.sourceReference ? (

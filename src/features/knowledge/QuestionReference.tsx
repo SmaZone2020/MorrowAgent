@@ -13,11 +13,22 @@ import { useKnowledgeOptional } from "@/features/workspace/WorkspaceContext";
  * `@calculus.limit.q.000001` as a chip.
  *
  * The full id is unreadable in a sentence, so the chip shows the question
- * number and the tooltip says which question it is. Clicking opens the
- * question itself: a reference is a pointer, and the reader wants to see the
- * problem rather than a longer id.
+ * number behind an `@` and the tooltip says which question it is. Clicking
+ * opens the question itself: a reference is a pointer, and the reader wants to
+ * see the problem rather than a longer id.
+ *
+ * `hint` is for callers that already know something worth saying about the
+ * question — the knowledge page passes its type — so the tooltip carries that
+ * instead of repeating the id twice.
  */
-export function QuestionReference({ id }: { id: string }) {
+export function QuestionReference({
+  id,
+  hint,
+}: {
+  id: string;
+  /** A short qualifier shown before the id, e.g. "选择题". */
+  hint?: string;
+}) {
   const index = useKnowledgeOptional();
   const question = index?.questionsById.get(id);
   const [open, setOpen] = useState(false);
@@ -29,14 +40,16 @@ export function QuestionReference({ id }: { id: string }) {
 
   return (
     <>
-      <Tooltip content={id} side="top">
+      <Tooltip content={hint ? `${hint} · ${id}` : id} side="top">
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="mx-0.5 inline-flex max-w-full items-center gap-1 rounded-full border border-border/70 bg-muted/60 px-2 py-0.5 align-baseline text-[0.92em] font-medium text-foreground outline-none transition-colors hover:border-border-strong hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+          className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-border/70 bg-muted/60 px-2.5 py-1 align-baseline text-sm font-medium text-foreground outline-none transition-colors hover:border-border-strong hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
         >
           <FileText aria-hidden="true" className="size-3.5 shrink-0 opacity-70" />
-          <span className="truncate tabular-nums">{referenceLabel(id)}</span>
+          <span className="truncate tabular-nums">
+            @{referenceLabel(id)}
+          </span>
         </button>
       </Tooltip>
 

@@ -6,6 +6,8 @@ import { InlineText } from "@/features/rich/InlineText";
 import { EmptyState } from "@/components/EmptyState";
 import { findPoint, questionsFor } from "@/features/knowledge";
 import type { KnowledgeIndex, KnowledgePoint } from "@/features/knowledge";
+import { QuestionReference } from "@/features/knowledge/QuestionReference";
+import { questionTypeLabel } from "@/features/knowledge/questionTypes";
 import { ContentFigures } from "@/components/ContentFigure";
 import { workspacePath } from "@/app/navigation";
 import { useWorkspaceId } from "@/features/workspace/WorkspaceContext";
@@ -263,13 +265,26 @@ export function KnowledgeDocument({
       ) : null}
 
       <Section title="相关题目">
-        <AnimatedBadge
-          status={related.length > 0 ? "info" : "neutral"}
-          size="sm"
-          contentKey={related.length}
-        >
-          {related.length > 0 ? `${related.length} 道` : "暂无题目"}
-        </AnimatedBadge>
+        {related.length > 0 ? (
+          // A reference the reader cannot click is just a number. Each question
+          // opens in place, so reading a point and checking the problems it is
+          // examined with do not need a trip to the drill page.
+          <div className="flex flex-wrap gap-2">
+            {related.map((question) => (
+              <QuestionReference
+                key={question.id}
+                id={question.id}
+                hint={questionTypeLabel(question.questionType)}
+              />
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            mood="thinking"
+            title="这个知识点还没有配题"
+            size="size-16"
+          />
+        )}
       </Section>
     </article>
   );

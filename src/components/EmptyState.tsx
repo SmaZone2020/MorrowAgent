@@ -14,6 +14,7 @@ export function EmptyState({
   surface = "card",
   action,
   className,
+  size = "size-24",
 }: {
   title: string;
   /** Lumi's expression, e.g. "confused", "sad", "proud", "thinking". */
@@ -22,6 +23,8 @@ export function EmptyState({
   surface?: "page" | "card";
   action?: ReactNode;
   className?: string;
+  /** Lumi's footprint; a section-sized empty state wants a smaller one. */
+  size?: string;
 }) {
   return (
     <div
@@ -30,7 +33,7 @@ export function EmptyState({
         className,
       )}
     >
-      <LumiMood state={mood} surface={surface} className="size-24" />
+      <LumiMood state={mood} surface={surface} className={size} />
       <p className="text-sm font-medium text-foreground">{title}</p>
       {action}
     </div>
