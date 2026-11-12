@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { ArrowRight } from "@gravity-ui/icons";
+import { ArrowRight, CircleCheck } from "@gravity-ui/icons";
 import { motion, useReducedMotion } from "motion/react";
 import { Button } from "@/vendor/beui/components/motion/button";
-import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
+import { Loader } from "@/vendor/beui/components/motion/loader";
 import { Input } from "@/vendor/beui/components/motion/input";
 import { Modal } from "@/components/Modal";
 import { InfoHint } from "@/components/InfoHint";
@@ -276,17 +276,32 @@ export function OnboardingDialog({
             }}
             footer={
               phase.kind === "checking" ? (
-                <AnimatedBadge status="loading" size="sm" contentKey="checking">
-                  正在校验 {fileName(phase.file)}
-                </AnimatedBadge>
+                <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader
+                    variant="dots"
+                    size={16}
+                    label={`正在校验 ${fileName(phase.file)}`}
+                  />
+                  <span className="truncate" aria-hidden="true">
+                    正在校验 {fileName(phase.file)}
+                  </span>
+                </span>
               ) : phase.kind === "installing" ? (
-                <AnimatedBadge status="loading" size="sm" contentKey="installing">
-                  正在安装 {phase.name}
-                </AnimatedBadge>
+                <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader
+                    variant="dots"
+                    size={16}
+                    label={`正在安装 ${phase.name}`}
+                  />
+                  <span className="truncate" aria-hidden="true">
+                    正在安装 {phase.name}
+                  </span>
+                </span>
               ) : phase.kind === "done" ? (
-                <AnimatedBadge status="success" size="sm" contentKey="installed">
-                  已加入书架，点「完成初始化」结束
-                </AnimatedBadge>
+                <span className="flex items-center gap-2 text-sm text-success">
+                  <CircleCheck className="size-4 shrink-0" aria-hidden="true" />
+                  <span>已加入书架，点「完成初始化」结束</span>
+                </span>
               ) : phase.kind === "failed" ? (
                 <div className="flex items-center gap-2">
                   <p className="text-sm leading-6 text-destructive">

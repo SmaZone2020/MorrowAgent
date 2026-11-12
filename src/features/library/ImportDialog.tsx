@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { CircleCheck, CircleXmark } from "@gravity-ui/icons";
 import { Button } from "@/vendor/beui/components/motion/button";
+import { Loader } from "@/vendor/beui/components/motion/loader";
 import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
 import {
   Alert,
@@ -191,18 +192,18 @@ export function ImportDialog({
         />
       ) : phase.kind === "checking" ? (
         <StatusLine
-          status="loading"
+          loading
           label="正在校验学习包"
           detail={fileName(phase.file)}
         />
       ) : phase.kind === "installing" ? (
         <StatusLine
-          status="loading"
+          loading
           label="正在安装学习包"
           detail={phase.report.summary?.name ?? ""}
         />
       ) : phase.kind === "failed" ? (
-        <StatusLine status="danger" label="导入失败" detail={phase.reason} />
+        <StatusLine label="导入失败" detail={phase.reason} />
       ) : (
         <>
           <CheckList report={phase.report} />
@@ -248,19 +249,26 @@ function ChooseStep({
 }
 
 function StatusLine({
-  status,
+  loading = false,
   label,
   detail,
 }: {
-  status: "loading" | "danger";
+  loading?: boolean;
   label: string;
   detail: string;
 }) {
   return (
     <div className="flex flex-col gap-2">
-      <AnimatedBadge status={status} size="sm" contentKey={label}>
-        {label}
-      </AnimatedBadge>
+      <span
+        className={
+          loading
+            ? "flex items-center gap-2 text-sm text-muted-foreground"
+            : "flex items-center gap-2 text-sm text-destructive"
+        }
+      >
+        {loading ? <Loader variant="dots" size={16} label={label} /> : null}
+        <span aria-hidden={loading ? true : undefined}>{label}</span>
+      </span>
       {detail ? (
         <p className="text-sm leading-6 break-all text-muted-foreground">
           {detail}
