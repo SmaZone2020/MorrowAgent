@@ -16,6 +16,11 @@ pub struct Preferences {
     /// exam and one learning a topic want opposite answers.
     #[serde(rename = "teachingStyle", default = "default_teaching_style")]
     pub TeachingStyle: String,
+    /// How hard a model that supports thinking should think: `off`, `low`,
+    /// `high` or `max`. Kept app-wide because it says something about the
+    /// learner's patience rather than about one conversation.
+    #[serde(rename = "thinking", default = "default_thinking")]
+    pub Thinking: String,
 }
 
 fn default_temperature() -> f64 {
@@ -36,6 +41,21 @@ fn default_teaching_style() -> String {
     "guided".to_string()
 }
 
+fn default_thinking() -> String {
+    // DeepSeek thinks by default; matching that means an upgrade does not
+    // silently make the tutor dumber.
+    "high".to_string()
+}
+
+/// The thinking levels the request builder understands. Anything else falls
+/// back rather than sending an effort the endpoint never defined.
+fn clamp_thinking(value: &str) -> String {
+    match value {
+        "off" | "low" | "high" | "max" => value.to_string(),
+        _ => default_thinking(),
+    }
+}
+
 /// The three styles the prompt registry understands; anything else falls back
 /// rather than being sent to the model as an unknown instruction.
 fn clamp_style(value: &str) -> String {
@@ -52,6 +72,7 @@ impl Default for Preferences {
             MaxTokens: default_max_tokens(),
             QuestionScale: default_question_scale(),
             TeachingStyle: default_teaching_style(),
+            Thinking: default_thinking(),
         }
     }
 }
@@ -84,6 +105,7 @@ pub fn load(app: &tauri::AppHandle) -> Result<Preferences, String> {
     let mut loaded: Preferences = serde_json::from_str(&raw).unwrap_or_default();
     loaded.QuestionScale = clamp_scale(loaded.QuestionScale);
     loaded.TeachingStyle = clamp_style(&loaded.TeachingStyle);
+    loaded.Thinking = clamp_thinking(&loaded.Thinking);
     Ok(loaded)
 }
 
@@ -91,6 +113,7 @@ pub fn save(app: &tauri::AppHandle, preferences: &Preferences) -> Result<(), Str
     let mut sanitized = preferences.clone();
     sanitized.QuestionScale = clamp_scale(sanitized.QuestionScale);
     sanitized.TeachingStyle = clamp_style(&sanitized.TeachingStyle);
+    sanitized.Thinking = clamp_thinking(&sanitized.Thinking);
     let json = serde_json::to_string_pretty(&sanitized).map_err(|error| error.to_string())?;
     std::fs::write(path(app)?, json).map_err(|error| format!("写入偏好失败：{}", error))
 }

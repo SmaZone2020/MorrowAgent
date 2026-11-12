@@ -18,6 +18,10 @@ pub struct Delta {
     pub RequestId: String,
     #[serde(rename = "delta", skip_serializing_if = "Option::is_none")]
     pub Delta: Option<String>,
+    /// A fragment of the chain of thought. DeepSeek streams it beside the
+    /// answer; the webview shows it behind a disclosure.
+    #[serde(rename = "reasoning", skip_serializing_if = "Option::is_none")]
+    pub Reasoning: Option<String>,
     /// Sent once, on the frame that ends the reply, when the model asked for
     /// tools. The caller runs them and sends the results back as new turns.
     #[serde(rename = "toolCalls", skip_serializing_if = "Option::is_none")]
@@ -33,6 +37,18 @@ impl Delta {
         Self {
             RequestId: request_id.to_string(),
             Delta: Some(text),
+            Reasoning: None,
+            ToolCalls: None,
+            Done: false,
+            Error: None,
+        }
+    }
+
+    fn thinking(request_id: &str, text: String) -> Self {
+        Self {
+            RequestId: request_id.to_string(),
+            Delta: None,
+            Reasoning: Some(text),
             ToolCalls: None,
             Done: false,
             Error: None,
@@ -43,6 +59,7 @@ impl Delta {
         Self {
             RequestId: request_id.to_string(),
             Delta: None,
+            Reasoning: None,
             ToolCalls: (!tool_calls.is_empty()).then_some(tool_calls),
             Done: true,
             Error: None,
@@ -53,6 +70,7 @@ impl Delta {
         Self {
             RequestId: request_id.to_string(),
             Delta: None,
+            Reasoning: None,
             ToolCalls: None,
             Done: true,
             Error: Some(message),
@@ -151,6 +169,9 @@ pub async fn run(
                         WireEvent::Text(text) => {
                             let _ = app.emit(DELTA_EVENT, Delta::chunk(&request_id, text));
                         }
+                        WireEvent::Reasoning(text) => {
+                            let _ = app.emit(DELTA_EVENT, Delta::thinking(&request_id, text));
+                        }
                         other => tools.apply(&other),
                     }
                 }
@@ -164,6 +185,9 @@ pub async fn run(
             match event {
                 WireEvent::Text(text) => {
                     let _ = app.emit(DELTA_EVENT, Delta::chunk(&request_id, text));
+                }
+                WireEvent::Reasoning(text) => {
+                    let _ = app.emit(DELTA_EVENT, Delta::thinking(&request_id, text));
                 }
                 other => tools.apply(&other),
             }

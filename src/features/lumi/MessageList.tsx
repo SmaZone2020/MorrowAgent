@@ -1,4 +1,5 @@
-import { CircleExclamation } from "@gravity-ui/icons";
+import { useState } from "react";
+import { ChevronDown, CircleExclamation } from "@gravity-ui/icons";
 import {
   Message,
   MessageAvatar,
@@ -9,6 +10,7 @@ import {
 import { MessageScroller } from "@/vendor/beui/components/agents/message-scroller";
 import { StreamingResponse } from "@/vendor/beui/components/agents/streaming-response";
 import { ReasoningText } from "@/vendor/beui/components/agents/loading-states";
+import { AgentDisclosure } from "@/vendor/beui/components/agents/agent-disclosure";
 import {
   ToolResult,
   ToolResultOutput,
@@ -54,6 +56,45 @@ const TOOL_LABEL: Record<string, string> = {
   read_question: "读取题目",
   list_wrong_questions: "查看错题本",
 };
+
+/**
+ * The chain of thought behind one answer.
+ *
+ * Folded by default: the point of thinking is the answer, and a wall of
+ * deliberation above it would push the reply off screen. It stays one click
+ * away because "how did you get that" is a real question, and it is exactly
+ * what a learner asks when an answer looks wrong.
+ */
+function ReasoningPanel({
+  text,
+  pending,
+}: {
+  text: string;
+  pending: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="flex flex-col">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        className="flex w-fit items-center gap-1 rounded-lg py-0.5 text-sm text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <ChevronDown
+          className={`size-3.5 transition-transform duration-200 ${open ? "rotate-0" : "-rotate-90"}`}
+        />
+        {pending ? "正在思考" : "思考过程"}
+      </button>
+      <AgentDisclosure open={open}>
+        <p className="mb-1 mt-1 whitespace-pre-wrap border-l-2 border-border pl-3 text-sm leading-6 text-muted-foreground">
+          {text}
+        </p>
+      </AgentDisclosure>
+    </div>
+  );
+}
 
 /**
  * A tool result is not something the user said, so it is not a bubble: one
@@ -117,15 +158,21 @@ function AssistantBody({
         }
         // A reply that has not written anything yet: the model is reading the
         // tool results, which is still work in progress rather than silence.
+        // While it is thinking, the reasoning itself is the progress report.
         if (turn.pending && !turn.content) {
           return (
-            <ReasoningText
-              key={turn.id}
-              phrases={THINKING_PHRASES}
-              variant="cascade"
-              interval={2200}
-              className="py-1"
-            />
+            <div key={turn.id} className="flex flex-col gap-1">
+              {turn.reasoning ? (
+                <ReasoningPanel text={turn.reasoning} pending />
+              ) : (
+                <ReasoningText
+                  phrases={THINKING_PHRASES}
+                  variant="cascade"
+                  interval={2200}
+                  className="py-1"
+                />
+              )}
+            </div>
           );
         }
         return (
@@ -135,6 +182,9 @@ function AssistantBody({
                 <CircleExclamation className="size-3.5 shrink-0" />
                 {turn.note}
               </p>
+            ) : null}
+            {turn.reasoning ? (
+              <ReasoningPanel text={turn.reasoning} pending={turn.pending === true} />
             ) : null}
             {turn.content ? (
               <StreamingResponse
@@ -248,6 +298,7 @@ export function MessageList({
           group.pending &&
           !group.text &&
           !group.turns.some((turn) => turn.toolCallId);
+        const liveReasoning = group.turns.find((turn) => turn.reasoning)?.reasoning;
 
         return (
           <Message
@@ -259,12 +310,16 @@ export function MessageList({
             {mark}
             <MessageContent>
               {thinking ? (
-                <ReasoningText
-                  phrases={THINKING_PHRASES}
-                  variant="cascade"
-                  interval={2200}
-                  className="py-1"
-                />
+                liveReasoning ? (
+                  <ReasoningPanel text={liveReasoning} pending />
+                ) : (
+                  <ReasoningText
+                    phrases={THINKING_PHRASES}
+                    variant="cascade"
+                    interval={2200}
+                    className="py-1"
+                  />
+                )
               ) : (
                 <AssistantBody
                   group={group}

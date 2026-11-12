@@ -83,10 +83,14 @@ export function GeneralSettingsPage() {
                   <TabsTrigger
                     key={choice.value}
                     value={choice.value}
-                    icon={<choice.icon className="size-4" />}
-                    className="px-3 py-1"
+                    aria-label={choice.label}
+                    title={choice.label}
+                    // The icon is the child rather than the `icon` prop: that
+                    // slot adds the gap a label would need, which would leave a
+                    // lone glyph sitting off-centre in the pill.
+                    className="px-3 py-1.5"
                   >
-                    {choice.label}
+                    <choice.icon className="size-4" />
                   </TabsTrigger>
                 ))}
               </TabsList>

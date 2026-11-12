@@ -8,6 +8,11 @@ export interface Preferences {
   questionScale: number;
   /** How Lumi teaches: `guided`, `direct` or `socratic`. */
   teachingStyle: string;
+  /**
+   * How hard a thinking model should think: `off`, `low`, `high` or `max`.
+   * Only DeepSeek understands the switch; other providers never see it.
+   */
+  thinking: string;
 }
 
 export interface StoreStats {
@@ -25,6 +30,7 @@ export const defaultPreferences: Preferences = {
   maxTokens: 2048,
   questionScale: 1,
   teachingStyle: "guided",
+  thinking: "high",
 };
 
 export async function loadPreferences(): Promise<Preferences> {

@@ -20,6 +20,9 @@ import { useToolContext } from "@/features/lumi/useToolContext";
 import { useLearnerProfile } from "@/features/lumi/useLearnerProfile";
 import { greetingFor } from "@/features/lumi/greetings";
 import { useProviderStatus } from "@/features/settings/providerStatus";
+import { usePreferences } from "@/features/settings/preferencesStore";
+import { supportsThinking } from "@/features/settings/thinking";
+import { ThinkingControl } from "@/features/lumi/ThinkingControl";
 import { usePersistedState } from "@/features/uiState/usePersistedState";
 import { useWorkspaceId } from "@/features/workspace/WorkspaceContext";
 import { workspaceScope } from "@/features/uiState/scope";
@@ -51,6 +54,16 @@ export function LumiPage() {
     );
     return active?.supportsVision !== false;
   });
+  // Only the builtin DeepSeek endpoint understands the thinking field, so the
+  // switch is not offered for the other providers at all.
+  const thinkingAvailable = useProviderStatus((state) => {
+    const active = state.providers.find(
+      (provider) => provider.id === state.activeProviderId,
+    );
+    return active ? supportsThinking(active) : false;
+  });
+  const thinking = usePreferences((state) => state.thinking);
+  const updatePreferences = usePreferences((state) => state.update);
   const draftAttachments = useAttachmentDraft(vision);
   const attachments = draftAttachments.attachments;
   // The picker is a panel above the composer, not a permanent band: it opens
@@ -251,27 +264,36 @@ export function LumiPage() {
                 onStop={stop}
                 className="bg-card shadow-surface"
                 leadingAction={
-                  <Tooltip
-                    content={
-                      vision
-                        ? "添加图片或文档"
-                        : "当前模型不支持图片，只能添加文档"
-                    }
-                    side="top"
-                  >
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      aria-label="添加附件"
-                      aria-pressed={pickerOpen}
-                      disabled={Boolean(pending) || sending || draftAttachments.reading}
-                      className="size-8 rounded-full p-0"
-                      onClick={() => setPickerOpen((open) => !open)}
+                  <div className="flex items-center gap-1">
+                    <Tooltip
+                      content={
+                        vision
+                          ? "添加图片或文档"
+                          : "当前模型不支持图片，只能添加文档"
+                      }
+                      side="top"
                     >
-                      <Paperclip className="size-4" />
-                    </Button>
-                  </Tooltip>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        aria-label="添加附件"
+                        aria-pressed={pickerOpen}
+                        disabled={Boolean(pending) || sending || draftAttachments.reading}
+                        className="size-8 rounded-full p-0"
+                        onClick={() => setPickerOpen((open) => !open)}
+                      >
+                        <Paperclip className="size-4" />
+                      </Button>
+                    </Tooltip>
+                    {thinkingAvailable ? (
+                      <ThinkingControl
+                        value={thinking}
+                        disabled={sending}
+                        onChange={(level) => updatePreferences({ thinking: level })}
+                      />
+                    ) : null}
+                  </div>
                 }
               />
             </div>

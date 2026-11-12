@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-use crate::provider::types::{ChatMessage, ChatRequest, ContentPart, MessageContent, ProviderConfig};
+use crate::provider::types::{
+    ChatMessage, ChatRequest, ContentPart, MessageContent, ProviderConfig, ThinkingConfig,
+};
 
 /// One HTTP request, fully prepared for a specific protocol. Keeping the wire
 /// details here means the stream loop never branches on protocol.
@@ -145,15 +147,23 @@ fn tool_result_value(protocol: Protocol, message: &ChatMessage) -> serde_json::V
 /// echoed back so the model can match its own results to them.
 fn assistant_tool_calls_value(protocol: Protocol, message: &ChatMessage) -> serde_json::Value {
     match protocol {
-        Protocol::OpenaiChat => serde_json::json!({
-            "role": "assistant",
-            "content": message.Content.flatten(),
-            "tool_calls": message.ToolCalls.iter().map(|call| serde_json::json!({
-                "id": call.Id,
-                "type": "function",
-                "function": { "name": call.Name, "arguments": call.Arguments },
-            })).collect::<Vec<_>>(),
-        }),
+        Protocol::OpenaiChat => {
+            let mut value = serde_json::json!({
+                "role": "assistant",
+                "content": message.Content.flatten(),
+                "tool_calls": message.ToolCalls.iter().map(|call| serde_json::json!({
+                    "id": call.Id,
+                    "type": "function",
+                    "function": { "name": call.Name, "arguments": call.Arguments },
+                })).collect::<Vec<_>>(),
+            });
+            // A tool-using history has to keep the reasoning that led to the
+            // call; without it the endpoint answers 400.
+            if let Some(reasoning) = message.ReasoningContent.as_ref() {
+                value["reasoning_content"] = serde_json::json!(reasoning);
+            }
+            value
+        }
         Protocol::OpenaiResponses => serde_json::json!({
             "role": "assistant",
             "content": [{ "type": "output_text", "text": message.Content.flatten() }],
@@ -165,25 +175,34 @@ fn assistant_tool_calls_value(protocol: Protocol, message: &ChatMessage) -> serd
             })).collect::<Vec<_>>(),
         }),
         Protocol::Anthropic => {
-            let mut blocks: Vec<serde_json::Value> = message
-                .ToolCalls
-                .iter()
-                .map(|call| {
-                    // `input` is an object, but the call arrives as a JSON
-                    // string; an unparsable one becomes `{}` rather than a 400.
-                    let input: serde_json::Value =
-                        serde_json::from_str(&call.Arguments).unwrap_or(serde_json::json!({}));
-                    serde_json::json!({
-                        "type": "tool_use",
-                        "id": call.Id,
-                        "name": call.Name,
-                        "input": input,
-                    })
-                })
-                .collect();
+            let mut blocks: Vec<serde_json::Value> = Vec::new();
+            // Anthropic wants the thinking blocks back ahead of the tool calls
+            // they led to. The endpoint this app talks to does not sign them,
+            // so there is no signature to replay; one that insists on a
+            // signature is pointed at `openai-chat` instead.
+            if let Some(reasoning) = message.ReasoningContent.as_ref() {
+                if !reasoning.is_empty() {
+                    blocks.push(serde_json::json!({
+                        "type": "thinking",
+                        "thinking": reasoning,
+                    }));
+                }
+            }
+            for call in message.ToolCalls.iter() {
+                // `input` is an object, but the call arrives as a JSON
+                // string; an unparsable one becomes `{}` rather than a 400.
+                let input: serde_json::Value =
+                    serde_json::from_str(&call.Arguments).unwrap_or(serde_json::json!({}));
+                blocks.push(serde_json::json!({
+                    "type": "tool_use",
+                    "id": call.Id,
+                    "name": call.Name,
+                    "input": input,
+                }));
+            }
             let text = message.Content.flatten();
             if !text.is_empty() {
-                blocks.insert(0, serde_json::json!({ "type": "text", "text": text }));
+                blocks.push(serde_json::json!({ "type": "text", "text": text }));
             }
             serde_json::json!({ "role": "assistant", "content": blocks })
         }
@@ -197,10 +216,61 @@ fn turn_value(protocol: Protocol, message: &ChatMessage) -> serde_json::Value {
     if !message.ToolCalls.is_empty() {
         return assistant_tool_calls_value(protocol, message);
     }
-    serde_json::json!({
+    let mut value = serde_json::json!({
         "role": message.Role,
         "content": content_value(protocol, &message.Content),
-    })
+    });
+    // A plain assistant turn only carries reasoning for the chat protocol; the
+    // others either re-derive it or do not accept it in that position.
+    if protocol == Protocol::OpenaiChat {
+        if let Some(reasoning) = message.ReasoningContent.as_ref() {
+            value["reasoning_content"] = serde_json::json!(reasoning);
+        }
+    }
+    value
+}
+
+/// Applies the thinking switch to a request body.
+///
+/// The three protocols spell it differently, and a model that does not think
+/// must never see the field: a plain provider would answer 400 on an unknown
+/// parameter rather than ignore it.
+fn apply_thinking(protocol: Protocol, body: &mut serde_json::Value, thinking: &ThinkingConfig) {
+    let enabled = thinking.Kind == "enabled";
+    let effort = thinking.Effort.clone();
+
+    match protocol {
+        Protocol::OpenaiChat => {
+            body["thinking"] = serde_json::json!({
+                "type": if enabled { "enabled" } else { "disabled" },
+            });
+            if enabled {
+                if let Some(effort) = effort {
+                    body["reasoning_effort"] = serde_json::json!(effort);
+                }
+                // Thinking mode does not honour sampling knobs, so sending them
+                // would only suggest a control the endpoint ignores.
+                if let Some(object) = body.as_object_mut() {
+                    object.remove("temperature");
+                }
+            }
+        }
+        Protocol::OpenaiResponses => {
+            body["reasoning"] = serde_json::json!({
+                "effort": if enabled { effort.unwrap_or_else(|| "high".to_string()) } else { "none".to_string() },
+            });
+        }
+        Protocol::Anthropic => {
+            body["thinking"] = serde_json::json!({
+                "type": if enabled { "enabled" } else { "disabled" },
+            });
+            if enabled {
+                if let Some(effort) = effort {
+                    body["output_config"] = serde_json::json!({ "effort": effort });
+                }
+            }
+        }
+    }
 }
 
 pub fn prepare(config: &ProviderConfig, request: &ChatRequest) -> Prepared {
@@ -225,6 +295,9 @@ pub fn prepare(config: &ProviderConfig, request: &ChatRequest) -> Prepared {
                 .collect::<Vec<_>>());
             if let Some(tools) = tools {
                 body["tools"] = tools;
+            }
+            if let Some(thinking) = request.Thinking.as_ref() {
+                apply_thinking(config.Protocol, &mut body, thinking);
             }
             Prepared {
                 Url: format!("{}/chat/completions", base),
@@ -277,6 +350,9 @@ pub fn prepare(config: &ProviderConfig, request: &ChatRequest) -> Prepared {
             if let Some(tools) = tools {
                 body["tools"] = tools;
             }
+            if let Some(thinking) = request.Thinking.as_ref() {
+                apply_thinking(config.Protocol, &mut body, thinking);
+            }
             Prepared {
                 Url: format!("{}/responses", base),
                 Headers: Vec::new(),
@@ -297,6 +373,9 @@ pub fn prepare(config: &ProviderConfig, request: &ChatRequest) -> Prepared {
             if let Some(tools) = tools {
                 body["tools"] = tools;
             }
+            if let Some(thinking) = request.Thinking.as_ref() {
+                apply_thinking(config.Protocol, &mut body, thinking);
+            }
             Prepared {
                 Url: format!("{}/messages", base),
                 Headers: vec![
@@ -313,7 +392,8 @@ pub fn prepare(config: &ProviderConfig, request: &ChatRequest) -> Prepared {
 mod tests {
     use super::{prepare, Protocol};
     use crate::provider::types::{
-        ChatMessage, ChatRequest, ContentPart, MessageContent, ProviderConfig, ToolCall, ToolDef,
+        ChatMessage, ChatRequest, ContentPart, MessageContent, ProviderConfig, ThinkingConfig,
+        ToolCall, ToolDef,
     };
 
     fn config(protocol: Protocol) -> ProviderConfig {
@@ -331,6 +411,7 @@ mod tests {
             Temperature: None,
             MaxTokens: None,
             Tools: Vec::new(),
+            Thinking: None,
         }
     }
 
@@ -340,6 +421,7 @@ mod tests {
             Content: MessageContent::Text(text.to_string()),
             ToolCalls: Vec::new(),
             ToolCallId: None,
+            ReasoningContent: None,
         }
     }
 
@@ -403,6 +485,7 @@ mod tests {
             ]),
             ToolCalls: Vec::new(),
             ToolCallId: None,
+            ReasoningContent: None,
         };
 
         let chat = prepare(&config(Protocol::OpenaiChat), &request(vec![message.clone()]));
@@ -429,12 +512,14 @@ mod tests {
                 Arguments: "{}".to_string(),
             }],
             ToolCallId: None,
+            ReasoningContent: None,
         };
         let result = ChatMessage {
             Role: "tool".to_string(),
             Content: MessageContent::Text(r#"{"answered":1}"#.to_string()),
             ToolCalls: Vec::new(),
             ToolCallId: Some("call_1".to_string()),
+            ReasoningContent: None,
         };
 
         let chat = prepare(
@@ -451,6 +536,63 @@ mod tests {
         assert_eq!(
             anthropic.Body["messages"][1]["content"][0]["tool_use_id"],
             "call_1"
+        );
+    }
+
+    #[test]
+    fn thinking_is_spelled_per_protocol_and_never_sent_when_off() {
+        let thinking = |kind: &str, effort: Option<&str>| ThinkingConfig {
+            Kind: kind.to_string(),
+            Effort: effort.map(str::to_string),
+        };
+        let with = |thinking| ChatRequest {
+            Thinking: Some(thinking),
+            ..request(vec![text_message("user", "hi")])
+        };
+
+        let chat = prepare(&config(Protocol::OpenaiChat), &with(thinking("enabled", Some("low"))));
+        assert_eq!(chat.Body["thinking"]["type"], "enabled");
+        assert_eq!(chat.Body["reasoning_effort"], "low");
+
+        // Off has to be explicit: an omitted field would mean "on" for DeepSeek.
+        let off = prepare(&config(Protocol::OpenaiChat), &with(thinking("disabled", None)));
+        assert_eq!(off.Body["thinking"]["type"], "disabled");
+        assert!(off.Body.get("reasoning_effort").is_none());
+
+        let responses = prepare(&config(Protocol::OpenaiResponses), &with(thinking("disabled", None)));
+        assert_eq!(responses.Body["reasoning"]["effort"], "none");
+
+        let anthropic = prepare(&config(Protocol::Anthropic), &with(thinking("enabled", Some("max"))));
+        assert_eq!(anthropic.Body["thinking"]["type"], "enabled");
+        assert_eq!(anthropic.Body["output_config"]["effort"], "max");
+    }
+
+    #[test]
+    fn a_tool_turn_without_thinking_carries_no_reasoning_field() {
+        let plain = prepare(
+            &config(Protocol::OpenaiChat),
+            &request(vec![text_message("assistant", "hi")]),
+        );
+        assert!(plain.Body["messages"][0].get("reasoning_content").is_none());
+    }
+
+    #[test]
+    fn reasoning_travels_back_on_a_tool_using_turn() {
+        let assistant = ChatMessage {
+            Role: "assistant".to_string(),
+            Content: MessageContent::Text(String::new()),
+            ToolCalls: vec![ToolCall {
+                Id: "call_1".to_string(),
+                Name: "search_knowledge".to_string(),
+                Arguments: "{}".to_string(),
+            }],
+            ToolCallId: None,
+            ReasoningContent: Some("先查一下".to_string()),
+        };
+        let prepared = prepare(&config(Protocol::OpenaiChat), &request(vec![assistant]));
+        assert_eq!(
+            prepared.Body["messages"][0]["reasoning_content"],
+            "先查一下"
         );
     }
 }

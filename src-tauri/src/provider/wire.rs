@@ -11,6 +11,8 @@ use crate::provider::types::ToolCall;
 /// encodes it: the JSON is never complete until the last fragment.
 pub enum WireEvent {
     Text(String),
+    /// A fragment of the model's chain of thought, kept apart from the answer.
+    Reasoning(String),
     ToolStart {
         Key: String,
         Id: String,
@@ -48,6 +50,7 @@ impl ToolAccumulator {
                 }
             }
             WireEvent::Text(_) => {}
+            WireEvent::Reasoning(_) => {}
         }
     }
 
@@ -93,6 +96,13 @@ pub fn read_openai_chat(line: &str) -> Vec<WireEvent> {
     let mut events = Vec::new();
     if let Some(content) = delta.get("content").and_then(Value::as_str) {
         events.extend(text(content));
+    }
+    // DeepSeek streams the chain of thought beside `content`, on the same
+    // delta. It is kept apart so the answer is not polluted by it.
+    if let Some(reasoning) = delta.get("reasoning_content").and_then(Value::as_str) {
+        if !reasoning.is_empty() {
+            events.push(WireEvent::Reasoning(reasoning.to_string()));
+        }
     }
     // Tool calls stream in one or more entries keyed by `index`.
     if let Some(calls) = delta.get("tool_calls").and_then(Value::as_array) {
@@ -240,6 +250,14 @@ pub fn read_anthropic(line: &str) -> Vec<WireEvent> {
                     .and_then(text)
                     .into_iter()
                     .collect(),
+                // Anthropic names the chain of thought separately; the app
+                // shows it, but never mixes it into the answer.
+                "thinking_delta" => delta
+                    .and_then(|entry| entry.get("thinking"))
+                    .and_then(Value::as_str)
+                    .filter(|value| !value.is_empty())
+                    .map(|value| vec![WireEvent::Reasoning(value.to_string())])
+                    .unwrap_or_default(),
                 // Anthropic calls the argument fragments `partial_json`.
                 "input_json_delta" => delta
                     .and_then(|entry| entry.get("partial_json"))
@@ -277,6 +295,31 @@ mod tests {
         let line = r#"data: {"choices":[{"delta":{"content":"Hi"}}]}"#;
         assert_eq!(texts(&read_openai_chat(line)), "Hi");
         assert!(read_openai_chat("data: [DONE]").is_empty());
+    }
+
+    /// The chain of thought arrives on the same delta as the answer, and has to
+    /// stay out of the answer text.
+    #[test]
+    fn chat_keeps_reasoning_apart_from_the_answer() {
+        let line = r#"data: {"choices":[{"delta":{"content":"答","reasoning_content":"想"}}]}"#;
+        let events = read_openai_chat(line);
+        assert_eq!(texts(&events), "答");
+        let reasoning: String = events
+            .iter()
+            .filter_map(|event| match event {
+                WireEvent::Reasoning(text) => Some(text.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(reasoning, "想");
+    }
+
+    #[test]
+    fn anthropic_keeps_thinking_apart_from_the_answer() {
+        let line = r#"data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"想"}}"#;
+        let events = read_anthropic(line);
+        assert!(texts(&events).is_empty());
+        assert!(matches!(&events[0], WireEvent::Reasoning(value) if value == "想"));
     }
 
     #[test]

@@ -4,6 +4,7 @@ import { isTauriRuntime } from "@/app/shell/windowControls";
 import type {
   ChatMessage,
   ProviderConfig,
+  ThinkingRequest,
   ToolCall,
   ToolDef,
 } from "@/features/settings/aiBridge";
@@ -11,6 +12,8 @@ import type {
 interface DeltaEvent {
   requestId: string;
   delta?: string;
+  /** The chain of thought, arriving on its own channel from the answer. */
+  reasoning?: string;
   toolCalls?: ToolCall[];
   done: boolean;
   error?: string;
@@ -20,14 +23,23 @@ export interface StreamOptions {
   temperature?: number;
   maxTokens?: number;
   tools?: ToolDef[];
+  /**
+   * DeepSeek's thinking switch. Only sent when the caller knows the endpoint
+   * understands it; other servers reject unknown fields.
+   */
+  thinking?: ThinkingRequest;
   /** Called with the full text so far, not just the newest fragment. */
   onProgress?: (text: string) => void;
+  /** Called with the full reasoning so far, so it can be shown while it grows. */
+  onReasoning?: (reasoning: string) => void;
   signal?: AbortSignal;
 }
 
-/** The finished reply: text and, when the model asked, the tools to run. */
+/** The finished reply: text, reasoning and, when the model asked, the tools. */
 export interface StreamResult {
   text: string;
+  /** The chain of thought, when the model produced one. */
+  reasoning: string;
   toolCalls: ToolCall[];
 }
 
@@ -61,6 +73,7 @@ export function streamChat(
 
   return new Promise<StreamResult>((resolve, reject) => {
     let text = "";
+    let reasoning = "";
     let toolCalls: ToolCall[] = [];
     let settled = false;
     let unlisten: (() => void) | null = null;
@@ -76,20 +89,26 @@ export function streamChat(
       const failure = error ? new Error(error) : null;
       cleanup();
       if (failure) reject(failure);
-      else resolve({ text, toolCalls });
+      // A tool call often has no text yet; the reason still belongs to the turn,
+      // because a later request has to echo it back.
+      else resolve({ text, reasoning, toolCalls });
     };
 
     function onAbort() {
       // Rust keeps draining the response, but the caller stopped caring.
       if (settled) return;
       cleanup();
-      resolve({ text, toolCalls });
+      resolve({ text, reasoning, toolCalls });
     }
 
     void listen<DeltaEvent>("ai://delta", (event) => {
       const payload = event.payload;
       if (payload.requestId !== requestId || settled) return;
 
+      if (payload.reasoning) {
+        reasoning += payload.reasoning;
+        options.onReasoning?.(reasoning);
+      }
       if (payload.delta) {
         text += payload.delta;
         options.onProgress?.(text);
@@ -112,6 +131,7 @@ export function streamChat(
         temperature: options.temperature,
         maxTokens: options.maxTokens,
         tools: options.tools ?? [],
+        thinking: options.thinking,
       },
       requestId,
     }).catch((error: unknown) => {

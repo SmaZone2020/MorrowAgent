@@ -16,6 +16,14 @@ export interface ConversationTurn {
   attachments?: MessageAttachment[];
   /** Something the client did to the request, said in the bubble. */
   note?: string;
+  /**
+   * The chain of thought that produced this turn.
+   *
+   * Kept because DeepSeek requires it back verbatim on any later request that
+   * carries tools — the endpoint answers 400 otherwise. It is also what the
+   * transcript unfolds when the learner wants to see how an answer was reached.
+   */
+  reasoning?: string;
 }
 
 /**
@@ -31,6 +39,7 @@ interface StoredTurn {
   toolCallId?: string;
   attachments?: MessageAttachment[];
   note?: string;
+  reasoning?: string;
 }
 
 function isStructured(turn: ConversationTurn): boolean {
@@ -38,7 +47,8 @@ function isStructured(turn: ConversationTurn): boolean {
     turn.toolCalls?.length ||
       turn.toolCallId ||
       turn.attachments?.length ||
-      turn.note,
+      turn.note ||
+      turn.reasoning,
   );
 }
 
@@ -51,6 +61,7 @@ export function encodeTurn(turn: ConversationTurn): string {
     toolCallId: turn.toolCallId,
     attachments: turn.attachments,
     note: turn.note,
+    reasoning: turn.reasoning,
   };
   return `${MARK}${JSON.stringify(payload)}`;
 }
@@ -62,7 +73,8 @@ export function shouldPersist(turn: ConversationTurn): boolean {
     Boolean(turn.content) ||
     Boolean(turn.toolCalls?.length) ||
     Boolean(turn.attachments?.length) ||
-    Boolean(turn.note)
+    Boolean(turn.note) ||
+    Boolean(turn.reasoning)
   );
 }
 
@@ -88,6 +100,7 @@ export function decodeTurn(row: StoredMessage): ConversationTurn {
       toolCallId: payload.toolCallId,
       attachments: payload.attachments,
       note: payload.note,
+      reasoning: payload.reasoning,
     };
   } catch {
     // A damaged marker is not worth losing the turn over; show it as text.
@@ -195,6 +208,9 @@ export function toHistory(
           role: "assistant",
           content: turn.content,
           toolCalls: turn.toolCalls,
+          // DeepSeek rejects a tool-carrying history whose assistant turns have
+          // lost their reasoning, so it travels with the calls that need it.
+          reasoningContent: turn.reasoning || undefined,
         });
       } else if (turn.content) {
         messages.push({ role: "assistant", content: turn.content });

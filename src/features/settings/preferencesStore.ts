@@ -33,6 +33,7 @@ export const usePreferences = create<PreferencesState>((set, get) => ({
       maxTokens: get().maxTokens,
       questionScale: get().questionScale,
       teachingStyle: get().teachingStyle,
+      thinking: get().thinking,
       ...patch,
     };
     set(next);

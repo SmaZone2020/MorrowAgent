@@ -16,6 +16,20 @@ export interface ChatMessage {
   toolCalls?: ToolCall[];
   /** Set on the `role: "tool"` turn that answers one call. */
   toolCallId?: string;
+  /**
+   * The chain of thought this assistant turn produced.
+   *
+   * DeepSeek requires it back on every later request that carries tools, or the
+   * endpoint answers 400: the reasoning is part of the turn, not a display
+   * detail. It is stored beside the answer and never shown in the bubble itself.
+   */
+  reasoningContent?: string;
+}
+
+/** DeepSeek's thinking switch, spelled once and sent per request. */
+export interface ThinkingRequest {
+  type: "enabled" | "disabled";
+  effort?: string;
 }
 
 export interface ToolCall {

@@ -1,5 +1,10 @@
 import { activeProvider } from "@/features/settings/providerStatus";
 import { usePreferences } from "@/features/settings/preferencesStore";
+import {
+  asThinkingLevel,
+  supportsThinking,
+  thinkingPayload,
+} from "@/features/settings/thinking";
 import { streamChat } from "@/features/settings/aiStream";
 import type { ChatMessage, ToolCall } from "@/features/settings/aiBridge";
 import {
@@ -148,6 +153,13 @@ export function createLoop(deps: LoopDeps) {
 
     const signal = deps.abortSignal();
     const prefs = usePreferences.getState();
+    // The switch is per request, not per conversation: a learner turns it down
+    // for a definition and back up for a proof without leaving the chat. Only
+    // the builtin DeepSeek endpoint is documented to understand the field, so
+    // anything else never sees it.
+    const thinking = supportsThinking({ id: config.profileId })
+      ? thinkingPayload(asThinkingLevel(prefs.thinking)).thinking
+      : undefined;
 
     /**
      * One attempt. `dropImages` exists because a provider that cannot read an
@@ -167,11 +179,16 @@ export function createLoop(deps: LoopDeps) {
         maxTokens: prefs.maxTokens,
         temperature: prefs.temperature,
         tools: deps.toolNames.length > 0 ? toolDefs(deps.toolNames) : undefined,
+        thinking,
         onProgress: (partial) => {
           // Switching conversations aborts the request, but a delta already in
           // flight must not land in the conversation that is now on screen.
           if (deps.conversationId() !== conversationId) return;
           deps.patchReply(replyTurn.id, { content: partial });
+        },
+        onReasoning: (partial) => {
+          if (deps.conversationId() !== conversationId) return;
+          deps.patchReply(replyTurn.id, { reasoning: partial });
         },
       });
     };
@@ -204,6 +221,7 @@ export function createLoop(deps: LoopDeps) {
       const note = degraded
         ? "这个模型不支持图片，本次只发送了文字与文档内容。"
         : undefined;
+      const reasoning = answer.reasoning.trim() || undefined;
       // The calls are part of the turn: they are written with it so a reload
       // shows the same questions instead of a reply with nothing underneath.
       const settled: ConversationTurn = {
@@ -212,19 +230,21 @@ export function createLoop(deps: LoopDeps) {
         pending: false,
         toolCalls: calls.length > 0 ? calls : undefined,
         note,
+        reasoning,
       };
       deps.patchReply(replyTurn.id, {
         content: final,
         pending: false,
         toolCalls: calls.length > 0 ? calls : undefined,
         note,
+        reasoning,
       });
 
       if (calls.length > 0) {
         deps.persist(workspaceId, conversationId, settled);
         deps.refreshList();
         await handleToolCalls(settled, calls, depth);
-      } else if (final || note) {
+      } else if (final || note || reasoning) {
         deps.persist(workspaceId, conversationId, settled);
         deps.refreshList();
       }

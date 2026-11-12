@@ -112,6 +112,22 @@ pub struct ChatMessage {
     /// Set on the `role: "tool"` turn that answers one call.
     #[serde(rename = "toolCallId", default)]
     pub ToolCallId: Option<String>,
+    /// The chain of thought DeepSeek returned with this assistant turn.
+    ///
+    /// It has to travel back on every later request that carries tools: the
+    /// endpoint rejects a history where a tool-using turn lost its reasoning.
+    #[serde(rename = "reasoningContent", default, skip_serializing_if = "Option::is_none")]
+    pub ReasoningContent: Option<String>,
+}
+
+/// DeepSeek's thinking switch. `Kind` is `enabled` or `disabled`; `Effort` is
+/// `low`, `high` or `max` and is ignored when thinking is off.
+#[derive(Debug, Clone, Deserialize)]
+pub struct ThinkingConfig {
+    #[serde(rename = "type", default)]
+    pub Kind: String,
+    #[serde(rename = "effort", default)]
+    pub Effort: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -124,6 +140,9 @@ pub struct ChatRequest {
     pub MaxTokens: Option<u32>,
     #[serde(rename = "tools", default)]
     pub Tools: Vec<ToolDef>,
+    /// Only sent to endpoints that understand it; other protocols drop it.
+    #[serde(rename = "thinking", default)]
+    pub Thinking: Option<ThinkingConfig>,
 }
 
 #[derive(Debug, Clone, Serialize)]
