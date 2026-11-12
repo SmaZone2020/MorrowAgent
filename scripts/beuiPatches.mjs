@@ -418,6 +418,14 @@ const TOAST_MESSAGES_PATCH = `export const animatedToastStackMessages = {
   dismiss: "关闭提示",
 };`;
 
+// The stack reports work a dialog started, so it has to outrank the dialog.
+// beUI puts the modal at z-[100] and the toast at z-[90], which hides the very
+// message ("正在验证 API Key" / "已连接") the click was waiting for behind the
+// backdrop. Only the window controls sit higher.
+const TOAST_Z_ANCHOR = `        resolvedPlacement === "fixed" && "fixed z-[90]",`;
+
+const TOAST_Z_PATCH = `        resolvedPlacement === "fixed" && "fixed z-[150]",`;
+
 function patchAnimatedToastStack(source) {
   let out = replaceOnce(
     source,
@@ -436,6 +444,12 @@ function patchAnimatedToastStack(source) {
     TOAST_ACTION_ANCHOR,
     TOAST_ACTION_PATCH,
     "animated-toast-stack action size",
+  );
+  out = replaceOnce(
+    out,
+    TOAST_Z_ANCHOR,
+    TOAST_Z_PATCH,
+    "animated-toast-stack stacking order",
   );
   return replaceOnce(
     out,

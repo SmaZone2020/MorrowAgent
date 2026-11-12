@@ -299,7 +299,7 @@ export function AnimatedToastStack({
       className={cn(
         "pointer-events-none flex w-[calc(100vw-2rem)] max-w-sm gap-2",
         isBottom ? "flex-col-reverse" : "flex-col",
-        resolvedPlacement === "fixed" && "fixed z-[90]",
+        resolvedPlacement === "fixed" && "fixed z-[150]",
         resolvedPlacement === "absolute" && "absolute z-20",
         resolvedPlacement !== "static" && POSITION_CLASS[position],
         classNames?.root,
