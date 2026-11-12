@@ -27,6 +27,7 @@ import {
   resolveShellLayer,
 } from "@/app/shell/navHelpers";
 import { Breadcrumb } from "@/app/shell/Breadcrumb";
+import { BreadcrumbActionsProvider } from "@/app/shell/breadcrumbActions";
 import { PackageSwitcher } from "@/app/shell/PackageSwitcher";
 import { AppStatusFooter } from "@/app/shell/AppStatusFooter";
 import { RailFlyout } from "@/app/shell/RailFlyout";
@@ -65,12 +66,21 @@ export function AppShell() {
     appScope("sidebar.expanded"),
     activeEntry?.item.children ? activeEntry.item.key : null,
   );
-  // A mock exam takes over the window: the rail and the breadcrumb would both
+  // A timed paper takes over the window: the rail and the breadcrumb would both
   // offer a way out of a paper that is being timed.
   const [examActive] = usePersistedState<string | null>(
     appScope("exam.active"),
     null,
   );
+  // The chrome is what changes for an exam, never the page.
+  //
+  // These used to be two whole trees, one with a rail and one without, and
+  // swapping them unmounted the page — which reset the exam's own `active` run
+  // to null on the same frame the sitting cleared `exam.active`. The result was
+  // that both "继续未完成的考试" and "重新开考" landed back on the brief. Keeping
+  // one tree and hiding only the furniture leaves the paper mounted, so the
+  // sitting that just started is still the sitting on screen.
+  const showChrome = !examActive;
   // The key is kept after closing so the flyout can animate out with its real
   // contents still mounted; only `flyoutOpen` controls visibility.
   const [flyoutKey, setFlyoutKey] = useState<string | null>(null);
@@ -87,20 +97,8 @@ export function AppShell() {
     if (!collapsed) setFlyoutOpen(false);
   }, [collapsed]);
 
-  // A timed paper owns the whole window: no rail, no breadcrumb, and its own
-  // scrolling pane so the status bar can stick to the top.
-  if (examActive) {
-    return (
-      <div className="flex h-full min-h-0 w-full min-w-0">
-        <main className="scrollbar-thin relative flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto bg-background">
-          <Outlet />
-        </main>
-      </div>
-    );
-  }
-
-  if (layer.kind !== "workspace") {
-    return (
+  // The shelf and settings have no rail of their own.
+  if (layer.kind !== "workspace") {    return (
       <div className="flex h-full min-h-0 w-full min-w-0">
         <main className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-background">
           <Outlet />
@@ -111,110 +109,141 @@ export function AppShell() {
 
   return (
     <div className="flex h-full min-h-0 w-full min-w-0">
-      <AnimatedSidebar
-        ariaLabel="Morrow Agent 主导航"
-        collapsible="icon"
-        className="min-h-0"
-        panelClassName="h-full border-border"
-      >
-        <AnimatedSidebarHeader className="gap-1 px-2 pt-2 pb-1 group-data-[state=collapsed]/sidebar:px-2 group-data-[state=collapsed]/sidebar:hidden">
-          <div className="flex items-center gap-1">
-            <div className="min-w-0 flex-1">
-              <PackageSwitcher workspaceId={layer.workspaceId} />
-            </div>
-            <AnimatedSidebarClose className="text-muted-foreground hover:bg-muted md:hidden">
-              <Xmark className="size-4" />
-            </AnimatedSidebarClose>
-          </div>
-        </AnimatedSidebarHeader>
+      {showChrome ? (
+        <>
+          <AnimatedSidebar
+            ariaLabel="Morrow Agent 主导航"
+            collapsible="icon"
+            className="min-h-0"
+            panelClassName="h-full border-border"
+          >
+            <AnimatedSidebarHeader className="gap-1 px-2 pt-2 pb-1 group-data-[state=collapsed]/sidebar:px-2 group-data-[state=collapsed]/sidebar:hidden">
+              <div className="flex items-center gap-1">
+                <div className="min-w-0 flex-1">
+                  <PackageSwitcher workspaceId={layer.workspaceId} />
+                </div>
+                <AnimatedSidebarClose className="text-muted-foreground hover:bg-muted md:hidden">
+                  <Xmark className="size-4" />
+                </AnimatedSidebarClose>
+              </div>
+            </AnimatedSidebarHeader>
 
-        <AnimatedSidebarContent className="scrollbar-thin px-2 group-data-[state=collapsed]/sidebar:gap-[4px]">
-          {groups.map((group) => (
-            <AnimatedSidebarGroup key={group.key} className={groupClass}>
-              <AnimatedSidebarGroupLabel className="group-data-[state=collapsed]/sidebar:hidden text-sm">
-                {group.label}
-              </AnimatedSidebarGroupLabel>
-              <AnimatedSidebarGroupContent>
-                <AnimatedSidebarMenu className="group-data-[state=collapsed]/sidebar:gap-[4px]">
-                  {group.items.map((item) => {
-                    const childActive = item.children?.some(
-                      (child) => location.pathname === child.path,
-                    );
-                    const selfActive = !item.children && isItemActive(item, location.pathname);
-                    return (
-                      <AnimatedSidebarMenuItem
-                        key={item.key}
-                        ref={(node) => {
-                          itemRefs.current.set(item.key, node);
-                        }}
-                      >
-                        <AnimatedSidebarMenuButton
-                          icon={<item.icon className="size-5" />}
-                          isActive={Boolean(selfActive || childActive)}
-                          ariaExpanded={
-                            item.children ? expanded === item.key : undefined
-                          }
-                          onSelect={() => {
-                            if (item.children) {
-                              // The rail cannot render an inline submenu, so
-                              // a group opens the same children as a flyout.
-                              if (collapsed) {
-                                if (flyoutKey === item.key && flyoutOpen) {
-                                  setFlyoutOpen(false);
+            <AnimatedSidebarContent className="scrollbar-thin px-2 group-data-[state=collapsed]/sidebar:gap-[4px]">
+              {groups.map((group, groupIndex) => (
+                <AnimatedSidebarGroup
+                  key={group.key}
+                  className={`${groupClass} ${
+                    // A hairline between groups, never before the first: the
+                    // labels already name them, and a rule above the first one
+                    // would read as a boundary against the package header.
+                    groupIndex > 0
+                      ? "border-t border-border/60 group-data-[state=collapsed]/sidebar:border-0 group-data-[state=collapsed]/sidebar:mt-0"
+                      : ""
+                  }`}
+                >
+                  <AnimatedSidebarGroupLabel className="group-data-[state=collapsed]/sidebar:hidden text-sm">
+                    {group.label}
+                  </AnimatedSidebarGroupLabel>
+                  <AnimatedSidebarGroupContent>
+                    <AnimatedSidebarMenu className="group-data-[state=collapsed]/sidebar:gap-[4px]">
+                      {group.items.map((item) => {
+                        const childActive = item.children?.some(
+                          (child) => location.pathname === child.path,
+                        );
+                        const selfActive =
+                          !item.children &&
+                          isItemActive(item, location.pathname);
+                        return (
+                          <AnimatedSidebarMenuItem
+                            key={item.key}
+                            ref={(node) => {
+                              itemRefs.current.set(item.key, node);
+                            }}
+                          >
+                            <AnimatedSidebarMenuButton
+                              icon={<item.icon className="size-5" />}
+                              isActive={Boolean(selfActive || childActive)}
+                              ariaExpanded={
+                                item.children ? expanded === item.key : undefined
+                              }
+                              onSelect={() => {
+                                if (item.children) {
+                                  // The rail cannot render an inline submenu,
+                                  // so a group opens the same children as a
+                                  // flyout.
+                                  if (collapsed) {
+                                    if (flyoutKey === item.key && flyoutOpen) {
+                                      setFlyoutOpen(false);
+                                      return;
+                                    }
+                                    setFlyoutKey(item.key);
+                                    setFlyoutOpen(true);
+                                    return;
+                                  }
+                                  setExpanded((current) =>
+                                    current === item.key ? null : item.key,
+                                  );
                                   return;
                                 }
-                                setFlyoutKey(item.key);
-                                setFlyoutOpen(true);
-                                return;
-                              }
-                              setExpanded((current) =>
-                                current === item.key ? null : item.key,
-                              );
-                              return;
-                            }
-                            navigate(item.path);
-                          }}
-                        >
-                          {item.label}
-                        </AnimatedSidebarMenuButton>
-                      </AnimatedSidebarMenuItem>
-                    );
-                  })}
-                </AnimatedSidebarMenu>
-              </AnimatedSidebarGroupContent>
-            </AnimatedSidebarGroup>
-          ))}
-        </AnimatedSidebarContent>
+                                navigate(item.path);
+                              }}
+                            >
+                              {item.label}
+                            </AnimatedSidebarMenuButton>
+                          </AnimatedSidebarMenuItem>
+                        );
+                      })}
+                    </AnimatedSidebarMenu>
+                  </AnimatedSidebarGroupContent>
+                </AnimatedSidebarGroup>
+              ))}
+            </AnimatedSidebarContent>
 
-        <AnimatedSidebarFooter className="border-t border-border group-data-[state=collapsed]/sidebar:px-2">
-          <AppStatusFooter />
-        </AnimatedSidebarFooter>
+            <AnimatedSidebarFooter className="border-t border-border group-data-[state=collapsed]/sidebar:px-2">
+              <AppStatusFooter />
+            </AnimatedSidebarFooter>
 
-        <AnimatedSidebarRail />
-      </AnimatedSidebar>
+            <AnimatedSidebarRail />
+          </AnimatedSidebar>
 
-      {flyoutItem?.children ? (
-        <RailFlyout
-          open={flyoutOpen}
-          anchor={itemRefs.current.get(flyoutItem.key) ?? null}
-          title={flyoutItem.label}
-          items={flyoutItem.children}
-          activePath={location.pathname}
-          onSelect={navigate}
-          onClose={() => setFlyoutOpen(false)}
-        />
+          {flyoutItem?.children ? (
+            <RailFlyout
+              open={flyoutOpen}
+              anchor={itemRefs.current.get(flyoutItem.key) ?? null}
+              title={flyoutItem.label}
+              items={flyoutItem.children}
+              activePath={location.pathname}
+              onSelect={navigate}
+              onClose={() => setFlyoutOpen(false)}
+            />
+          ) : null}
+        </>
       ) : null}
 
       <AnimatedSidebarInset className="min-h-0">
-        <Breadcrumb
-          workspaceId={layer.workspaceId}
-          title={description.title}
-          atHome={activeEntry?.item.home === true}
-        />
+        {/* Wraps the bar and the page together: the page portals its own view
+            controls into the bar, so both have to share one slot. */}
+        <BreadcrumbActionsProvider>
+          {showChrome ? (
+            <Breadcrumb
+              workspaceId={layer.workspaceId}
+              title={description.title}
+              atHome={activeEntry?.item.home === true}
+            />
+          ) : null}
 
-        <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto">
-          <Outlet />
-        </div>
+          {/* A paper scrolls in its own pane so the status bar can stick to the
+              top; every other page scrolls under the bar. */}
+          <div
+            className={
+              showChrome
+                ? "scrollbar-thin min-h-0 flex-1 overflow-y-auto"
+                : "scrollbar-thin relative flex min-h-0 flex-1 flex-col overflow-y-auto"
+            }
+          >
+            <Outlet />
+          </div>
+        </BreadcrumbActionsProvider>
       </AnimatedSidebarInset>
     </div>
   );

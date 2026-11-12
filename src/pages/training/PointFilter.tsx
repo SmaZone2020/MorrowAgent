@@ -14,13 +14,26 @@ import {
 import type { KnowledgeIndex } from "@/features/knowledge";
 
 /**
+ * How many points may be selected at once.
+ *
+ * The field has to stay one line in the breadcrumb bar, and a chip per point is
+ * what makes it grow. Three is also the honest limit of the feature: filtering
+ * the drill by four or more points is the same reading as "all questions", and
+ * picking that many is a sign the filter was not the tool being looked for.
+ */
+const MAX_POINTS = 3;
+
+/**
  * The drill's knowledge-point filter, drawn as beUI's multi-select.
  *
  * It used to be one ghost button per point; with 72 of them that wrapped into a
  * wall of chips taller than the question card. A multi-select keeps the same
  * freedom — any number of points, or none for everything — inside one field:
- * chosen points become removable tokens, typing narrows by name, and the list is
- * grouped the way the knowledge base is.
+ * typing narrows by name and the list is grouped the way the knowledge base is.
+ *
+ * The cap is enforced on the list rather than on the field, so the reason is
+ * visible at the moment a fourth point is wanted: once three are chosen, the
+ * remaining rows are disabled and the list says why.
  */
 export function PointFilter({
   index,
@@ -33,7 +46,7 @@ export function PointFilter({
   onChange: (pointIds: string[]) => void;
 }) {
   // An id from a link into a repacked package may no longer exist; dropping it
-  // keeps the field from showing a token with no label.
+  // keeps the field from showing a chip with no label.
   const validSelected = useMemo(
     () => selected.filter((id) => index.pointsById.has(id)),
     [index, selected],
@@ -57,6 +70,8 @@ export function PointFilter({
     return chapters;
   }, [index]);
 
+  const full = validSelected.length >= MAX_POINTS;
+
   return (
     <MultiSelect
       value={validSelected}
@@ -70,9 +85,19 @@ export function PointFilter({
         empty: "没有匹配的知识点",
       }}
     >
-      <MultiSelectTrigger className="min-h-9 w-full max-w-md py-1">
-        <MultiSelectValue placeholder="全部题目" chipClassName="text-sm" />
-        <MultiSelectInput aria-label="按知识点筛选" className="h-7" />
+      {/* One line, always: the row is `nowrap` and each chip may shrink, so a
+          third long name truncates instead of pushing the input onto a second
+          line and the bar taller. */}
+      <MultiSelectTrigger className="min-h-8 w-80 min-w-0 overflow-hidden rounded-lg py-0.5 [&>div]:flex-nowrap">
+        <MultiSelectValue
+          placeholder="全部题目"
+          chipClassName="min-w-0 text-sm"
+        />
+        <MultiSelectInput
+          aria-label="按知识点筛选"
+          placeholder="全部题目"
+          className="h-6"
+        />
       </MultiSelectTrigger>
 
       <MultiSelectContent className="rounded-2xl">
@@ -86,6 +111,9 @@ export function PointFilter({
                   key={point.id}
                   value={point.id}
                   textValue={point.name}
+                  // Already chosen rows stay enabled so they can be removed;
+                  // only adding a fourth is refused.
+                  disabled={full && !validSelected.includes(point.id)}
                   className="py-1.5"
                 >
                   <span className="truncate text-sm">{point.name}</span>
@@ -94,6 +122,11 @@ export function PointFilter({
             </MultiSelectGroup>
           ))}
         </MultiSelectList>
+        {full ? (
+          <p className="border-t border-border/60 px-3 py-2 text-sm text-muted-foreground">
+            最多同时筛选 {MAX_POINTS} 个知识点，先移除一个再选。
+          </p>
+        ) : null}
       </MultiSelectContent>
     </MultiSelect>
   );

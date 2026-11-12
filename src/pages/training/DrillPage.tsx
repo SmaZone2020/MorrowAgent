@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { QuestionCard } from "@/features/training/QuestionCard";
 import { DrillToolbar } from "@/features/training/DrillToolbar";
 import { PointFilter } from "@/pages/training/PointFilter";
+import { BreadcrumbActions } from "@/app/shell/breadcrumbActions";
 import { recordAttempt } from "@/features/training/attempts";
 import { refreshAttempts } from "@/features/training/attemptCache";
 import { usePersistedState } from "@/features/uiState";
@@ -148,33 +149,31 @@ export function DrillPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-5 sm:p-7">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex min-w-0 flex-1 flex-col gap-3">
-          {filterVisible ? (
-            <PointFilter
-              index={index}
-              selected={pointIds}
-              onChange={selectPoints}
-            />
-          ) : (
-            <div className="flex flex-wrap items-center gap-2">
-              <AnimatedBadge status="info" size="sm" contentKey="single">
-                错题重做
-              </AnimatedBadge>
-              {pointIds[0] ? (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="text-sm"
-                  onClick={() => selectPoints(pointIds)}
-                >
-                  返回本知识点
-                </Button>
-              ) : null}
-            </div>
-          )}
+      {filterVisible ? (
+        <BreadcrumbActions>
+          <PointFilter
+            index={index}
+            selected={pointIds}
+            onChange={selectPoints}
+          />
+        </BreadcrumbActions>
+      ) : (
+        <div className="flex flex-wrap items-center gap-2">
+          <AnimatedBadge status="info" size="sm" contentKey="single">
+            错题重做
+          </AnimatedBadge>
+          {pointIds[0] ? (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-sm"
+              onClick={() => selectPoints(pointIds)}
+            >
+              返回本知识点
+            </Button>
+          ) : null}
         </div>
-      </div>
+      )}
 
       {current ? (
         <>

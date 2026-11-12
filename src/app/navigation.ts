@@ -33,11 +33,16 @@ export interface NavigationGroup {
 /**
  * Inside a package. Every entry is scoped to `/:workspaceId`, so two packages
  * never share a transcript, a wrong-book or a profile (MLPS §1.2).
+ *
+ * Three groups rather than one list, because the entries answer three different
+ * questions: what to read and ask, what to practise, and how it has been going.
+ * A single ten-item column made "模拟考试" and "学习报告" look like neighbours,
+ * when one is work and the other is the record of it.
  */
 export const workspaceNavigation: NavigationGroup[] = [
   {
-    key: "workspace",
-    label: "学习区",
+    key: "study",
+    label: "学习",
     items: [
       {
         key: "dashboard",
@@ -49,10 +54,22 @@ export const workspaceNavigation: NavigationGroup[] = [
       { key: "lumi", label: "Lumi AI", path: "/lumi", icon: LumiMark },
       { key: "plan", label: "学习计划", path: "/plan", icon: Calendar },
       { key: "knowledge", label: "知识库", path: "/knowledge", icon: BookOpen },
+    ],
+  },
+  {
+    key: "practice",
+    label: "训练",
+    items: [
       { key: "diagnostic", label: "诊断测评", path: "/diagnostic", icon: Target },
       { key: "drill", label: "专项训练", path: "/drill", icon: GraduationCap },
       { key: "exam", label: "模拟考试", path: "/exam", icon: Stopwatch },
       { key: "wrongBook", label: "错题本", path: "/wrong-book", icon: Persons },
+    ],
+  },
+  {
+    key: "review",
+    label: "复盘",
+    items: [
       { key: "profile", label: "知识画像", path: "/profile", icon: ChartLine },
       { key: "report", label: "学习报告", path: "/report", icon: ChartColumn },
     ],
