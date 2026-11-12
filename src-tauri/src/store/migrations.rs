@@ -71,4 +71,17 @@ pub const MIGRATIONS: &[&str] = &[
     r#"
     ALTER TABLE messages ADD COLUMN attachments TEXT NOT NULL DEFAULT '[]';
     "#,
+    // 5 — one study goal per workspace. It is a target, not a record: nothing
+    // here is derived from attempts, so replacing the row is always safe.
+    r#"
+    CREATE TABLE IF NOT EXISTS study_goals (
+        workspace_id     TEXT PRIMARY KEY,
+        target_score     INTEGER,
+        exam_date        TEXT,
+        minutes_per_day  INTEGER NOT NULL DEFAULT 30,
+        difficulty_focus TEXT NOT NULL DEFAULT '[]',
+        note             TEXT NOT NULL DEFAULT '',
+        updated_at       INTEGER NOT NULL
+    );
+    "#,
 ];

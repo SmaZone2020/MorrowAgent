@@ -17,6 +17,8 @@ import { WrongBookPage } from "@/pages/WrongBookPage";
 import { ProfilePage } from "@/pages/ProfilePage";
 import { DrillPage } from "@/pages/training/DrillPage";
 import { DiagnosticPage } from "@/pages/training/DiagnosticPage";
+import { PlanPage } from "@/pages/PlanPage";
+import { ReportPage } from "@/pages/ReportPage";
 
 /**
  * Three layers, nested by URL rather than by state:
@@ -42,6 +44,8 @@ export const router = createHashRouter([
           { index: true, element: <WorkspaceDashboardPage /> },
           { path: "lumi", element: <LumiPage /> },
           { path: "knowledge", element: <KnowledgePage /> },
+          { path: "plan", element: <PlanPage /> },
+          { path: "report", element: <ReportPage /> },
           { path: "drill", element: <DrillPage /> },
           { path: "diagnostic", element: <DiagnosticPage /> },
           { path: "wrong-book", element: <WrongBookPage /> },

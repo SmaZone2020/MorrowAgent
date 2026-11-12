@@ -17,7 +17,7 @@ use provider::secret::{self, ProviderBook};
 use provider::types::{ChatRequest, ModelInfo, ProviderConfig};
 use store::{
     ConversationSummary, NewAttempt, NewMessage, PointStats, Store, StoreStats, StoredAttempt,
-    StoredMessage, Workspace,
+    StoredMessage, StudyGoal, TrendPoint, Workspace,
 };
 use tauri::Manager;
 use tauri::State;
@@ -190,6 +190,29 @@ fn attempt_point_stats(
     workspace_id: String,
 ) -> Result<Vec<PointStats>, String> {
     state.point_stats(&workspace_id)
+}
+
+#[tauri::command]
+fn goal_load(state: State<'_, Store>, workspace_id: String) -> Result<Option<StudyGoal>, String> {
+    state.goal(&workspace_id)
+}
+
+#[tauri::command]
+fn goal_save(
+    state: State<'_, Store>,
+    workspace_id: String,
+    goal: StudyGoal,
+) -> Result<(), String> {
+    state.save_goal(&workspace_id, &goal)
+}
+
+#[tauri::command]
+fn attempt_trend(
+    state: State<'_, Store>,
+    workspace_id: String,
+    days: Option<i64>,
+) -> Result<Vec<TrendPoint>, String> {
+    state.attempt_trend(&workspace_id, days.unwrap_or(14))
 }
 
 #[tauri::command]
@@ -549,6 +572,9 @@ pub fn run() {
             attempt_wrong_list,
             attempt_forget,
             attempt_point_stats,
+            goal_load,
+            goal_save,
+            attempt_trend,
             prefs_load,
             prefs_save,
             ui_state_load,

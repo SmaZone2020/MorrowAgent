@@ -24,6 +24,7 @@ import {
   useWorkspaceId,
 } from "@/features/workspace/WorkspaceContext";
 import { loadPointStats, type PointStats } from "@/features/training/attempts";
+import { GoalSummary } from "@/features/plan/GoalSummary";
 import {
   coverageOf,
   LEVEL_LABEL,
@@ -156,6 +157,8 @@ export function WorkspaceDashboardPage() {
               诊断测评
             </Button>
           </div>
+
+          <GoalSummary />
         </div>
 
         {/* The notice column is a standing slot, not a one-off card: the
