@@ -29,6 +29,27 @@ const DIFFICULTY: Record<number, string> = {
   5: "综合",
 };
 
+/** The relation type as the reader sees it; unknown types are not invented. */
+const RELATION_LABEL: Record<string, string> = {
+  prerequisite: "前置",
+  related: "相关",
+  contrasts: "易混",
+  extends: "延伸",
+  applies: "应用",
+};
+
+/**
+ * How to read one edge from this point's side.
+ *
+ * `prerequisite` is directional: an outgoing edge means this point is the
+ * earlier one, so the neighbour is what comes next. Saying "前置" there would
+ * send the reader backwards.
+ */
+function relationLabel(type: string, outgoing: boolean): string {
+  if (type === "prerequisite") return outgoing ? "后续" : "前置";
+  return RELATION_LABEL[type] ?? type;
+}
+
 function Section({
   title,
   children,
@@ -78,6 +99,28 @@ export function KnowledgeDocument({
   const relatedPoints = point.related
     .map((id) => findPoint(index, id))
     .filter((entry): entry is KnowledgePoint => Boolean(entry));
+  // A prerequisite is a different claim from a related point: it is what you
+  // have to know first, so it gets its own block above the body rather than a
+  // chip beside everything else.
+  const prerequisites = point.prerequisites
+    .map((id) => findPoint(index, id))
+    .filter((entry): entry is KnowledgePoint => Boolean(entry));
+  // Relations carry a type ("prerequisite", "related", "contrasts"), which is
+  // the only thing that tells a reader whether a neighbour is behind or ahead
+  // of them. A prerequisite already listed above is not repeated here.
+  const prerequisiteIds = new Set(point.prerequisites);
+  const edges = index.view.relations
+    .filter((relation) => relation.from === point.id || relation.to === point.id)
+    .map((relation) => ({
+      relation,
+      otherId: relation.from === point.id ? relation.to : relation.from,
+      // An edge is outgoing when this point is its source.
+      outgoing: relation.from === point.id,
+    }))
+    .filter(
+      (edge) =>
+        !prerequisiteIds.has(edge.otherId) && findPoint(index, edge.otherId),
+    );
 
   return (
     <article className="flex select-text flex-col gap-6 px-6 py-7 sm:px-10">
@@ -118,6 +161,24 @@ export function KnowledgeDocument({
           </div>
         ) : null}
       </header>
+
+      {prerequisites.length > 0 ? (
+        <Section title="前置知识">
+          <div className="flex flex-wrap gap-2">
+            {prerequisites.map((entry) => (
+              <Button
+                key={entry.id}
+                size="sm"
+                variant="outline"
+                className="text-sm"
+                onClick={() => onOpenPoint(entry.id)}
+              >
+                {entry.name}
+              </Button>
+            ))}
+          </div>
+        </Section>
+      ) : null}
 
       {point.summary ? (
         <Section title="概述">
@@ -176,17 +237,27 @@ export function KnowledgeDocument({
       {relatedPoints.length > 0 ? (
         <Section title="相关知识点">
           <div className="flex flex-wrap gap-2">
-            {relatedPoints.map((entry) => (
-              <Button
-                key={entry.id}
-                size="sm"
-                variant="outline"
-                className="text-sm"
-                onClick={() => onOpenPoint(entry.id)}
-              >
-                {entry.name}
-              </Button>
-            ))}
+            {relatedPoints.map((entry) => {
+              // The typed edge says *how* the two are related; a bare name gives
+              // the reader no reason to click.
+              const edge = edges.find((candidate) => candidate.otherId === entry.id);
+              return (
+                <Button
+                  key={entry.id}
+                  size="sm"
+                  variant="outline"
+                  className="text-sm"
+                  onClick={() => onOpenPoint(entry.id)}
+                >
+                  {entry.name}
+                  {edge ? (
+                    <span className="text-muted-foreground">
+                      {relationLabel(edge.relation.type, edge.outgoing)}
+                    </span>
+                  ) : null}
+                </Button>
+              );
+            })}
           </div>
         </Section>
       ) : null}

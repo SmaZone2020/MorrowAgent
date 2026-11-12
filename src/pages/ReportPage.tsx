@@ -16,6 +16,8 @@ import {
 } from "@/features/workspace/WorkspaceContext";
 import { loadPointStats, type PointStats } from "@/features/training/attempts";
 import { coverageOf, masteryOf } from "@/features/training/mastery";
+import { chapterAxes } from "@/features/profile/radar";
+import { ChapterRadar } from "@/features/profile/ChapterRadar";
 import { loadTrend } from "@/features/plan/goal";
 import { isoDay } from "@/features/plan/calendar";
 import type { TrendPoint } from "@/features/plan/types";
@@ -76,6 +78,11 @@ export function ReportPage() {
 
   const coverage = coverageOf(tallies, index.view.points.length);
   const tested = tallies.filter((entry) => entry.attempts > 0).length;
+  const axes = useMemo(
+    () =>
+      chapterAxes(index.view.chapters, tallies, index.view.points),
+    [index, tallies],
+  );
   // The window's last day is today, so the chart is filled with zero days in
   // between: a gap in practice is information, not a missing point.
   const series = useMemo(() => fillDays(trend, days), [trend, days]);
@@ -167,6 +174,37 @@ export function ReportPage() {
           value={`${streak} 天`}
         />
       </div>
+
+      <Panel title="章节掌握度">
+        {!isTauriRuntime ? (
+          <EmptyState mood="thinking" title="浏览器预览中不读取本地作答记录" />
+        ) : !loaded ? (
+          <p className="py-3 text-sm text-muted-foreground">读取中</p>
+        ) : axes.length < 3 ? (
+          <EmptyState
+            mood="curious"
+            title="这个学习包的章节不足以画雷达图"
+            action={
+              <Button
+                size="sm"
+                variant="secondary"
+                className="text-sm"
+                onClick={() => navigate(workspacePath(workspaceId, "/drill"))}
+              >
+                去专项训练
+              </Button>
+            }
+          />
+        ) : (
+          <div className="flex flex-col gap-2">
+            <ChapterRadar axes={axes} />
+            <p className="flex items-center gap-1 text-sm text-muted-foreground">
+              只画考频最高的几章，带 * 的章节还没测过
+              <InfoHint label="每根轴是一个章节，数值取该章各知识点掌握度的平均。没测过的知识点按 0 计入，所以空白章节会显得低，而不是被跳过。" />
+            </p>
+          </div>
+        )}
+      </Panel>
 
       <Panel title="下一步">
         <div className="flex flex-col gap-2">
