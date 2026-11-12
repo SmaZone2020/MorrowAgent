@@ -11,6 +11,11 @@ pub struct Preferences {
     pub MaxTokens: u32,
     #[serde(rename = "questionScale", default = "default_question_scale")]
     pub QuestionScale: f64,
+    /// How Lumi is asked to teach: `guided`, `direct` or `socratic`. It is a
+    /// preference rather than a prompt detail because a learner revising for an
+    /// exam and one learning a topic want opposite answers.
+    #[serde(rename = "teachingStyle", default = "default_teaching_style")]
+    pub TeachingStyle: String,
 }
 
 fn default_temperature() -> f64 {
@@ -27,12 +32,26 @@ fn default_question_scale() -> f64 {
     1.0
 }
 
+fn default_teaching_style() -> String {
+    "guided".to_string()
+}
+
+/// The three styles the prompt registry understands; anything else falls back
+/// rather than being sent to the model as an unknown instruction.
+fn clamp_style(value: &str) -> String {
+    match value {
+        "guided" | "direct" | "socratic" => value.to_string(),
+        _ => default_teaching_style(),
+    }
+}
+
 impl Default for Preferences {
     fn default() -> Self {
         Self {
             Temperature: default_temperature(),
             MaxTokens: default_max_tokens(),
             QuestionScale: default_question_scale(),
+            TeachingStyle: default_teaching_style(),
         }
     }
 }
@@ -64,12 +83,14 @@ pub fn load(app: &tauri::AppHandle) -> Result<Preferences, String> {
     // A corrupt file falls back to defaults rather than blocking startup.
     let mut loaded: Preferences = serde_json::from_str(&raw).unwrap_or_default();
     loaded.QuestionScale = clamp_scale(loaded.QuestionScale);
+    loaded.TeachingStyle = clamp_style(&loaded.TeachingStyle);
     Ok(loaded)
 }
 
 pub fn save(app: &tauri::AppHandle, preferences: &Preferences) -> Result<(), String> {
     let mut sanitized = preferences.clone();
     sanitized.QuestionScale = clamp_scale(sanitized.QuestionScale);
+    sanitized.TeachingStyle = clamp_style(&sanitized.TeachingStyle);
     let json = serde_json::to_string_pretty(&sanitized).map_err(|error| error.to_string())?;
     std::fs::write(path(app)?, json).map_err(|error| format!("写入偏好失败：{}", error))
 }

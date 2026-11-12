@@ -17,6 +17,7 @@ import {
 import { useConversation } from "@/features/lumi/conversation";
 import { useBoundConversation } from "@/features/lumi/useBoundConversation";
 import { useToolContext } from "@/features/lumi/useToolContext";
+import { useLearnerProfile } from "@/features/lumi/useLearnerProfile";
 import { greetingFor } from "@/features/lumi/greetings";
 import { useProviderStatus } from "@/features/settings/providerStatus";
 import { usePersistedState } from "@/features/uiState/usePersistedState";
@@ -78,6 +79,8 @@ export function LumiPage() {
 
   // Publishes the package to the tool layer; tools read live content.
   useToolContext("lumi");
+  // Publishes the goal and the weak points so the prompt can open with them.
+  useLearnerProfile();
 
   const empty = turns.length === 0;
 

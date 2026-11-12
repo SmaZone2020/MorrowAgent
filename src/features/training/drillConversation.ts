@@ -1,5 +1,6 @@
 import { createConversationStore } from "@/features/lumi/conversationCore";
-import { TUTOR_PROMPT } from "@/features/lumi/prompt";
+import { buildPrompt, TUTOR_PROMPT } from "@/features/lumi/prompt";
+import { currentProfile } from "@/features/lumi/learnerProfile";
 import { currentToolContext } from "@/features/lumi/toolContext";
 
 /**
@@ -10,6 +11,7 @@ import { currentToolContext } from "@/features/lumi/toolContext";
  */
 const DRILL_TOOLS = [
   "read_question",
+  "read_point",
   "search_knowledge",
   "get_mastery",
   "list_wrong_questions",
@@ -23,6 +25,8 @@ const DRILL_TOOLS = [
 export const useDrillConversation = createConversationStore({
   scope: "drill.lumi",
   systemPrompt: TUTOR_PROMPT,
+  promptFor: (workspaceId) =>
+    buildPrompt("drill", currentProfile(workspaceId)),
   idPrefix: "drill",
   tools: DRILL_TOOLS,
   context: currentToolContext,

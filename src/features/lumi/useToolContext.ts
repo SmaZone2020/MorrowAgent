@@ -3,6 +3,7 @@ import { useKnowledge } from "@/features/workspace/WorkspaceContext";
 import { findPoint, findQuestion, questionsFor } from "@/features/knowledge";
 import { attemptSnapshot, refreshAttempts } from "@/features/training/attemptCache";
 import { setToolContextSource } from "@/features/lumi/toolContext";
+import { stripMarkdown, truncateBody } from "@/features/lumi/lessonText";
 import type { ToolContext } from "@/features/lumi/tools";
 
 /**
@@ -12,6 +13,9 @@ import type { ToolContext } from "@/features/lumi/tools";
  * to ask what the package contains. Registering a plain reader here keeps the
  * conversation store free of React context while still answering from the live
  * package rather than a copy taken at mount.
+ *
+ * `searchText` is precomputed per point: a query arrives mid-reply and the whole
+ * package's Markdown would be re-stripped on every keyword.
  */
 export function useToolContext(owner: string) {
   const index = useKnowledge();
@@ -20,16 +24,30 @@ export function useToolContext(owner: string) {
   useEffect(() => {
     void refreshAttempts(workspaceId);
 
+    const points = index.view.points.map((point) => ({
+      id: point.id,
+      name: point.name,
+      summary: point.summary,
+      searchText: `${point.name} ${point.summary} ${stripMarkdown(point.body)}`,
+    }));
+
     const read = (): ToolContext => ({
       workspaceId,
-      points: index.view.points.map((point) => ({
-        id: point.id,
-        name: point.name,
-        summary: point.summary,
-      })),
+      points,
       findPoint: (pointId) => {
         const point = findPoint(index, pointId);
         return point ? { name: point.name, summary: point.summary } : undefined;
+      },
+      readPoint: (pointId) => {
+        const point = findPoint(index, pointId);
+        if (!point) return undefined;
+        return {
+          name: point.name,
+          summary: point.summary,
+          body: truncateBody(point.body),
+          objectives: point.objectives,
+          prerequisites: point.prerequisites,
+        };
       },
       findQuestion: (questionId) => {
         const question = findQuestion(index, questionId);

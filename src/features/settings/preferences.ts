@@ -6,6 +6,8 @@ export interface Preferences {
   maxTokens: number;
   /** Drill text scale for questions and explanations, 1 = default size. */
   questionScale: number;
+  /** How Lumi teaches: `guided`, `direct` or `socratic`. */
+  teachingStyle: string;
 }
 
 export interface StoreStats {
@@ -22,6 +24,7 @@ export const defaultPreferences: Preferences = {
   temperature: 0.6,
   maxTokens: 2048,
   questionScale: 1,
+  teachingStyle: "guided",
 };
 
 export async function loadPreferences(): Promise<Preferences> {

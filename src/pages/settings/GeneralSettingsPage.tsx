@@ -15,6 +15,7 @@ import {
   SettingsGroup,
   SettingsPageShell,
   SettingsRow,
+  ChoiceTabs,
 } from "@/pages/settings/SettingsBlocks";
 import { PercentStepper } from "@/components/PercentStepper";
 import {
@@ -29,6 +30,10 @@ import {
 import { useAppearance } from "@/features/appearance/useAppearance";
 import { useThemeReveal } from "@/features/appearance/useThemeReveal";
 import { usePreferences } from "@/features/settings/preferencesStore";
+import {
+  TEACHING_STYLES,
+  TEACHING_STYLE_LABEL,
+} from "@/features/lumi/teachingStyle";
 
 const QUESTION_SCALE_MIN = 0.8;
 const QUESTION_SCALE_MAX = 1.6;
@@ -49,6 +54,7 @@ export function GeneralSettingsPage() {
   const { appearance, update: updateAppearance } = useAppearance();
   const reveal = useThemeReveal();
   const questionScale = usePreferences((state) => state.questionScale);
+  const teachingStyle = usePreferences((state) => state.teachingStyle);
   const updatePreferences = usePreferences((state) => state.update);
 
   // The palette has to be on the document before the view transition snapshots
@@ -143,6 +149,21 @@ export function GeneralSettingsPage() {
               onChange={(percent) =>
                 updatePreferences({ questionScale: percent / 100 })
               }
+            />
+          }
+        />
+        <SettingsRow
+          title="Lumi 讲解方式"
+          hint="只影响 Lumi 的讲法，不改变模型与题目难度。"
+          control={
+            <ChoiceTabs
+              label="Lumi 讲解方式"
+              options={TEACHING_STYLES.map((style) => ({
+                value: style,
+                label: TEACHING_STYLE_LABEL[style],
+              }))}
+              value={teachingStyle}
+              onChange={(value) => updatePreferences({ teachingStyle: value })}
             />
           }
         />

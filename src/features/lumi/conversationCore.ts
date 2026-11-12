@@ -91,6 +91,12 @@ export interface ConversationStoreOptions {
   /** Opening instruction sent with every request. */
   systemPrompt: string;
   /**
+   * Builds the prompt per request instead of using the static one. The learner
+   * block changes with the goal and the tallies, so a prompt captured at module
+   * scope would describe the learner as they were at startup.
+   */
+  promptFor?: (workspaceId: string) => string;
+  /**
    * Prefix for generated conversation ids. The history table is shared, so the
    * prefix is what keeps the drill's transcripts out of the Lumi page's list.
    */
@@ -118,6 +124,7 @@ export interface ConversationStoreOptions {
 export function createConversationStore({
   scope,
   systemPrompt,
+  promptFor,
   idPrefix = "conv",
   tools: toolNames = [],
   context,
@@ -161,6 +168,7 @@ export function createConversationStore({
       stop,
       request: createLoop({
         systemPrompt,
+        promptFor,
         toolNames,
         context: () => context?.() ?? null,
         turns: () => get().turns,

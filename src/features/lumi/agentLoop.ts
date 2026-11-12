@@ -20,6 +20,8 @@ export const MAX_TOOL_ROUNDS = 4;
 
 export interface LoopDeps {
   systemPrompt: string;
+  /** Per-request prompt; wins over `systemPrompt` when present. */
+  promptFor?: (workspaceId: string) => string;
   /** Names of the tools this surface offers; empty means none. */
   toolNames: string[];
   context: () => ToolContext | null;
@@ -147,8 +149,11 @@ export function createLoop(deps: LoopDeps) {
      * an attached screenshot would be worse than answering the text.
      */
     const attempt = (dropImages: boolean) => {
+      const system = deps.promptFor
+        ? deps.promptFor(workspaceId)
+        : deps.systemPrompt;
       const history: ChatMessage[] = [
-        { role: "system", content: deps.systemPrompt },
+        { role: "system", content: system },
         ...toHistory(deps.turns(), replyTurn.id, { dropImages }),
       ];
       return streamChat(config, history, {

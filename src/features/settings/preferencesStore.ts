@@ -32,6 +32,7 @@ export const usePreferences = create<PreferencesState>((set, get) => ({
       temperature: get().temperature,
       maxTokens: get().maxTokens,
       questionScale: get().questionScale,
+      teachingStyle: get().teachingStyle,
       ...patch,
     };
     set(next);
