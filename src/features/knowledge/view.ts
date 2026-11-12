@@ -1,11 +1,15 @@
 import type {
   ContentStats,
+  ContentImage as PackedImage,
   PackageContent,
   PackagePoint,
   PackageQuestion,
   PackageSolution,
 } from "@/features/library/api";
 import type {
+  ContentImage,
+  ImageKind,
+  ImagePosition,
   KnowledgeChapter,
   KnowledgePoint,
   KnowledgeRelation,
@@ -53,6 +57,33 @@ function neighbours(relations: KnowledgeRelation[], pointId: string): string[] {
   return [...linked];
 }
 
+const IMAGE_KINDS: ImageKind[] = ["latex", "svg", "data_uri", "url", "path"];
+const IMAGE_TYPES: ContentImage["type"][] = [
+  "formula",
+  "figure",
+  "screenshot",
+  "other",
+];
+
+/**
+ * The backend keeps the authored strings as they were written; the UI narrows
+ * them to the unions the renderer switches on, defaulting to the shape every
+ * image shares so one odd value never drops the figure.
+ */
+function toImage(image: PackedImage): ContentImage {
+  const kind = IMAGE_KINDS.find((entry) => entry === image.kind) ?? "path";
+  const type = IMAGE_TYPES.find((entry) => entry === image.type) ?? "other";
+  return {
+    type,
+    kind,
+    content: image.content,
+    position: (image.position || "stem") as ImagePosition,
+    caption: image.caption ?? undefined,
+    alt: image.alt ?? undefined,
+    width: image.width ?? undefined,
+  };
+}
+
 function toPoint(
   point: PackagePoint,
   relations: KnowledgeRelation[],
@@ -69,6 +100,8 @@ function toPoint(
     prerequisites: point.prerequisites,
     tags: point.tags,
     sources: point.sources,
+    commonErrors: point.commonErrors ?? [],
+    images: (point.images ?? []).map(toImage),
     related: neighbours(relations, point.id),
   };
 }
@@ -98,7 +131,7 @@ function toQuestion(
     explanation: solution?.summary ?? "",
     options: question.options,
     answer: answerText(question),
-    images: [],
+    images: (question.images ?? []).map(toImage),
     knowledgeTags: question.knowledgePoints,
     commonErrors: (solution?.commonErrors ?? []).map((description) => ({
       errorType: "common",

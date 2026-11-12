@@ -20,6 +20,9 @@ export interface KnowledgePoint {
   prerequisites: string[];
   tags: string[];
   sources: string[];
+  /** Frequent mistakes the package author calls out for this point. */
+  commonErrors: string[];
+  images: ContentImage[];
   /** Point ids this one is linked to, in either direction. */
   related: string[];
 }

@@ -45,6 +45,16 @@ export interface PackageChapter {
   pointIds: string[];
 }
 
+export interface ContentImage {
+  type: string;
+  kind: string;
+  content: string;
+  position: string;
+  caption: string | null;
+  alt: string | null;
+  width: number | null;
+}
+
 export interface PackagePoint {
   id: string;
   name: string;
@@ -57,6 +67,8 @@ export interface PackagePoint {
   prerequisites: string[];
   tags: string[];
   sources: string[];
+  commonErrors: string[];
+  images: ContentImage[];
 }
 
 export interface PackageQuestion {
@@ -73,6 +85,7 @@ export interface PackageQuestion {
   sourceType: string;
   sourceId: string | null;
   estimatedMinutes: number | null;
+  images: ContentImage[];
 }
 
 export interface PackageSolution {

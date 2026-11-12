@@ -39,6 +39,18 @@ function content(): PackageContent {
         prerequisites: [],
         tags: [],
         sources: [],
+        commonErrors: ["忘记讨论左右导数"],
+        images: [
+          {
+            type: "figure",
+            kind: "path",
+            content: "media/figures/ch01/a.png",
+            position: "stem",
+            caption: "配图",
+            alt: null,
+            width: null,
+          },
+        ],
       },
       {
         id: "test.point.b",
@@ -52,6 +64,8 @@ function content(): PackageContent {
         prerequisites: [],
         tags: [],
         sources: [],
+        commonErrors: [],
+        images: [],
       },
     ],
     questions: [
@@ -72,6 +86,17 @@ function content(): PackageContent {
         sourceType: "original",
         sourceId: null,
         estimatedMinutes: 3,
+        images: [
+          {
+            type: "figure",
+            kind: "path",
+            content: "media/figures/ch01/a.png",
+            position: "stem",
+            caption: "配图",
+            alt: null,
+            width: null,
+          },
+        ],
       },
       {
         id: "test.q.2",
@@ -90,6 +115,7 @@ function content(): PackageContent {
         sourceType: "original",
         sourceId: null,
         estimatedMinutes: null,
+        images: [],
       },
     ],
     solutions: [
@@ -145,6 +171,21 @@ describe("toKnowledgeView", () => {
     const view = toKnowledgeView("ws-1", content());
     expect(view.questions[0]?.estimatedMinutes).toBe(3);
     expect(view.questions[1]?.estimatedMinutes).toBeUndefined();
+  });
+
+  it("keeps the figures and common errors a point ships", () => {
+    const view = toKnowledgeView("ws-1", content());
+    const point = view.points.find((entry) => entry.id === "test.point.a");
+    expect(point?.commonErrors).toEqual(["忘记讨论左右导数"]);
+    expect(point?.images[0]?.content).toBe("media/figures/ch01/a.png");
+  });
+
+  it("carries a question's figures into the card shape", () => {
+    const view = toKnowledgeView("ws-1", content());
+    const question = view.questions.find((entry) => entry.id === "test.q.1");
+    expect(question?.images).toHaveLength(1);
+    expect(question?.images[0]?.position).toBe("stem");
+    expect(view.questions[1]?.images).toEqual([]);
   });
 
   it("attaches a solution only to the question it names", () => {

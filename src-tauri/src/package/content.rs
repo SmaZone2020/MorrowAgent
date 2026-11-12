@@ -83,6 +83,30 @@ pub struct Point {
     pub Tags: Vec<String>,
     #[serde(rename = "sources")]
     pub Sources: Vec<String>,
+    #[serde(rename = "commonErrors")]
+    pub CommonErrors: Vec<String>,
+    #[serde(rename = "images")]
+    pub Images: Vec<ContentImage>,
+}
+
+/// One authored figure. `kind` decides how `content` is read, so the front end
+/// never has to guess between a package path, a data URI and inline markup.
+#[derive(Debug, Clone, Serialize)]
+pub struct ContentImage {
+    #[serde(rename = "type")]
+    pub Type: String,
+    #[serde(rename = "kind")]
+    pub Kind: String,
+    #[serde(rename = "content")]
+    pub Content: String,
+    #[serde(rename = "position")]
+    pub Position: String,
+    #[serde(rename = "caption")]
+    pub Caption: Option<String>,
+    #[serde(rename = "alt")]
+    pub Alt: Option<String>,
+    #[serde(rename = "width")]
+    pub Width: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -113,6 +137,8 @@ pub struct Question {
     pub SourceId: Option<String>,
     #[serde(rename = "estimatedMinutes")]
     pub EstimatedMinutes: Option<i64>,
+    #[serde(rename = "images")]
+    pub Images: Vec<ContentImage>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -230,6 +256,49 @@ struct FrontMatter {
     tags: Vec<String>,
     #[serde(default)]
     sources: Vec<String>,
+    #[serde(default)]
+    common_errors: Vec<String>,
+    #[serde(default)]
+    images: Vec<RawImage>,
+}
+
+/// The wire shape of a figure; `position` is the only field the UI may assume,
+/// so it defaults rather than turning a missing key into a lost image.
+#[derive(Deserialize)]
+struct RawImage {
+    #[serde(rename = "type")]
+    kind_type: String,
+    #[serde(default)]
+    kind: String,
+    content: String,
+    #[serde(default)]
+    position: Option<String>,
+    #[serde(default)]
+    caption: Option<String>,
+    #[serde(default)]
+    alt: Option<String>,
+    #[serde(default)]
+    width: Option<i64>,
+}
+
+impl RawImage {
+    fn into_image(self) -> ContentImage {
+        ContentImage {
+            Type: self.kind_type,
+            // An author who omits `kind` almost certainly means a package path:
+            // that is how a Markdown body references a figure too.
+            Kind: if self.kind.is_empty() {
+                "path".to_string()
+            } else {
+                self.kind
+            },
+            Content: self.content,
+            Position: self.position.unwrap_or_else(|| "stem".to_string()),
+            Caption: self.caption,
+            Alt: self.alt,
+            Width: self.width,
+        }
+    }
 }
 
 #[derive(Deserialize)]
@@ -270,6 +339,8 @@ struct RawQuestion {
     source: RawSource,
     #[serde(default)]
     estimated_minutes: Option<i64>,
+    #[serde(default)]
+    images: Vec<RawImage>,
 }
 
 #[derive(Deserialize)]
@@ -489,6 +560,8 @@ fn load_point(raw: &str, path: &str, chapter_id: &str) -> Result<Point, String> 
         Prerequisites: data.prerequisites,
         Tags: data.tags,
         Sources: data.sources,
+        CommonErrors: data.common_errors,
+        Images: data.images.into_iter().map(RawImage::into_image).collect(),
     })
 }
 
@@ -535,6 +608,11 @@ fn load_questions(
                 SourceType: question.source.kind,
                 SourceId: question.source.source_id,
                 EstimatedMinutes: question.estimated_minutes,
+                Images: question
+                    .images
+                    .into_iter()
+                    .map(RawImage::into_image)
+                    .collect(),
             });
         }
     }
@@ -665,6 +743,32 @@ mod tests {
     #[test]
     fn a_document_without_front_matter_is_rejected() {
         assert!(split_front_matter("# 只有正文").is_none());
+    }
+
+    #[test]
+    fn a_point_keeps_the_common_errors_and_figures_it_declares() {
+        let raw = r#"---
+id: a.b
+name: 名字
+chapter: c.one
+difficulty: 2
+exam_importance: high
+common_errors:
+  - 漏掉左右导数
+images:
+  - type: figure
+    kind: path
+    content: media/figures/a.png
+    caption: 图
+---
+
+正文"#;
+        let point = super::load_point(raw, "a.md", "c.one").expect("point");
+        assert_eq!(point.CommonErrors, vec!["漏掉左右导数".to_string()]);
+        assert_eq!(point.Images.len(), 1);
+        assert_eq!(point.Images[0].Content, "media/figures/a.png");
+        // An author who omits the anchor means the stem.
+        assert_eq!(point.Images[0].Position, "stem");
     }
 
     #[test]

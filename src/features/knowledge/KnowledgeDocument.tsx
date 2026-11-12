@@ -6,6 +6,7 @@ import { InlineText } from "@/features/rich/InlineText";
 import { EmptyState } from "@/components/EmptyState";
 import { findPoint, questionsFor } from "@/features/knowledge";
 import type { KnowledgeIndex, KnowledgePoint } from "@/features/knowledge";
+import { ContentFigures } from "@/components/ContentFigure";
 import { workspacePath } from "@/app/navigation";
 import { useWorkspaceId } from "@/features/workspace/WorkspaceContext";
 
@@ -79,7 +80,7 @@ export function KnowledgeDocument({
     .filter((entry): entry is KnowledgePoint => Boolean(entry));
 
   return (
-    <article className="flex flex-col gap-6 px-6 py-7 sm:px-10">
+    <article className="flex select-text flex-col gap-6 px-6 py-7 sm:px-10">
       <header className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="Siyuan text-2xl font-semibold tracking-tight text-foreground">
@@ -134,6 +135,12 @@ export function KnowledgeDocument({
         </div>
       ) : null}
 
+      {point.images.length > 0 ? (
+        <Section title="配图">
+          <ContentFigures images={point.images} />
+        </Section>
+      ) : null}
+
       {point.objectives.length > 0 ? (
         <Section title="学习目标">
           <ul className="flex flex-col gap-1.5">
@@ -144,6 +151,22 @@ export function KnowledgeDocument({
               >
                 <span className="mt-2 size-1 shrink-0 rounded-full bg-accent-foreground/40" />
                 <span className="min-w-0">{objective}</span>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      ) : null}
+
+      {point.commonErrors.length > 0 ? (
+        <Section title="常见错误">
+          <ul className="flex flex-col gap-1.5">
+            {point.commonErrors.map((error) => (
+              <li
+                key={error}
+                className="flex items-start gap-2 text-sm leading-6 text-muted-foreground"
+              >
+                <span className="mt-2 size-1 shrink-0 rounded-full bg-destructive/70" />
+                <span className="min-w-0">{error}</span>
               </li>
             ))}
           </ul>

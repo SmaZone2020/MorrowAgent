@@ -1,6 +1,7 @@
 import katex from "katex";
 import type { ContentImage } from "@/features/knowledge";
 import { MathText } from "@/components/MathText";
+import { useMediaSource } from "@/features/library/media";
 
 /**
  * Renders one authored figure. The `kind` decides how `content` is interpreted,
@@ -9,7 +10,6 @@ import { MathText } from "@/components/MathText";
  */
 export function ContentFigure({ image }: { image: ContentImage }) {
   const label = image.alt ?? image.caption ?? image.type;
-  const width = image.width;
 
   const body = (() => {
     switch (image.kind) {
@@ -37,16 +37,7 @@ export function ContentFigure({ image }: { image: ContentImage }) {
       case "url":
       case "path":
       default:
-        return (
-          <img
-            src={resolveSource(image)}
-            alt={label}
-            width={width}
-            loading="lazy"
-            decoding="async"
-            className="h-auto max-w-full rounded-lg"
-          />
-        );
+        return <FigureImage image={image} label={label} />;
     }
   })();
 
@@ -59,6 +50,32 @@ export function ContentFigure({ image }: { image: ContentImage }) {
         </figcaption>
       ) : null}
     </figure>
+  );
+}
+
+/**
+ * A package figure is a logical path (`media/…`), which only the backend can
+ * read, so it goes through the same workspace-scoped cache the Markdown body
+ * uses. Data URIs and remote URLs pass straight through.
+ */
+function FigureImage({ image, label }: { image: ContentImage; label: string }) {
+  const media = useMediaSource(resolveSource(image));
+  if (!media.url) {
+    return (
+      <span className="py-2 text-sm text-muted-foreground">
+        {media.status === "loading" ? "正在读取配图…" : "配图无法显示。"}
+      </span>
+    );
+  }
+  return (
+    <img
+      src={media.url}
+      alt={label}
+      width={image.width}
+      loading="lazy"
+      decoding="async"
+      className="h-auto max-w-full rounded-lg"
+    />
   );
 }
 
