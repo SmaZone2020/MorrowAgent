@@ -6,8 +6,8 @@ use serde::Serialize;
 use tauri::{Manager, WebviewWindowBuilder};
 
 use super::builtin;
-use super::{list_models, secret};
 use super::types::ProviderConfig;
+use super::{list_models, secret};
 
 /// The platform console, not the inference endpoint.
 ///
@@ -23,13 +23,13 @@ const SIGN_IN_PATH: &str = "/sign_in";
 /// again, which is what makes the "replace the old one?" question answerable.
 pub const KEY_NAME: &str = "Morrow Agent";
 
-/// The console session cookie, kept in memory only.
+/// The console session token, kept in memory only.
 ///
-/// The console signs every API call with a cookie, not a bearer token, and the
-/// cookie is HttpOnly: the page cannot read it either. Tauri can, through the
-/// webview's own cookie store, and that is the one place worth taking it from —
-/// once the sign-in window has done its job it is closed, and every later call
-/// is an ordinary background request with that cookie attached.
+/// The console signs every account call with a bearer token it keeps in
+/// `localStorage` under `userToken`, wrapped in an envelope:
+/// `{"value":"<token>","__version":"0"}`. Only the inner value is the token —
+/// matching the whole string against a token shape is what made earlier attempts
+/// fail after a successful sign-in.
 ///
 /// It is deliberately not persisted: it exists to mint one API key during
 /// onboarding and then has no further use. A console credential on disk would be
@@ -39,13 +39,13 @@ fn session() -> &'static Mutex<Option<String>> {
     SESSION.get_or_init(|| Mutex::new(None))
 }
 
-fn remember(cookie: String) {
+fn remember(token: String) {
     if let Ok(mut guard) = session().lock() {
-        *guard = Some(cookie);
+        *guard = Some(token);
     }
 }
 
-fn cookie() -> Result<String, String> {
+fn token() -> Result<String, String> {
     session()
         .lock()
         .ok()
@@ -82,13 +82,16 @@ fn random_id() -> String {
     )
 }
 
-/// A stable per-install device id, which the console's risk control reads.
-fn device_id(app: &tauri::AppHandle) -> String {
-    let path = app
-        .path()
+fn device_path(app: &tauri::AppHandle) -> Option<std::path::PathBuf> {
+    app.path()
         .app_data_dir()
         .ok()
-        .map(|dir| dir.join("deepseek.device"));
+        .map(|dir| dir.join("deepseek.device"))
+}
+
+/// The console's risk control reads this id, so it must stay stable per install.
+fn device_id(app: &tauri::AppHandle) -> String {
+    let path = device_path(app);
 
     if let Some(path) = &path {
         if let Ok(existing) = std::fs::read_to_string(path) {
@@ -100,13 +103,90 @@ fn device_id(app: &tauri::AppHandle) -> String {
     }
 
     let fresh = random_id();
-    if let Some(path) = path {
+    store_device(app, &fresh);
+    fresh
+}
+
+/// Adopts the id the console itself assigned, so later calls look like the same
+/// browser that signed in.
+fn store_device(app: &tauri::AppHandle, id: &str) {
+    if let Some(path) = device_path(app) {
         if let Some(parent) = path.parent() {
             let _ = std::fs::create_dir_all(parent);
         }
-        let _ = std::fs::write(path, &fresh);
+        let _ = std::fs::write(path, id);
     }
-    fresh
+}
+
+// ---------------------------------------------------------------------------
+// Reading the signed-in page
+// ---------------------------------------------------------------------------
+
+/// Runs a script in the sign-in window and waits for its return value.
+///
+/// The window is a remote page, so it has no IPC: the only channel back is the
+/// script's own return value. `eval_with_callback` hands it over as JSON, which
+/// for a string result means a quoted string that has to be unwrapped once.
+fn page_value(window: &tauri::WebviewWindow, js: &str) -> Result<String, String> {
+    let (sender, receiver) = std::sync::mpsc::channel();
+    window
+        .eval_with_callback(js, move |value| {
+            let _ = sender.send(value);
+        })
+        .map_err(|error| format!("无法读取登录状态：{error}"))?;
+
+    let raw = receiver
+        .recv_timeout(Duration::from_secs(15))
+        .map_err(|_| "读取登录状态超时".to_string())?;
+
+    Ok(serde_json::from_str::<String>(&raw).unwrap_or(raw))
+}
+
+/// What the console page knows about the session.
+#[derive(Debug, Default)]
+struct PageSession {
+    token: String,
+    device: String,
+}
+
+/// Reads the bearer token out of `localStorage`.
+///
+/// Two things matter here. The token is stored inside an envelope object, so it
+/// is parsed rather than pattern-matched. And the whole read is guarded: a page
+/// that has not finished booting throws instead of returning nothing, and a
+/// throw must not be mistaken for "not signed in".
+fn read_page_session(window: &tauri::WebviewWindow) -> PageSession {
+    let script = r#"(function () {
+  var out = { token: "", device: "" };
+  try {
+    var raw = window.localStorage.getItem("userToken") || "";
+    if (raw) {
+      try {
+        var parsed = JSON.parse(raw);
+        out.token = (parsed && parsed.value) || "";
+      } catch (e) {
+        out.token = raw;
+      }
+    }
+    out.device = window.localStorage.getItem("deepseek-device-id:platform") || "";
+  } catch (e) {
+    out.token = "";
+  }
+  return JSON.stringify(out);
+})()"#;
+
+    let Ok(text) = page_value(window, script) else {
+        return PageSession::default();
+    };
+
+    let Ok(json) = serde_json::from_str::<serde_json::Value>(&text) else {
+        return PageSession::default();
+    };
+
+    PageSession {
+        token: json["token"].as_str().unwrap_or("").trim().to_string(),
+        device: json["device"].as_str().unwrap_or("").trim().to_string(),
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -131,13 +211,17 @@ fn explain(reply: &Reply) -> String {
         "EXCEED_MAXIMUM_KEY_NUM" => "API Key 数量已达上限，请先去开放平台删掉几个".to_string(),
         "API_KEY_NAME_TOO_LONG" => "Key 名称太长".to_string(),
         "IDENTITY_VERIFICATION_REQUIRED" => "需要先在开放平台完成实名认证".to_string(),
+        "TOKEN_EXPIRED" | "AUTH_EXPIRED" => "登录状态已过期，请重新登录".to_string(),
         other if !other.is_empty() => format!("DeepSeek 拒绝了这次操作：{other}"),
         _ => "DeepSeek 拒绝了这次操作".to_string(),
     }
 }
 
-/// The console rejects a bare curl-style client, so the browser identity the web
-/// app sends travels with every call.
+/// The console rejects a bare curl-style client, so the browser identity its own
+/// front end sends travels with every call.
+///
+/// The bearer token is the whole credential: cookies are not needed, which is
+/// what lets the sign-in window be closed before any of this runs.
 async fn call(
     client: &reqwest::Client,
     device: &str,
@@ -152,18 +236,18 @@ async fn call(
             "user-agent",
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
         )
+        .header("accept", "*/*")
+        .header("accept-language", "zh-CN")
+        .header("origin", CONSOLE)
+        .header("referer", format!("{CONSOLE}/usage"))
+        .header("authorization", format!("Bearer {}", token()?))
         .header("x-client-platform", "web")
         .header("x-client-version", "1.0.1")
         .header("x-client-bundle-id", "com.deepseek.chat")
         .header("x-client-locale", "zh_CN")
         .header("x-client-timezone-offset", "28800")
         .header("x-device-id", device)
-        .header("x-device-model", "")
-        // The console's WAF compares the origin of console calls against its own
-        // front end; a request without these looks like a script and is refused.
-        .header("origin", CONSOLE)
-        .header("referer", format!("{CONSOLE}/usage"))
-        .header("cookie", cookie()?);
+        .header("x-device-model", "");
 
     if let Some(body) = body {
         builder = builder.json(&body);
@@ -211,6 +295,54 @@ async fn call(
 // Sign-in
 // ---------------------------------------------------------------------------
 
+/// Wipes the console's own state from the built-in browser.
+///
+/// WebView2 keeps one profile for the whole app, so a console cookie from an
+/// earlier sign-in survives the window being closed. Left alone it does the one
+/// thing that makes "重新登录" pointless: the next window lands on `/usage`
+/// already signed in as the old account, never showing the form.
+///
+/// Only DeepSeek's own entries go: the app's UI state lives in the same profile
+/// and must not be touched. Cookies are filtered by domain, and the two storages
+/// are cleared from a page already on the console origin — from any other origin
+/// they are a different (empty) store.
+///
+/// Returns whether the storages are actually empty, because the console keeps
+/// its bearer token in `localStorage`: a cookie deleted while that token
+/// survives still reads as signed in, and the account would silently stay the
+/// old one.
+fn wipe_console_state(window: &tauri::WebviewWindow) -> bool {
+    if let Ok(cookies) = window.cookies() {
+        for entry in cookies {
+            let host = entry.domain().unwrap_or("");
+            if !host.ends_with("deepseek.com") {
+                continue;
+            }
+            let _ = window.delete_cookie(entry);
+        }
+    }
+
+    let script = r#"(function () {
+  var ok = true;
+  try {
+    window.localStorage.clear();
+    window.sessionStorage.clear();
+  } catch (e) {
+    ok = false;
+  }
+  try {
+    ok = ok && window.localStorage.length === 0;
+  } catch (e) {
+    ok = false;
+  }
+  return ok ? "1" : "0";
+})()"#;
+
+    page_value(window, script)
+        .map(|value| value.trim() == "1")
+        .unwrap_or(false)
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct DeepSeekAccount {
     #[serde(rename = "mobile")]
@@ -219,31 +351,11 @@ pub struct DeepSeekAccount {
     pub Email: String,
 }
 
-/// Collects the console cookies a session consists of.
-///
-/// Every cookie the console set for its own host is sent back, not a guessed
-/// subset: which one carries the session is the platform's business, and the
-/// only thing this app needs to know is that the jar it copies is the jar the
-/// browser would have sent. `cookies_for_url` reaches HttpOnly entries that page
-/// scripts cannot see, which is exactly the case here.
-fn session_cookies(window: &tauri::WebviewWindow) -> Result<String, String> {
-    let url = CONSOLE
-        .parse()
-        .map_err(|_| "登录地址无效".to_string())?;
-    let cookies = window
-        .cookies_for_url(url)
-        .map_err(|error| format!("无法读取登录状态：{error}"))?;
-
-    let jar = cookies
-        .iter()
-        .map(|entry| format!("{}={}", entry.name(), entry.value()))
-        .collect::<Vec<_>>()
-        .join("; ");
-
-    if jar.is_empty() {
-        return Err("没有读到登录状态，请重试".to_string());
-    }
-    Ok(jar)
+/// Sleeps without blocking the async runtime's worker thread.
+async fn pause(millis: u64) {
+    tauri::async_runtime::spawn_blocking(move || std::thread::sleep(Duration::from_millis(millis)))
+        .await
+        .ok();
 }
 
 /// Opens the platform's own sign-in page, waits for it to finish, closes it.
@@ -255,13 +367,17 @@ fn session_cookies(window: &tauri::WebviewWindow) -> Result<String, String> {
 /// changes. The alternative — reimplementing the captcha in this app — would
 /// mean loading a third-party fingerprinting script into our own page.
 ///
-/// Completion is judged by the URL: the console leaves `/sign_in` the moment a
-/// session exists, including the case where a live cookie means the form was
-/// never shown. Nothing is read out of `localStorage` — the console keeps no
-/// token there, and the fingerprints it does keep look exactly like one.
+/// Every run starts signed out. The built-in browser keeps its profile between
+/// windows, so a console session from an earlier sign-in would otherwise be
+/// recognised and skip the form entirely — which is fine the first time and
+/// wrong every time after, when the learner is deliberately trying to switch
+/// accounts. The window is therefore opened hidden, the console's cookies and
+/// storages are wiped from inside its own origin, and only then is the sign-in
+/// page shown.
 ///
-/// The window closes as soon as the cookies are in hand; every later console
-/// call is a plain background request.
+/// Completion is judged by the URL: the console leaves `/sign_in` the moment a
+/// session exists. The token is then read from the page itself, and the window
+/// is closed before any console call is made.
 pub async fn sign_in(app: tauri::AppHandle) -> Result<DeepSeekAccount, String> {
     forget();
 
@@ -270,19 +386,22 @@ pub async fn sign_in(app: tauri::AppHandle) -> Result<DeepSeekAccount, String> {
         random_id().split('-').next().unwrap_or("1")
     );
 
+    let target: tauri::Url = SIGN_IN_URL
+        .parse()
+        .map_err(|_| "登录地址无效".to_string())?;
+
     let window = WebviewWindowBuilder::new(
         &app,
         &label,
-        tauri::WebviewUrl::External(
-            SIGN_IN_URL
-                .parse()
-                .map_err(|_| "登录地址无效".to_string())?,
-        ),
+        tauri::WebviewUrl::External(target.clone()),
     )
     .title("登录 DeepSeek")
     .inner_size(520.0, 780.0)
     .min_inner_size(420.0, 620.0)
     .center()
+    // Hidden until the old session is gone, so the learner never watches the
+    // console flash the previous account before being logged out.
+    .visible(false)
     .build()
     .map_err(|error| format!("无法打开登录窗口：{error}"))?;
 
@@ -296,9 +415,45 @@ pub async fn sign_in(app: tauri::AppHandle) -> Result<DeepSeekAccount, String> {
         }
     });
 
-    // Waiting on the URL covers both arrivals: a fresh login (the form submits,
-    // the console routes to /usage) and a restored one (the window opens and
-    // redirects before the first paint).
+    // The wipe script runs on the console origin, so the page has to be there
+    // first: `localStorage` from any other origin is a different, empty store.
+    let ready = Instant::now() + Duration::from_secs(30);
+    while Instant::now() < ready {
+        if closed.load(Ordering::SeqCst) {
+            return Err("已取消登录".to_string());
+        }
+        if let Ok(url) = window.url() {
+            if url.host_str() == Some(CONSOLE_HOST) {
+                break;
+            }
+        }
+        pause(200).await;
+    }
+
+    let mut wiped = false;
+    for _ in 0..3 {
+        pause(200).await;
+        if wipe_console_state(&window) {
+            wiped = true;
+            break;
+        }
+    }
+
+    if !wiped {
+        let _ = app.get_webview_window(&label).map(|w| w.close());
+        return Err("无法清除上次的登录状态，请重启应用后再试".to_string());
+    }
+
+    // Back to a clean form: the page is still holding the signed-in shell in
+    // memory even though its storage is gone.
+    window
+        .navigate(target)
+        .map_err(|error| format!("无法打开登录页：{error}"))?;
+    let _ = window.show();
+
+    // Waiting on the URL covers the arrival: the form submits, the console
+    // routes to /usage. A session that somehow survived would also leave
+    // /sign_in, and the token read below is what proves which account it is.
     let deadline = Instant::now() + Duration::from_secs(600);
     loop {
         if closed.load(Ordering::SeqCst) {
@@ -309,9 +464,7 @@ pub async fn sign_in(app: tauri::AppHandle) -> Result<DeepSeekAccount, String> {
             return Err("登录超时，请重试".to_string());
         }
 
-        tauri::async_runtime::spawn_blocking(|| std::thread::sleep(Duration::from_millis(300)))
-            .await
-            .ok();
+        pause(300).await;
 
         let Ok(url) = window.url() else {
             continue;
@@ -326,15 +479,38 @@ pub async fn sign_in(app: tauri::AppHandle) -> Result<DeepSeekAccount, String> {
         }
     }
 
-    let jar = session_cookies(&window)?;
-    remember(jar);
+    // The console writes the token after it boots the signed-in shell, which can
+    // land a moment after the route changes; retry before giving up.
+    //
+    // The read waits on the page, so it runs off the async runtime: blocking a
+    // worker thread on a remote page would stall everything else sharing it.
+    let mut page = PageSession::default();
+    for _ in 0..20 {
+        let probe = window.clone();
+        page = tauri::async_runtime::spawn_blocking(move || read_page_session(&probe))
+            .await
+            .unwrap_or_default();
+        if !page.token.is_empty() {
+            break;
+        }
+        pause(250).await;
+    }
 
-    // Done with the window: the session now lives in this process.
     let _ = app.get_webview_window(&label).map(|w| w.close());
+
+    if page.token.is_empty() {
+        return Err("已经登录，但没能读到登录凭据，请重试".to_string());
+    }
+
+    remember(page.token);
+
+    if !page.device.is_empty() {
+        store_device(&app, &page.device);
+    }
+    let device = device_id(&app);
 
     // The account read is cosmetic: a session that cannot describe itself still
     // works for minting a key, so a failure here must not undo the sign-in.
-    let device = device_id(&app);
     let client = reqwest::Client::new();
     let account = match call(
         &client,
@@ -554,7 +730,8 @@ pub async fn create_and_adopt(
         }
     }
     if !found {
-        book.Providers.insert(0, builtin::builtin(&api_key, models.clone()));
+        book.Providers
+            .insert(0, builtin::builtin(&api_key, models.clone()));
     }
     book.ActiveProviderId = Some(builtin::DEEPSEEK_ID.to_string());
     book.ActiveModel = Some(model.clone());
@@ -573,7 +750,7 @@ pub async fn create_and_adopt(
     })
 }
 
-/// Forgets the console cookie when the flow ends without minting anything.
+/// Forgets the console session when the flow ends without minting anything.
 pub fn sign_out() {
     forget();
 }
