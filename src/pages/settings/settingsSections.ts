@@ -3,6 +3,7 @@ import {
   CircleInfo,
   CloudGear,
   Database,
+  Globe,
   Sliders,
   SlidersVertical,
 } from "@gravity-ui/icons";
@@ -10,6 +11,7 @@ import {
 export type SettingsSectionKey =
   | "general"
   | "provider"
+  | "search"
   | "model"
   | "data"
   | "about";
@@ -51,6 +53,12 @@ export const settingsGroups: SettingsGroup[] = [
         label: "AI 供应商",
         path: "/settings/provider",
         icon: CloudGear,
+      },
+      {
+        key: "search",
+        label: "搜索与请求",
+        path: "/settings/search",
+        icon: Globe,
       },
       {
         key: "model",

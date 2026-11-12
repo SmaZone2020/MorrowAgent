@@ -16,6 +16,10 @@ const DRILL_TOOLS = [
   "get_mastery",
   "list_wrong_questions",
   "get_recent_attempts",
+  // A question about a method the package does not cover is still a fair
+  // question, so the rail can look it up rather than answer from memory.
+  "web_search",
+  "fetch_page",
 ];
 
 /**

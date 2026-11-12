@@ -1,4 +1,5 @@
 pub mod protocol;
+pub mod search;
 pub mod secret;
 pub mod stream;
 pub mod types;

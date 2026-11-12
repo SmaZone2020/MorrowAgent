@@ -198,13 +198,17 @@ mod platform {
 }
 
 fn blob_path(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
+    blob_path_named(app, "provider.secret")
+}
+
+fn blob_path_named(app: &tauri::AppHandle, name: &str) -> Result<std::path::PathBuf, String> {
     use tauri::Manager;
     let dir = app
         .path()
         .app_data_dir()
         .map_err(|error| format!("无法定位应用数据目录：{}", error))?;
     std::fs::create_dir_all(&dir).map_err(|error| format!("无法创建数据目录：{}", error))?;
-    Ok(dir.join("provider.secret"))
+    Ok(dir.join(name))
 }
 
 pub fn save(app: &tauri::AppHandle, book: &ProviderBook) -> Result<(), String> {
@@ -242,4 +246,43 @@ pub fn clear(app: &tauri::AppHandle) -> Result<(), String> {
         std::fs::remove_file(path).map_err(|error| format!("删除失败：{}", error))?;
     }
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// The search key is a second credential with its own lifetime: a learner may
+// point chat at any OpenAI-compatible provider while still wanting DeepSeek's
+// search. A separate blob means clearing one never touches the other.
+// ---------------------------------------------------------------------------
+
+fn search_path(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
+    blob_path_named(app, "search.secret")
+}
+
+pub fn save_search_key(app: &tauri::AppHandle, key: &str) -> Result<(), String> {
+    let path = search_path(app)?;
+    let trimmed = key.trim();
+    if trimmed.is_empty() {
+        if path.exists() {
+            std::fs::remove_file(path).map_err(|error| format!("删除失败：{}", error))?;
+        }
+        return Ok(());
+    }
+    let cipher = platform::protect(trimmed.as_bytes())?;
+    std::fs::write(path, cipher).map_err(|error| format!("写入失败：{}", error))
+}
+
+pub fn load_search_key(app: &tauri::AppHandle) -> Result<Option<String>, String> {
+    let path = search_path(app)?;
+    if !path.exists() {
+        return Ok(None);
+    }
+    let cipher = std::fs::read(&path).map_err(|error| format!("读取失败：{}", error))?;
+    let plain = platform::unprotect(&cipher)?;
+    let key = String::from_utf8(plain).map_err(|_| "密钥已损坏".to_string())?;
+    let trimmed = key.trim();
+    Ok(if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed.to_string())
+    })
 }

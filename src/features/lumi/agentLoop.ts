@@ -47,12 +47,16 @@ export interface LoopDeps {
   releaseRequest: () => void;
 }
 
-/** Runs one read-only tool, falling back to a sentence the model can read. */
-function runTool(call: ToolCall, context: ToolContext | null): string {
+/** Runs one tool, falling back to a sentence the model can read. */
+async function runTool(
+  call: ToolCall,
+  context: ToolContext | null,
+): Promise<string> {
   const handler = findTool(call.name);
   if (!handler) return `未知工具：${call.name}`;
   if (!context) return "当前学习包没有可查询的内容。";
-  return handler.run(parseArguments(call.arguments), context).output;
+  const outcome = await handler.run(parseArguments(call.arguments), context);
+  return outcome.output;
 }
 
 /**
@@ -88,7 +92,9 @@ export function createLoop(deps: LoopDeps) {
         needsUser = true;
         continue;
       }
-      results[call.id] = runTool(call, context);
+      // Sequential on purpose: two searches in one turn would spend the
+      // account's quota twice for answers the model reads together anyway.
+      results[call.id] = await runTool(call, context);
     }
 
     if (needsUser) {

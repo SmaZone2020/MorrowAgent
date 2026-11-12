@@ -81,6 +81,46 @@ fn provider_clear(app: tauri::AppHandle) -> Result<(), String> {
     secret::clear(&app)
 }
 
+/// Saves the DeepSeek key used by web search. An empty key clears it.
+#[tauri::command]
+fn search_save_key(app: tauri::AppHandle, key: String) -> Result<(), String> {
+    secret::save_search_key(&app, &key)
+}
+
+#[tauri::command]
+fn search_load_key(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    secret::load_search_key(&app)
+}
+
+#[tauri::command]
+async fn search_web(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    request: provider::search::SearchRequest,
+) -> Result<provider::search::SearchResponse, String> {
+    let key = secret::load_search_key(&app)?.ok_or_else(|| "还没有配置搜索密钥".to_string())?;
+    provider::search::search(&state.Client, &key, &request).await
+}
+
+#[tauri::command]
+async fn fetch_page(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    request: provider::search::FetchRequest,
+) -> Result<provider::search::FetchResponse, String> {
+    let key = secret::load_search_key(&app)?.ok_or_else(|| "还没有配置搜索密钥".to_string())?;
+    provider::search::fetch(&state.Client, &key, &request).await
+}
+
+#[tauri::command]
+async fn deepseek_balance(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+) -> Result<provider::search::BalanceResponse, String> {
+    let key = secret::load_search_key(&app)?.ok_or_else(|| "还没有配置搜索密钥".to_string())?;
+    provider::search::balance(&state.Client, &key).await
+}
+
 #[tauri::command]
 fn chat_append(
     state: State<'_, Store>,
@@ -657,6 +697,11 @@ pub fn run() {
             provider_save,
             provider_load,
             provider_clear,
+            search_save_key,
+            search_load_key,
+            search_web,
+            fetch_page,
+            deepseek_balance,
             chat_append,
             chat_messages,
             chat_conversations,

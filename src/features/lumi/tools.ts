@@ -8,6 +8,10 @@ import {
 import { count, text } from "@/features/lumi/toolArgs";
 import { quizTool } from "@/features/lumi/quizTool";
 import { recentAttemptsTool } from "@/features/lumi/attemptsTool";
+import {
+  fetchPageTool,
+  webSearchTool,
+} from "@/features/lumi/searchTool";
 import type { RecentAttempt } from "@/features/training/attemptCache";
 
 /**
@@ -77,7 +81,14 @@ export type ToolOutcome =
 
 export interface ToolHandler {
   definition: ToolDef;
-  run: (args: Record<string, unknown>, context: ToolContext) => ToolOutcome;
+  /**
+   * Resolves one call. A tool that reads the package answers immediately; one
+   * that goes over the network returns a promise, and the loop awaits it.
+   */
+  run: (
+    args: Record<string, unknown>,
+    context: ToolContext,
+  ) => ToolOutcome | Promise<ToolOutcome>;
 }
 
 const SEARCH: ToolHandler = {
@@ -306,6 +317,8 @@ export const TOOLS: ToolHandler[] = [
   READ_QUESTION,
   WRONG_LIST,
   recentAttemptsTool,
+  webSearchTool,
+  fetchPageTool,
 ];
 
 export function findTool(name: string): ToolHandler | undefined {

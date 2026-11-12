@@ -10,6 +10,7 @@ import { SettingsOverviewPage } from "@/pages/settings/SettingsOverviewPage";
 import { GeneralSettingsPage } from "@/pages/settings/GeneralSettingsPage";
 import { AboutSettingsPage } from "@/pages/settings/AboutSettingsPage";
 import { ProviderSettingsPage } from "@/pages/settings/ProviderSettingsPage";
+import { SearchSettingsPage } from "@/pages/settings/SearchSettingsPage";
 import { ModelSettingsPage } from "@/pages/settings/ModelSettingsPage";
 import { DataSettingsPage } from "@/pages/settings/DataSettingsPage";
 import { KnowledgePage } from "@/pages/KnowledgePage";
@@ -66,6 +67,7 @@ export const router = createHashRouter([
             element: <Navigate to="/settings/general" replace />,
           },
           { path: "provider", element: <ProviderSettingsPage /> },
+          { path: "search", element: <SearchSettingsPage /> },
           { path: "model", element: <ModelSettingsPage /> },
           { path: "data", element: <DataSettingsPage /> },
           { path: "about", element: <AboutSettingsPage /> },
