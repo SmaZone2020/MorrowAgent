@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { settingsPath } from "@/app/navigation";
 import { usePersistedState } from "@/features/uiState";
 import { appScope } from "@/features/uiState/scope";
 import { useLibrary } from "@/features/library/store";
@@ -139,10 +138,6 @@ export function OnboardingPage() {
         step={step}
         onStep={setStep}
         providerConfigured={configured}
-        onOpenSettings={() => {
-          setOpen(false);
-          navigate(settingsPath);
-        }}
         onFinish={finish}
       />
     </motion.div>

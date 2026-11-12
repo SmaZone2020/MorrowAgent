@@ -164,6 +164,41 @@ async fn deepseek_balance(
     provider::search::balance(&state.Client, &key).await
 }
 
+/// Opens the platform's own sign-in page and keeps the session it yields.
+///
+/// The console token never reaches the webview: it is used here to mint the API
+/// key that the rest of the app actually runs on.
+#[tauri::command]
+async fn deepseek_sign_in(
+    app: tauri::AppHandle,
+) -> Result<provider::deepseek::DeepSeekAccount, String> {
+    provider::deepseek::sign_in(app).await
+}
+
+/// What the account already holds, so a replace can be confirmed first.
+#[tauri::command]
+async fn deepseek_key_plan(
+    app: tauri::AppHandle,
+) -> Result<provider::deepseek::KeyPlan, String> {
+    provider::deepseek::key_plan(app).await
+}
+
+/// Mints the app's key, proves it by listing models, and adopts it for chat and
+/// search in one step.
+#[tauri::command]
+async fn deepseek_connect_key(
+    app: tauri::AppHandle,
+    replace: bool,
+) -> Result<provider::deepseek::ConnectedKey, String> {
+    provider::deepseek::create_and_adopt(app, replace).await
+}
+
+/// Drops the console token without minting anything.
+#[tauri::command]
+fn deepseek_sign_out() {
+    provider::deepseek::sign_out();
+}
+
 #[tauri::command]
 fn chat_append(
     state: State<'_, Store>,
@@ -455,7 +490,7 @@ fn open_external_url(app: tauri::AppHandle, url: String) -> Result<(), String> {
 fn package_inspect(app: tauri::AppHandle, path: String) -> Result<ValidationReport, String> {
     let packages = packages_dir(&app)?;
     let staging = package::staging_path(&packages);
-    let report = package::inspect(std::path::Path::new(&path), &staging);
+    let report = package::inspect(std::path::Path::new(&path), &staging, &packages);
     if !matches!(&report, Ok(report) if report.Ok) {
         // A failed inspection must not leave a half-extracted tree behind.
         let _ = std::fs::remove_dir_all(&staging);
@@ -811,6 +846,10 @@ pub fn run() {
             search_web,
             fetch_page,
             deepseek_balance,
+            deepseek_sign_in,
+            deepseek_key_plan,
+            deepseek_connect_key,
+            deepseek_sign_out,
             chat_append,
             chat_messages,
             chat_conversations,

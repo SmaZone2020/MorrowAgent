@@ -38,7 +38,7 @@ export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
 
 const TITLES: Record<OnboardingStep, string> = {
   welcome: "欢迎使用 Morrow",
-  provider: "连接模型",
+  provider: "连接DeepSeek服务",
   style: "Lumi 的风格",
   package: "导入学习包",
 };
@@ -85,14 +85,12 @@ export function OnboardingDialog({
   step,
   onStep,
   providerConfigured,
-  onOpenSettings,
   onFinish,
 }: {
   open: boolean;
   step: OnboardingStep;
   onStep: (step: OnboardingStep) => void;
   providerConfigured: boolean;
-  onOpenSettings: () => void;
   /** The last button: setup is over, and the caller takes it from there. */
   onFinish: () => void;
 }) {
@@ -210,10 +208,7 @@ export function OnboardingDialog({
             </p>
           </div>
         ) : step === "provider" ? (
-          <ProviderQuickSetup
-            onReady={setProviderReady}
-            onOpenSettings={onOpenSettings}
-          />
+          <ProviderQuickSetup onReady={setProviderReady} />
         ) : step === "style" ? (
           <div className="flex flex-col gap-5">
             <PersonaPicker
@@ -265,7 +260,7 @@ export function OnboardingDialog({
               {age === null
                 ? "这些只影响 Lumi 的语气和称呼，随时可以在设置里改。"
                 : `按 ${age} 岁来挑例子和用词；随时可以在设置里改。`}
-              <InfoHint label="出生日期只用来大致判断该用什么例子和语气，不会用来算生日倒计时，也不会传给学习包之外的东西。" />
+              <InfoHint label="出生日期只用来大致判断该用什么例子和大概的学习年级，不会传给学习包之外的东西。" />
             </p>
           </div>
         ) : (

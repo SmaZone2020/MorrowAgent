@@ -1,4 +1,5 @@
 pub mod builtin;
+pub mod deepseek;
 pub mod protocol;
 pub mod search;
 pub mod secret;
