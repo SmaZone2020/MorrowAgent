@@ -17,7 +17,8 @@
     "validate:knowledge": "node scripts/validateKnowledge.mjs",
     "validate:package": "node scripts/validatePackage.mjs",
     "checksums:package": "node scripts/writeChecksums.mjs",
-    "build:knowledge": "node scripts/buildKnowledge.mjs"
+    "build:knowledge": "node scripts/buildKnowledge.mjs",
+    "check:version": "node scripts/checkVersion.mjs"
   },
   "dependencies": {
     "@floating-ui/dom": "^1.8.0",

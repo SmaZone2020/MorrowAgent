@@ -1,0 +1,90 @@
+name: CI
+
+# Everything that must be green before a change lands. The release workflow
+# repeats the cheap half of this against the tag, so a broken build cannot be
+# published just because CI was skipped on a tag push.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_NET_RETRY: 5
+
+jobs:
+  web:
+    name: Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Version strings agree
+        run: pnpm check:version
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Production build
+        run: pnpm build
+
+  rust:
+    name: Rust
+    # Windows, because the app ships only Windows installers and the DPAPI
+    # credential store has a Windows-only implementation. A Linux job would
+    # compile the stub and prove nothing about the binary users run.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - run: pnpm install --frozen-lockfile
+
+      # `beforeBuildCommand` is `pnpm build`, so the Rust crate needs a `dist/`
+      # to embed. Building it here also means a broken frontend fails the Rust
+      # job instead of failing later inside `tauri build`.
+      - name: Build the frontend for the Tauri context
+        run: pnpm build
+
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+        working-directory: src-tauri
+
+      - name: Tests
+        run: cargo test
+        working-directory: src-tauri
