@@ -132,4 +132,4 @@ Morrow Agent 是一个以目标达成为导向的 AI 学习伙伴。它通过持
 | 题目 | `schemas/question.schema.json` |
 | 真题登记 | `schemas/exam-source.schema.json` |
 
-产出统一用 `pnpm validate:knowledge` 校验，`pnpm build:knowledge` 编译进包。
+产出统一用 `pnpm validate:knowledge` 校验，`pnpm build:knowledge` 编译进包。两条命令都读 `data/yaml/`，而这个目录因内容授权未定不进版本库；全新克隆里没有它，命令会提示「没有知识库源目录」而不是报一个路径错误。拿到源文件后放进 `data/yaml/` 即可。

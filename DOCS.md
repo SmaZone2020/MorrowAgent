@@ -132,4 +132,4 @@ Field rules for knowledge points, questions and exam-source registration live in
 | Question | `schemas/question.schema.json` |
 | Exam source | `schemas/exam-source.schema.json` |
 
-Output is validated with `pnpm validate:knowledge` and compiled into a package with `pnpm build:knowledge`.
+Output is validated with `pnpm validate:knowledge` and compiled into a package with `pnpm build:knowledge`. Both read `data/yaml/`, which is not tracked because the content licensing is unsettled; a fresh clone has none of it, and the commands report "no knowledge source directory" rather than a confusing path error. Drop the sources into `data/yaml/` and they run.

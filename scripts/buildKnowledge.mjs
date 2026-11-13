@@ -2,8 +2,11 @@
  * Compiles the YAML knowledge base into one JSON module.
  *
  * The app never parses YAML at runtime: the files are the source of truth for
- * authors, and this script is the only bridge. Run through `predev` / `prebuild`
- * so a stale bundle is impossible to ship by accident.
+ * authors, and this script is the only bridge. It is run by hand, not by
+ * `predev` / `prebuild`, because the sources live in the gitignored `data/`
+ * tree and a fresh clone has none of them — a `prebuild` hook would make every
+ * build fail until an author supplied them. The app reads knowledge from
+ * installed learning packages, so the compiled bundle is an authoring aid.
  */
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";

@@ -74,3 +74,7 @@ git push origin main --tags
 - `tests/shipped_archive.rs`
 
 包引擎本身的逻辑仍由测试自己造的 fixture 覆盖；跳过的只是「真实样例能装」这一条。要本地验证它，先 `node scripts/mlps/pack.mjs` 产出 `.morrow`，再跑 `cargo test`。
+
+## 7. 内容管线不在 CI 里
+
+`pnpm validate:knowledge` 与 `pnpm build:knowledge` 读 `data/yaml/`，该目录与 `packages/` 一样因授权未定被排除。CI 不跑这两条命令，`pnpm build` 也不依赖它们的产物（前端运行时读的是已安装学习包，不是 `data/json/knowledge.json`）。因此检出里没有源文件也能构建出完整安装包——只是安装包里不带任何内置内容。
