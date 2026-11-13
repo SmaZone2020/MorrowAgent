@@ -275,17 +275,6 @@ impl Store {
         Ok(())
     }
 
-    pub fn touch_conversation(&self, conversation_id: &str) -> Result<(), String> {
-        let connection = self.lock()?;
-        connection
-            .execute(
-                "UPDATE conversations SET updated_at = ?1 WHERE id = ?2",
-                params![now(), conversation_id],
-            )
-            .map_err(|error| format!("更新会话时间失败：{}", error))?;
-        Ok(())
-    }
-
     /// Wipes conversations and attempts in one workspace; credentials live
     /// outside the database. Other packages keep their history.
     pub fn reset(&self, workspace_id: &str) -> Result<(), String> {

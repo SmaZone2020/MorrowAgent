@@ -658,6 +658,11 @@ const COVER_MIME: [(&str, &str); 5] = [
 /// package and would only bloat the base64 reply.
 const COVER_MAX_BYTES: u64 = 8 * 1024 * 1024;
 
+// A judgement call, so it is pinned at compile time instead of in a test: too
+// small refuses an ordinary cover, too large turns the reply into a payload.
+const _: () =
+    assert!(COVER_MAX_BYTES >= 1024 * 1024 && COVER_MAX_BYTES <= 32 * 1024 * 1024);
+
 /// Resolves the MIME type for a cover path, or rejects the file. Kept separate
 /// from the command so the allowlist can be tested without a Tauri app handle.
 fn cover_mime(cover_path: &str) -> Result<&'static str, String> {
@@ -708,6 +713,10 @@ fn package_cover_data(
 /// and only image extensions are served — the same reasoning as the cover.
 const MEDIA_PREFIX: &str = "media/";
 const MEDIA_MAX_BYTES: u64 = 12 * 1024 * 1024;
+
+// A figure may be a full page scan, so it gets a larger cap than a cover — but
+// not a smaller one, which would reject images the cover path already accepts.
+const _: () = assert!(MEDIA_MAX_BYTES >= COVER_MAX_BYTES);
 
 /// The guard is a function so it can be tested without a Tauri app handle.
 fn is_media_path(path: &str) -> bool {
@@ -773,43 +782,6 @@ fn base64(bytes: &[u8]) -> String {
     }
     out
 }
-
-#[cfg(test)]
-mod cover_tests {
-    use super::{cover_mime, is_media_path, COVER_MAX_BYTES, MEDIA_MAX_BYTES};
-
-    #[test]
-    fn only_image_extensions_are_accepted() {
-        assert_eq!(cover_mime("media/covers/a.png").ok(), Some("image/png"));
-        assert_eq!(cover_mime("media/covers/a.JPG").ok(), Some("image/jpeg"));
-        assert_eq!(cover_mime("media/covers/a.webp").ok(), Some("image/webp"));
-        assert_eq!(cover_mime("media/covers/a.avif").ok(), Some("image/avif"));
-        // A manifest is not a picture, and neither is a bare name.
-        assert!(cover_mime("manifest.yaml").is_err());
-        assert!(cover_mime("knowledge/index.yaml").is_err());
-        assert!(cover_mime("media/covers/cover").is_err());
-    }
-
-    #[test]
-    fn the_size_cap_is_a_sane_thumbnail_limit() {
-        assert!(COVER_MAX_BYTES >= 1024 * 1024);
-        assert!(COVER_MAX_BYTES <= 32 * 1024 * 1024);
-        // A figure may be a full page scan, so it gets a larger cap than a cover.
-        assert!(MEDIA_MAX_BYTES >= COVER_MAX_BYTES);
-    }
-
-    #[test]
-    fn figures_are_confined_to_the_media_directory() {
-        assert!(is_media_path("media/figures/ch01/a.png"));
-        // Anything outside `media/` is not a figure, however it is spelled.
-        assert!(!is_media_path("knowledge/index.yaml"));
-        assert!(!is_media_path("manifest.yaml"));
-        assert!(!is_media_path("media/../manifest.yaml"));
-        assert!(!is_media_path("media\\figures\\a.png"));
-        assert!(!is_media_path("/media/a.png"));
-    }
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let client = reqwest::Client::builder()
@@ -901,4 +873,32 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running Morrow Agent");
+}
+
+#[cfg(test)]
+mod cover_tests {
+    use super::{cover_mime, is_media_path};
+
+    #[test]
+    fn only_image_extensions_are_accepted() {
+        assert_eq!(cover_mime("media/covers/a.png").ok(), Some("image/png"));
+        assert_eq!(cover_mime("media/covers/a.JPG").ok(), Some("image/jpeg"));
+        assert_eq!(cover_mime("media/covers/a.webp").ok(), Some("image/webp"));
+        assert_eq!(cover_mime("media/covers/a.avif").ok(), Some("image/avif"));
+        // A manifest is not a picture, and neither is a bare name.
+        assert!(cover_mime("manifest.yaml").is_err());
+        assert!(cover_mime("knowledge/index.yaml").is_err());
+        assert!(cover_mime("media/covers/cover").is_err());
+    }
+
+    #[test]
+    fn figures_are_confined_to_the_media_directory() {
+        assert!(is_media_path("media/figures/ch01/a.png"));
+        // Anything outside `media/` is not a figure, however it is spelled.
+        assert!(!is_media_path("knowledge/index.yaml"));
+        assert!(!is_media_path("manifest.yaml"));
+        assert!(!is_media_path("media/../manifest.yaml"));
+        assert!(!is_media_path("media\\figures\\a.png"));
+        assert!(!is_media_path("/media/a.png"));
+    }
 }
