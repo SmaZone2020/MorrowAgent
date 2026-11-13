@@ -28,12 +28,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
-
+      # Node first: pnpm 11 requires Node >= 22.13 to run at all, and the
+      # runner's preinstalled Node is not guaranteed to be that new.
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: pnpm
+
+      - uses: pnpm/action-setup@v4
+
+      # `cache: pnpm` on setup-node would need pnpm on PATH before this step
+      # runs, so the store is cached directly instead.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
 
       - run: pnpm install --frozen-lockfile
 
@@ -58,12 +67,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: pnpm
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/AppData/Local/pnpm/store
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
 
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -75,9 +89,9 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      # `beforeBuildCommand` is `pnpm build`, so the Rust crate needs a `dist/`
-      # to embed. Building it here also means a broken frontend fails the Rust
-      # job instead of failing later inside `tauri build`.
+      # `beforeBuildCommand` is `pnpm build`, so the crate needs a `dist/` to
+      # embed. Building it here also means a broken frontend fails this job
+      # instead of failing later inside `tauri build`.
       - name: Build the frontend for the Tauri context
         run: pnpm build
 
