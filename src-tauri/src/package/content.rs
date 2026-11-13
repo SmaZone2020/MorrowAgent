@@ -773,8 +773,11 @@ images:
 
     #[test]
     fn the_sample_package_loads_end_to_end() {
-        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../packages/cn.morrow.calculus.shaanxi-upgrade");
+        let Some(root) = crate::package::sample_package() else {
+            eprintln!("skipped: no sample package in packages/");
+            return;
+        };
+
         let manifest: crate::package::manifest::PackageManifest = serde_yaml::from_str(
             &std::fs::read_to_string(root.join("manifest.yaml")).expect("manifest"),
         )

@@ -6,6 +6,19 @@ pub mod paths;
 
 use std::path::{Path, PathBuf};
 
+/// The reference learning package, when the working tree has one.
+///
+/// `packages/` is gitignored because the content's licensing is not settled, so
+/// a fresh clone — CI included — has no sample. Tests that read it skip instead
+/// of failing, the same way `tests/shipped_archive.rs` skips without an archive:
+/// a skipped test says what was not verified, a red one says nothing.
+#[cfg(test)]
+pub(crate) fn sample_package() -> Option<PathBuf> {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../packages/cn.morrow.calculus.shaanxi-upgrade");
+    root.join("manifest.yaml").exists().then_some(root)
+}
+
 use serde::Serialize;
 
 use content::PackageContent;
@@ -395,9 +408,9 @@ pub fn staging_path(packages_root: &Path) -> PathBuf {
 mod tests {
     use super::{export, inspect, install, open, staging_path};
 
-    fn sample_root() -> std::path::PathBuf {
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../packages/cn.morrow.calculus.shaanxi-upgrade")
+    /// The sample tree, or `None` in a checkout that has no `packages/`.
+    fn sample_root() -> Option<std::path::PathBuf> {
+        super::sample_package()
     }
 
     fn workspace_dir(name: &str) -> std::path::PathBuf {
@@ -409,9 +422,14 @@ mod tests {
 
     #[test]
     fn a_sample_package_round_trips_through_export_and_install() {
+        let Some(root) = sample_root() else {
+            eprintln!("skipped: no sample package in packages/");
+            return;
+        };
+
         let work = workspace_dir("roundtrip");
         let archive = work.join("sample.morrow");
-        export(&sample_root(), &archive).expect("export");
+        export(&root, &archive).expect("export");
 
         let staging = staging_path(&work.join("packages"));
         let report = inspect(&archive, &staging, &work.join("packages")).expect("inspect");
@@ -455,12 +473,17 @@ mod tests {
 
     #[test]
     fn installing_a_newer_version_replaces_the_old_tree() {
+        let Some(root) = sample_root() else {
+            eprintln!("skipped: no sample package in packages/");
+            return;
+        };
+
         let work = workspace_dir("update");
         let packages = work.join("packages");
         std::fs::create_dir_all(&packages).expect("dir");
 
         let first = work.join("first.morrow");
-        export(&sample_root(), &first).expect("export first");
+        export(&root, &first).expect("export first");
         let staging = staging_path(&packages);
         inspect(&first, &staging, &packages).expect("inspect first");
         let installed = install(&staging, &packages).expect("install first");
@@ -468,7 +491,7 @@ mod tests {
         // A second identical build lands as the same version and reports no
         // replacement, which is what an idempotent reinstall looks like.
         let second = work.join("second.morrow");
-        export(&sample_root(), &second).expect("export second");
+        export(&root, &second).expect("export second");
         let staging = staging_path(&packages);
         let report = inspect(&second, &staging, &packages).expect("inspect second");
         assert!(
@@ -493,9 +516,14 @@ mod tests {
 
     #[test]
     fn a_tampered_package_fails_the_integrity_check() {
+        let Some(root) = sample_root() else {
+            eprintln!("skipped: no sample package in packages/");
+            return;
+        };
+
         let work = workspace_dir("tamper");
         let source = work.join("source");
-        copy_dir(&sample_root(), &source);
+        copy_dir(&root, &source);
         std::fs::write(source.join("README.md"), "tampered").expect("rewrite");
 
         let archive = work.join("tampered.morrow");

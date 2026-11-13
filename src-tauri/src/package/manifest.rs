@@ -373,9 +373,13 @@ mod tests {
 
     #[test]
     fn the_sample_manifest_parses_and_checks_clean() {
-        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../packages/cn.morrow.calculus.shaanxi-upgrade/manifest.yaml");
-        let raw = std::fs::read_to_string(&path).expect("sample manifest is readable");
+        let Some(root) = crate::package::sample_package() else {
+            eprintln!("skipped: no sample package in packages/");
+            return;
+        };
+
+        let raw =
+            std::fs::read_to_string(root.join("manifest.yaml")).expect("sample manifest is readable");
         let manifest: PackageManifest = serde_yaml::from_str(&raw).expect("manifest parses");
         assert!(manifest.Check().is_empty(), "{:?}", manifest.Check());
         assert_eq!(manifest.Package.Id, "cn.morrow.calculus.shaanxi-upgrade");
