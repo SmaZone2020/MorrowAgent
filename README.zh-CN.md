@@ -102,8 +102,23 @@ MorrowAgent/
 ├── packages/             学习包源文件（不入库）
 ├── scripts/              校验、打包、知识库构建
 ├── schemas/              知识点与 MLPS 内容的 JSON Schema
+├── .github/workflows/    持续集成与安装包发布流程
 └── docs/                 产品、设计、AI、数据与工程文档
 ```
+
+## 发布
+
+CI 在每次推送到 `main` 和每个 Pull Request 上运行：类型检查、单元测试、生产构建，然后在 Windows 上跑 `clippy -D warnings` 与 `cargo test`。
+
+安装包由 `Release` 工作流产出。版本号写在五个文件里（`package.json`、`src-tauri/Cargo.toml`、`src-tauri/tauri.conf.json`、`src/app/config.ts`、`src-tauri/src/package/mod.rs`）；`pnpm check:version` 会断言它们一致，标签与版本号不符时在编译前就失败。
+
+```bash
+# 改完五处版本号并提交后：
+git tag v0.2.0
+git push origin v0.2.0      # 产出 .msi 与 NSIS 安装包，并创建 GitHub Release 草稿
+```
+
+手动触发同一个工作流只产出安装包并上传为 workflow 产物，不会发布任何东西。
 
 ## 文档
 

@@ -101,6 +101,7 @@ English is the default. The four core documents have a full Chinese counterpart;
 | --- | --- |
 | `docs/05-Engineering/Architecture.md` | Technical architecture |
 | `docs/05-Engineering/Communication-Protocol.md` | API and component communication protocol |
+| `docs/05-Engineering/CI-CD.md` | CI checks and the installer release pipeline |
 
 ### Project
 

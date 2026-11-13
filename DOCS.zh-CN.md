@@ -101,6 +101,7 @@ Morrow Agent 是一个以目标达成为导向的 AI 学习伙伴。它通过持
 | --- | --- |
 | `docs/05-Engineering/Architecture.md` | 技术架构决策框架 |
 | `docs/05-Engineering/Communication-Protocol.md` | API 与组件通信协议 |
+| `docs/05-Engineering/CI-CD.md` | 持续集成与安装包发布流程 |
 
 ### 项目
 
