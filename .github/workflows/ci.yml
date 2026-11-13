@@ -79,7 +79,10 @@ jobs:
           key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: pnpm-store-${{ runner.os }}-
 
-      - uses: dtolnay/rust-toolchain@stable
+      # Pinned, not `@stable`: clippy runs with `-D warnings`, so a new toolchain
+      # release that adds a lint would turn a green build red without a code
+      # change. 1.95.0 is what the current tree was verified against.
+      - uses: dtolnay/rust-toolchain@1.95.0
         with:
           components: clippy
 
