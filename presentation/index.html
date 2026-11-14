@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Morrow Agent · 汉中市第八届职业院校技能大赛</title>
+<link rel="stylesheet" href="assets/katex/katex.min.css" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div id="progress"></div>
+<div id="stage"></div>
+<div id="counter"></div>
+<div id="hint"></div>
+
+<script src="assets/katex-pre.js"></script>
+<script src="icons.js"></script>
+<script src="lumi.js"></script>
+<script src="assets/lumi/geometry-data.js"></script>
+<script src="assets/lumi/math.js"></script>
+<script src="assets/lumi/tables.js"></script>
+<script src="assets/lumi/pose.js"></script>
+<script src="assets/lumi/tricks.js"></script>
+<script src="assets/lumi/fx.js"></script>
+<script src="assets/lumi/eyes.js"></script>
+<script src="assets/lumi/character.js"></script>
+<script src="squircle.js"></script>
+<script src="slides.js"></script>
+<script src="lumi-play.js"></script>
+<script src="main.js"></script>
+<script>
+  // Slides mount first, then the deck binds navigation and plays slide 1.
+  window.KATEX_PRE = window.KATEX_PRE || {};
+  const stage = document.getElementById("stage");
+  window.buildSlides().forEach((html) => {
+    // The single-file build swaps asset paths for inlined data URIs here.
+    if (window.resolveAssets) html = window.resolveAssets(html);
+    const box = document.createElement("div");
+    box.innerHTML = html.trim();
+    stage.appendChild(box.firstElementChild);
+  });
+  window.deckInit();
+  window.Squircle.applyAll();
+  window.LumiPlay.init();
+</script>
+</body>
+</html>

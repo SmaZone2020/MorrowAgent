@@ -1,0 +1,9 @@
+# Raw screen recordings kept for re-cuts. The deck itself only ships
+# assets/shots/theme.mp4, which is the one video inlined into deck.html.
+assets/shots/lumi-chat.mp4
+assets/shots/QQ20261114-100116-HD.mp4
+
+# KaTeX ships woff2/woff/ttf fallbacks; every browser that runs the deck reads
+# woff2, so the two legacy copies stay out of the repo.
+assets/katex/fonts/*.woff
+assets/katex/fonts/*.ttf
