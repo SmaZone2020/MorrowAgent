@@ -21,7 +21,9 @@ import { greetingFor } from "@/features/lumi/greetings";
 import { useProviderStatus } from "@/features/settings/providerStatus";
 import { usePreferences } from "@/features/settings/preferencesStore";
 import { supportsThinking } from "@/features/settings/thinking";
+import { useSearchKey } from "@/features/settings/searchStore";
 import { ThinkingControl } from "@/features/lumi/ThinkingControl";
+import { SearchControl } from "@/features/lumi/SearchControl";
 import { usePersistedState } from "@/features/uiState/usePersistedState";
 import { useWorkspaceId } from "@/features/workspace/WorkspaceContext";
 import { workspaceScope } from "@/features/uiState/scope";
@@ -62,7 +64,16 @@ export function LumiPage() {
     return active ? supportsThinking(active) : false;
   });
   const thinking = usePreferences((state) => state.thinking);
+  const webSearch = usePreferences((state) => state.webSearch);
   const updatePreferences = usePreferences((state) => state.update);
+  // Whether a search key exists decides if the switch is usable at all; the
+  // page does not read the key itself.
+  const searchReady = useSearchKey((state) => state.ready);
+  const hydrateSearch = useSearchKey((state) => state.hydrate);
+
+  useEffect(() => {
+    void hydrateSearch();
+  }, [hydrateSearch]);
   const draftAttachments = useAttachmentDraft(vision);
   const attachments = draftAttachments.attachments;
   // The picker is a panel above the composer, not a permanent band: it opens
@@ -298,6 +309,12 @@ export function LumiPage() {
                         onChange={(level) => updatePreferences({ thinking: level })}
                       />
                     ) : null}
+                    <SearchControl
+                      enabled={webSearch}
+                      ready={searchReady}
+                      disabled={sending}
+                      onChange={(enabled) => updatePreferences({ webSearch: enabled })}
+                    />
                   </div>
                 }
               />

@@ -141,19 +141,37 @@ export function createTurnActions(runtime: ConversationRuntime) {
       const pending = get().pending;
       const runTool = runtime.runTool;
       if (!pending) return;
+      const target = pending.calls.find((call) => call.id === callId);
+      if (!target) return;
 
-      await resume(pending, async (call) => {
-        if (call.id !== callId) return pending.results[call.id] ?? "";
-        if (!allowed) {
-          return `用户拒绝了这个调用${reason ? `：${reason}` : "。"}请不要重试同一个调用，改用其他方式，或先问清楚需要什么。`;
-        }
-        if (!runTool) return "这个界面没有配置执行该工具的能力。";
+      const results = { ...pending.results };
+      if (!allowed) {
+        results[callId] = `用户拒绝了这个调用${reason ? `：${reason}` : "。"}请不要重试同一个调用，改用其他方式，或先问清楚需要什么。`;
+      } else if (!runTool) {
+        results[callId] = "这个界面没有配置执行该工具的能力。";
+      } else {
         try {
-          return await runTool(call);
+          results[callId] = await runTool(target);
         } catch (error) {
-          return `工具执行失败：${error instanceof Error ? error.message : String(error)}`;
+          results[callId] = `工具执行失败：${error instanceof Error ? error.message : String(error)}`;
         }
-      });
+      }
+
+      // A turn may ask for several writes at once, and each one is a separate
+      // decision: bank this answer and keep the turn parked until the rest are
+      // decided, so approving the first does not answer the others with "".
+      const waiting = pending.calls.filter(
+        (call) => results[call.id] === undefined,
+      );
+      if (waiting.length > 0) {
+        const next = { ...pending, results };
+        set({ pending: next });
+        const workspaceId = get().workspaceId;
+        if (workspaceId) writeScope(pendingKey(scope, workspaceId), next);
+        return;
+      }
+
+      await resume({ ...pending, results }, async () => "");
     },
 
     dismissQuiz: () => {

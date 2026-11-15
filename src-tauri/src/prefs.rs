@@ -35,6 +35,11 @@ pub struct Preferences {
     /// learner's patience rather than about one conversation.
     #[serde(rename = "thinking", default = "default_thinking")]
     pub Thinking: String,
+    /// Whether the model may search the web. On by default because it is the
+    /// only way Lumi can answer a question the package does not cover, and the
+    /// switch is in the composer for the learner who does not want to pay for it.
+    #[serde(rename = "webSearch", default = "default_true")]
+    pub WebSearch: bool,
     /// Whether the rail's Lumi entry gets a dot when a reply finishes while the
     /// learner is on another page. Quiet, so it is on by default.
     #[serde(rename = "lumiDot", default = "default_true")]
@@ -145,6 +150,7 @@ impl Default for Preferences {
             Nickname: String::new(),
             Birthday: String::new(),
             Thinking: default_thinking(),
+            WebSearch: default_true(),
             LumiDot: default_true(),
             LumiToast: default_true(),
         }

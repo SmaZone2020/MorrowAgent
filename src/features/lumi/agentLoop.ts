@@ -7,6 +7,7 @@ import {
 } from "@/features/settings/thinking";
 import { streamChat } from "@/features/settings/aiStream";
 import type { ChatMessage, ToolCall, ToolDef } from "@/features/settings/aiBridge";
+import { withoutWebTools } from "@/features/lumi/webTools";
 import {
   toHistory,
   turnHasImage,
@@ -22,6 +23,23 @@ import {
 
 /** One round of the loop is one request; this bounds a runaway tool chain. */
 export const MAX_TOOL_ROUNDS = 4;
+
+/**
+ * The tool list a request may carry, after the search switch.
+ *
+ * Filtered here rather than at each surface's definition, because the switch is
+ * a per-question decision: a learner who turned search off for one question must
+ * not see the model spend a round on a call the endpoint then rejects, and the
+ * same rule has to hold on the Lumi page, the drill rail and Builder Mode.
+ */
+function toolsFor(deps: LoopDeps, searchOn: boolean): ToolDef[] | undefined {
+  const all = deps.defs
+    ? deps.defs()
+    : deps.toolNames.length > 0
+      ? toolDefs(deps.toolNames)
+      : undefined;
+  return withoutWebTools(all, searchOn);
+}
 
 /**
  * What the loop does with a call before running it.
@@ -212,11 +230,7 @@ export function createLoop(deps: LoopDeps) {
         signal,
         maxTokens: prefs.maxTokens,
         temperature: prefs.temperature,
-        tools: deps.defs
-          ? deps.defs()
-          : deps.toolNames.length > 0
-            ? toolDefs(deps.toolNames)
-            : undefined,
+        tools: toolsFor(deps, prefs.webSearch),
         thinking,
         onProgress: (partial) => {
           // Switching conversations aborts the request, but a delta already in

@@ -5,6 +5,7 @@ import { LibraryPage } from "@/pages/LibraryPage";
 import { OnboardingPage } from "@/pages/OnboardingPage";
 import { WorkspaceDashboardPage } from "@/pages/WorkspaceDashboardPage";
 import { LumiPage } from "@/pages/LumiPage";
+import { BuilderPage } from "@/pages/BuilderPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 import { SettingsLayout } from "@/pages/settings/SettingsLayout";
 import { SettingsOverviewPage } from "@/pages/settings/SettingsOverviewPage";
@@ -42,6 +43,10 @@ export const router = createHashRouter([
     children: [
       { index: true, element: <LibraryPage /> },
       { path: "onboarding", element: <OnboardingPage /> },
+      // A build belongs to the shelf layer, not to a package: it produces the
+      // archive the shelf installs, and an installed package is exactly what it
+      // is not yet.
+      { path: "builder", element: <BuilderPage /> },
       {
         path: "w/:workspaceId",
         element: <WorkspaceRoute />,

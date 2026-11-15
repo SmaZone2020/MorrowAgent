@@ -49,7 +49,10 @@ export function TitleBar() {
   const sidebarToggleDisabled = layer.kind !== "workspace" || inExam;
   // The shelf has nowhere to go back to and setup is left through its own
   // buttons, so both disable this; settings still uses it to return to the shelf.
-  const homeDisabled = layer.kind === "shelf" || inExam;
+  // Builder Mode shares the shelf layer but is not the shelf: it has somewhere
+  // to go back to, so the button stays live there.
+  const homeDisabled =
+    (layer.kind === "shelf" && pathname !== "/builder") || inExam;
   const [maximized, setMaximized] = useState(false);
   const requestOnboarding = useOnboardingRequest((state) => state.request);
 

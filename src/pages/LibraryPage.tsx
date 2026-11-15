@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Gear, Plus } from "@gravity-ui/icons";
+import { Gear, Hammer, Plus } from "@gravity-ui/icons";
 import { Button } from "@/vendor/beui/components/motion/button";
 import { Tooltip } from "@/vendor/beui/components/motion/tooltip";
 import { LoadingLine } from "@/components/LoadingLine";
@@ -69,6 +69,17 @@ export function LibraryPage() {
         <h1 className="Siyuan min-w-0 flex-1 truncate text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
           书架
         </h1>
+        <Tooltip content="构建学习包" side="bottom">
+          <Button
+            size="sm"
+            variant="secondary"
+            aria-label="构建学习包"
+            className="size-8 shrink-0 rounded-full p-0"
+            onClick={() => navigate("/builder")}
+          >
+            <Hammer className="size-4" />
+          </Button>
+        </Tooltip>
         <Tooltip content="导入学习包" side="bottom">
           <Button
             size="sm"

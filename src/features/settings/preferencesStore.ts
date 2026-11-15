@@ -21,7 +21,9 @@ export const usePreferences = create<PreferencesState>((set, get) => ({
   hydrate: async () => {
     try {
       const stored = await loadPreferences();
-      set({ ...stored, hydrated: true });
+      // Spread over the defaults: a preference added after a file was written
+      // would otherwise arrive as `undefined` and read as "off".
+      set({ ...defaultPreferences, ...stored, hydrated: true });
     } catch {
       set({ hydrated: true });
     }
@@ -37,6 +39,7 @@ export const usePreferences = create<PreferencesState>((set, get) => ({
       nickname: get().nickname,
       birthday: get().birthday,
       thinking: get().thinking,
+      webSearch: get().webSearch,
       lumiDot: get().lumiDot,
       lumiToast: get().lumiToast,
       ...patch,

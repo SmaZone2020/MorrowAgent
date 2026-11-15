@@ -19,6 +19,14 @@ export interface Preferences {
    * Only DeepSeek understands the switch; other providers never see it.
    */
   thinking: string;
+  /**
+   * Whether the model may reach the web at all.
+   *
+   * It is a per-question switch like `thinking`, but it is also the thing that
+   * decides whether the search tools are sent at all: a package question is
+   * usually answerable from the textbook, and every search is billed.
+   */
+  webSearch: boolean;
   /** Marks the rail entry when a reply finished while the learner was elsewhere. */
   lumiDot: boolean;
   /** Announces that reply with a toast instead of only the dot. */
@@ -44,6 +52,7 @@ export const defaultPreferences: Preferences = {
   nickname: "",
   birthday: "",
   thinking: "high",
+  webSearch: true,
   lumiDot: true,
   lumiToast: true,
 };
