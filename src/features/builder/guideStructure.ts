@@ -188,6 +188,8 @@ export function structureGuide(): string {
     "",
     "打包成 `.morrow` 时，**`manifest.yaml` 必须位于压缩包根部**：在包目录里执行 `7z a out.morrow * -r`，不要连目录本身一起压。",
     "",
+    "在构建模式里不必自己打包：`install_package` 会按这个规则重新打包并校验，通过就直接装进书架。只有用户要拿走一个 `.morrow` 文件时才需要手动执行 `7z`。",
+    "",
     "工作区里如果带了仓库脚本（`scripts/`），用它们：`node scripts/writeChecksums.mjs <包目录>`、`node scripts/validatePackage.mjs <包目录>`、`node scripts/mlps/pack.mjs <包目录> <输出.morrow>`。没有脚本时，按本说明逐条自检，并用 shell 自己算哈希（PowerShell：`Get-FileHash -Algorithm SHA256`；bash：`sha256sum`）。",
   ].join("\n");
 }

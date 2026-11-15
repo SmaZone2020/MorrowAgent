@@ -17,6 +17,7 @@ export const FILE2MD = "file2md";
 export const SHELL = "shell";
 export const WEB_SEARCH = "web_search";
 export const FETCH_PAGE = "fetch_page";
+export const INSTALL_PACKAGE = "install_package";
 
 export const BUILDER_TOOL_NAMES = [
   DIR_READ,
@@ -25,6 +26,7 @@ export const BUILDER_TOOL_NAMES = [
   FILE_EDIT,
   FILE2MD,
   SHELL,
+  INSTALL_PACKAGE,
   WEB_SEARCH,
   FETCH_PAGE,
 ];
@@ -37,6 +39,7 @@ export const TOOL_LABEL: Record<string, string> = {
   [FILE_EDIT]: "修改文件",
   [FILE2MD]: "转换文档",
   [SHELL]: "执行命令",
+  [INSTALL_PACKAGE]: "导入学习包",
   [WEB_SEARCH]: "联网搜索",
   [FETCH_PAGE]: "读取网页",
 };
@@ -130,8 +133,22 @@ export const BUILDER_TOOL_DEFS: ToolDef[] = [
     },
   },
   {
-    name: WEB_SEARCH,
+    name: INSTALL_PACKAGE,
     description:
+      "把建好的学习包导入书架。工具会把文件夹重新打包成 `.morrow`，并跑一遍和手动导入完全相同的校验（文件清单、SHA-256、内容与引用）。校验不通过时返回逐条失败原因，不会安装；通过则出现在书架里。整包内容都写完之后再调用，中途调用只会拿到缺失文件清单。",
+    parameters: {
+      type: "object",
+      properties: {
+        path: {
+          type: "string",
+          description:
+            "学习包所在的子文件夹（工作区内的相对路径）。留空表示整个工作区就是包的根目录，即 manifest.yaml 就在根下。",
+        },
+      },
+    },
+  },
+  {
+    name: WEB_SEARCH,    description:
       "联网搜索，返回标题、链接与摘要。只有写某个知识点需要教材之外的事实（版本差异、官方文档、别人的做法）时才用；项目里已有的信息不要联网查。",
     parameters: {
       type: "object",

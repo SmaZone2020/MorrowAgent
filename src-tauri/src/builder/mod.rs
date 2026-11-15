@@ -9,5 +9,6 @@
 pub mod convert;
 pub mod env;
 pub mod files;
+pub mod install;
 pub mod paths;
 pub mod shell;

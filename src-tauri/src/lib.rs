@@ -520,12 +520,25 @@ fn package_install(
     update: bool,
 ) -> Result<Workspace, String> {
     let packages = packages_dir(&app)?;
+    install_staged(&state, std::path::Path::new(&staging), &packages, update)
+}
 
+/// Moves a verified staging tree into place and records the workspace.
+///
+/// Shared with Builder Mode: importing a folder the user just authored and
+/// importing a `.morrow` someone sent them are the same operation after the
+/// checks pass, and two copies of this would drift on the locked-version rule.
+fn install_staged(
+    state: &Store,
+    staging: &std::path::Path,
+    packages: &std::path::Path,
+    update: bool,
+) -> Result<Workspace, String> {
     // A locked workspace keeps its content until the learner unlocks it. The
     // check happens before anything is moved, so a refused update leaves the
     // installed tree exactly as it was.
     let guarded = if update {
-        state.workspace_for_package(&staged_package_id(std::path::Path::new(&staging))?)?
+        state.workspace_for_package(&staged_package_id(staging)?)?
     } else {
         None
     };
@@ -533,7 +546,7 @@ fn package_install(
         if workspace.VersionPolicy == store::POLICY_LOCKED && !workspace.Orphaned {
             // The staged copy is spent: leaving it behind would make the next
             // import collide with a tree nobody is going to install.
-            let _ = std::fs::remove_dir_all(&staging);
+            let _ = std::fs::remove_dir_all(staging);
             return Err(format!(
                 "「{}」已锁定在 v{}，请先在书架解锁后再更新",
                 workspace.Name, workspace.PackageVersion
@@ -541,7 +554,7 @@ fn package_install(
         }
     }
 
-    let installed = package::install(std::path::Path::new(&staging), &packages)?;
+    let installed = package::install(staging, packages)?;
 
     let existing = state.workspace_for_package(&installed.Manifest.Id)?;
     // Reusing the id is what keeps history attached across an update. A fresh
@@ -890,6 +903,69 @@ async fn builder_shell(
     .map_err(|error| format!("执行命令失败：{error}"))?
 }
 
+/// Packs the finished folder and puts it on the shelf.
+///
+/// This is the import dialog's path with one fewer human: the tree is packed,
+/// validated against the same checklist, and installed. A folder that fails a
+/// check comes back with the failing lines rather than an error, so the model can
+/// read "integrity: README.md 哈希不匹配" and fix the file instead of guessing why
+/// the import was refused.
+#[tauri::command]
+async fn builder_install_package(
+    app: tauri::AppHandle,
+    state: State<'_, Store>,
+    workspace: String,
+    path: Option<String>,
+) -> Result<builder::install::BuilderImport, String> {
+    let packages = packages_dir(&app)?;
+    let scratch = builder::install::scratch_dir();
+
+    // Packing and validating are pure filesystem work, so they run off the UI
+    // thread. Installing touches the database, so it happens back here where the
+    // store handle lives.
+    let packed = {
+        let packages = packages.clone();
+        let scratch = scratch.clone();
+        tauri::async_runtime::spawn_blocking(move || {
+            let root = builder::paths::root(&workspace)?;
+            // The model names a subdirectory when the package lives inside the
+            // folder it was given; an empty path means the folder itself is the
+            // package.
+            let tree = match path.as_deref().map(str::trim).filter(|value| !value.is_empty()) {
+                Some(relative) => builder::paths::resolve(&root, relative, false)?,
+                None => root,
+            };
+            builder::install::pack_and_inspect(&tree, &packages, &scratch)
+        })
+        .await
+        .map_err(|error| format!("导入学习包失败：{error}"))?
+    };
+
+    // The packed copy is a means to an install, never an artifact the user asked
+    // for; leaving it behind would litter the temp directory with one archive
+    // per build turn.
+    let outcome = packed.and_then(|mut import| {
+        if !import.Report.Ok {
+            return Ok(import);
+        }
+        let staging = import
+            .Report
+            .Staging
+            .clone()
+            .ok_or_else(|| "校验通过但没有生成安装目录".to_string())?;
+        import.Workspace = Some(install_staged(
+            &state,
+            std::path::Path::new(&staging),
+            &packages,
+            import.Report.Update,
+        )?);
+        Ok(import)
+    });
+
+    let _ = std::fs::remove_dir_all(&scratch);
+    outcome
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let client = reqwest::Client::builder()
@@ -984,7 +1060,8 @@ pub fn run() {
             builder_file_edit,
             builder_dir_read,
             builder_file2md,
-            builder_shell
+            builder_shell,
+            builder_install_package
         ])
         .run(tauri::generate_context!())
         .expect("error while running Morrow Agent");

@@ -4,14 +4,21 @@ const STARTERS = [
     title: "用我的讲义做一个学习包",
     hint: "先转换文档，再从里面提取知识点和题目",
     prompt:
-      "文件夹里有我的讲义，请先用 dir_read 看看有哪些文件，用 file2md 把讲义转成 Markdown，再据此建学习包。",
+      "文件夹里有我的讲义，请先用 dir_read 看看有哪些文件，用 file2md 把讲义转成 Markdown，再据此建学习包，最后用 install_package 导入书架。",
   },
   {
     key: "fix",
     title: "把项目整理成学习包",
     hint: "先摸清项目结构，再抽出知识点和设计",
     prompt:
-      "把项目中的知识点和架构整理成学习包。请先看看这个文件夹里已有什么，如果是编程项目就整理重点工程设计，最后按规范补齐学习包需要的内容。",
+      "把项目中的知识点和架构整理成学习包。请先看看这个文件夹里已有什么，如果是编程项目就整理重点工程设计，最后按规范补齐学习包需要的内容，再用 install_package 导入书架。",
+  },
+  {
+    key: "install",
+    title: "把已有的学习包装进书架",
+    hint: "文件夹里已经有 manifest.yaml，直接校验并安装",
+    prompt:
+      "这个文件夹里已经有一个建好的学习包，请用 install_package 校验并导入书架；如果校验不通过，按返回的清单逐条修好再导入。",
   },
 ];
 
@@ -54,6 +61,12 @@ export function BuilderIntro({
           </button>
         ))}
       </div>
+
+      <p className="max-w-3xl text-center text-xs leading-5 text-muted-foreground">
+        建好的包可以用{" "}
+        <span className="font-mono text-foreground/80">install_package</span>{" "}
+        直接装进书架，走的是和导入对话框同一套校验。
+      </p>
     </div>
   );
 }

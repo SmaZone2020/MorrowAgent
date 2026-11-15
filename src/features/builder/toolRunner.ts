@@ -2,6 +2,7 @@ import type { ToolCall } from "@/features/settings/aiBridge";
 import {
   convertDocument,
   editFile,
+  installFromFolder,
   listDirectory,
   readFile,
   runShell as shellCommand,
@@ -15,9 +16,11 @@ import {
   FILE_EDIT,
   FILE_READ,
   FILE_WRITE,
+  INSTALL_PACKAGE,
   SHELL,
   WEB_SEARCH,
 } from "@/features/builder/toolDefs";
+import { useLibrary } from "@/features/library/store";
 import { runFetchPage, runWebSearch } from "@/features/lumi/searchTool";
 import { count, parseArguments, text } from "@/features/lumi/toolArgs";
 
@@ -127,6 +130,63 @@ async function runShellTool(args: Record<string, unknown>): Promise<string> {
 
 
 /**
+ * Puts the finished folder on the shelf.
+ *
+ * The report is written as a checklist rather than as prose, because the model
+ * has to act on individual lines: "缺少 knowledge/index.yaml" is an instruction,
+ * while "导入失败" is only an announcement. A successful install names the
+ * workspace so the reply can point at what appeared.
+ */
+async function runInstallPackage(args: Record<string, unknown>): Promise<string> {
+  const workspace = requireFolder();
+  const path = text(args.path);
+  const { report, workspace: installed } = await installFromFolder(
+    workspace,
+    path || undefined,
+  );
+
+  if (installed) {
+    // The shelf may already be loaded; without this the new card would only
+    // appear after the user reopened the page, which reads as a lost import.
+    void useLibrary.getState().refresh();
+  }
+
+  if (!report.ok) {
+    const failed = report.checks.filter((check) => !check.ok);
+    const lines = failed.map((check) => {
+      const details = check.details.length
+        ? `\n${check.details.map((detail) => `  - ${detail}`).join("\n")}`
+        : "";
+      return `- ${check.label}：未通过${details}`;
+    });
+    return [
+      `导入未通过，还没有安装（${failed.length} 项需要修）：`,
+      ...lines,
+      "",
+      "改完再调用一次 install_package。改内容后记得重算 checksums.sha256，否则哈希校验会继续失败。",
+    ].join("\n");
+  }
+
+  const stats = report.stats;
+  const counts = stats
+    ? `${stats.chapters} 章 · ${stats.points} 个知识点 · ${stats.questions} 道题 · ${stats.relations} 条关系`
+    : "内容统计未生成";
+  const name = report.summary?.name ?? "学习包";
+  const version = report.summary?.version ?? "";
+
+  return [
+    `导入成功：「${name}」${version ? ` v${version}` : ""} 已经出现在书架里。`,
+    counts,
+    report.update
+      ? "这次是更新：原有的学习记录、目标和错题都还在。"
+      : "这是第一次安装这个学习包。",
+    installed ? `工作区 id：${installed.id}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+/**
  * Answers one tool call.
  *
  * An error is returned as text rather than thrown: the model can read "this
@@ -149,6 +209,8 @@ export async function runBuilderTool(call: ToolCall): Promise<string> {
         return await runFile2Md(args);
       case SHELL:
         return await runShellTool(args);
+      case INSTALL_PACKAGE:
+        return await runInstallPackage(args);
       case WEB_SEARCH:
         return (await runWebSearch(args)).output;
       case FETCH_PAGE:

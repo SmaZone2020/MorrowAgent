@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, Pencil, Plus, Terminal } from "@gravity-ui/icons";
+import { BookOpen, ChevronDown, Pencil, Plus, Terminal } from "@gravity-ui/icons";
 import { Button } from "@/vendor/beui/components/motion/button";
 import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
 import type { ToolCall } from "@/features/settings/aiBridge";
@@ -26,6 +26,7 @@ const CALL_ICON: Record<string, typeof Plus> = {
   file_write: Plus,
   file_edit: Pencil,
   shell: Terminal,
+  install_package: BookOpen,
 };
 
 function truncate(value: string): string {
@@ -46,6 +47,10 @@ function callSubject(call: ToolCall): string {
   if (call.name === "shell") {
     const command = typeof args.command === "string" ? args.command : "";
     return command.split("\n")[0] ?? "";
+  }
+  if (call.name === "install_package") {
+    const path = typeof args.path === "string" ? args.path.trim() : "";
+    return path ? `${path} → 书架` : "整个工作区 → 书架";
   }
   const path = typeof args.path === "string" ? args.path : "";
   return path || "（未指定路径）";
@@ -76,6 +81,16 @@ function CallDetail({ call }: { call: ToolCall }) {
           + {truncate(newString)}
         </pre>
       </div>
+    );
+  }
+
+  if (call.name === "install_package") {
+    // Nothing to preview: the call has no payload, only a consequence. Saying
+    // what that consequence is beats an empty disclosure.
+    return (
+      <p className="rounded-lg bg-muted/60 p-2 text-xs leading-5 text-muted-foreground">
+        会把学习包重新打包、跑一遍完整校验，通过后装进书架。
+      </p>
     );
   }
 

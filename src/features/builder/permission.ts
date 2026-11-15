@@ -22,14 +22,14 @@ export const TIERS: TierDescription[] = [
     id: "approve",
     label: "操作审批",
     summary: "读文件、文件夹与网页只读，其余每次都要你同意",
-    detail: "Lumi 进行写文件、改文件、执行命令需要你的审批。",
+    detail: "Lumi 进行写文件、改文件、执行命令、导入学习包需要你的审批。",
   },
   {
     id: "autonomous",
     label: "自主进行",
     summary: "读写和命令都不再询问",
     detail:
-      "Lumi可以在工作区文件夹里自由读、写、改、执行，适合你完全信任的临时目录",
+      "Lumi可以在工作区文件夹里自由读、写、改、执行，也可以直接把学习包装进书架，适合你完全信任的临时目录",
   },
 ];
 
@@ -49,6 +49,16 @@ const READ_ONLY_TOOLS = new Set([
   "fetch_page",
 ]);
 
+/**
+ * Tools that change something outside the workspace.
+ *
+ * `install_package` writes to the app's own package store and the database, so
+ * it is not a write to the folder the user handed over — a refusal here cannot
+ * be undone by `git checkout`. It asks even in the autonomous tier: autonomy was
+ * consent to work *in this folder*, not to publish into the shelf.
+ */
+const ALWAYS_APPROVED_TOOLS = new Set(["install_package"]);
+
 export function isReadOnlyTool(name: string): boolean {
   return READ_ONLY_TOOLS.has(name);
 }
@@ -56,5 +66,6 @@ export function isReadOnlyTool(name: string): boolean {
 /** True when this call has to wait for the user's decision. */
 export function needsApproval(name: string, tier: PermissionTier): boolean {
   if (isReadOnlyTool(name)) return false;
+  if (ALWAYS_APPROVED_TOOLS.has(name)) return true;
   return tier === "approve";
 }

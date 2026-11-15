@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { isTauriRuntime } from "@/app/shell/windowControls";
+import type { ValidationReport, Workspace } from "@/features/library/api";
 
 /**
  * Builder Mode's side of the Rust commands.
@@ -154,4 +155,26 @@ export async function runShell(
 ): Promise<ShellResult> {
   requireTauri();
   return invoke<ShellResult>("builder_shell", { workspace, command });
+}
+
+/** What the importer did with a folder the builder just finished. */
+export interface BuilderImport {
+  report: ValidationReport;
+  /** Present only when every check passed and the package was installed. */
+  workspace: Workspace | null;
+}
+
+/**
+ * Packs the finished folder and installs it onto the shelf.
+ *
+ * The backend runs the same validation the import dialog does, so a folder that
+ * only this path would accept cannot exist. A failed report comes back as a
+ * normal result, not an error: the failing lines are what the model needs to fix.
+ */
+export async function installFromFolder(
+  workspace: string,
+  path?: string,
+): Promise<BuilderImport> {
+  requireTauri();
+  return invoke<BuilderImport>("builder_install_package", { workspace, path });
 }

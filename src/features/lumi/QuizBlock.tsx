@@ -368,7 +368,11 @@ export function QuizBlock({
   if (!question) return null;
 
   return (
-    <div className="my-3 flex w-full max-w-[450px] flex-col gap-3">
+    // No width cap: a question is the thing being read, and a 450px column
+    // squeezes a four-option set into cards too narrow to parse. Figures keep
+    // their own cap (see `ArtifactFrame`), because those are pictures rather
+    // than text.
+    <div className="my-3 flex w-full flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
         <span className="min-w-0 flex-1 truncate font-serif text-[15px] font-semibold text-foreground">
           {request.title}
