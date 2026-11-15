@@ -2,6 +2,7 @@
 // camelCase, so the snake_case lint does not apply to this crate.
 #![allow(non_snake_case)]
 
+mod builder;
 mod prefs;
 mod provider;
 mod store;
@@ -758,8 +759,7 @@ fn package_media_data(
     Ok(format!("data:{mime};base64,{}", base64(&bytes)))
 }
 
-fn base64(bytes: &[u8]) -> String {
-    const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+fn base64(bytes: &[u8]) -> String {    const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
     for chunk in bytes.chunks(3) {
         let b = [
@@ -782,6 +782,114 @@ fn base64(bytes: &[u8]) -> String {
     }
     out
 }
+/// Everything Builder Mode runs against the user's own folder.
+///
+/// The root is a directory the user picked in a native dialog; it is passed on
+/// every call rather than cached in the backend, so closing the page or opening
+/// another folder cannot leave a stale root behind.
+#[tauri::command]
+async fn builder_detect_env(workspace: String) -> Result<builder::env::BuildEnvironment, String> {
+    tauri::async_runtime::spawn_blocking(move || builder::env::detect(&workspace))
+        .await
+        .map_err(|error| format!("检测环境失败：{error}"))
+}
+
+#[tauri::command]
+async fn builder_file_read(
+    workspace: String,
+    path: String,
+    offset: Option<u32>,
+    limit: Option<u32>,
+) -> Result<builder::files::FileSlice, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let root = builder::paths::root(&workspace)?;
+        builder::files::read(&root, &path, offset.unwrap_or(1), limit.unwrap_or(400))
+    })
+    .await
+    .map_err(|error| format!("读取文件失败：{error}"))?
+}
+
+#[tauri::command]
+async fn builder_file_write(
+    workspace: String,
+    path: String,
+    content: String,
+) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let root = builder::paths::root(&workspace)?;
+        builder::files::write(&root, &path, &content)
+    })
+    .await
+    .map_err(|error| format!("写入文件失败：{error}"))?
+}
+
+#[tauri::command]
+async fn builder_file_edit(
+    workspace: String,
+    path: String,
+    old_string: String,
+    new_string: String,
+    replace_all: Option<bool>,
+) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let root = builder::paths::root(&workspace)?;
+        builder::files::edit(
+            &root,
+            &path,
+            &old_string,
+            &new_string,
+            replace_all.unwrap_or(false),
+        )
+    })
+    .await
+    .map_err(|error| format!("修改文件失败：{error}"))?
+}
+
+#[tauri::command]
+async fn builder_dir_read(
+    workspace: String,
+    path: Option<String>,
+    recursive: Option<bool>,
+) -> Result<builder::files::DirListing, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let root = builder::paths::root(&workspace)?;
+        builder::files::list(
+            &root,
+            path.as_deref().unwrap_or(""),
+            recursive.unwrap_or(false),
+        )
+    })
+    .await
+    .map_err(|error| format!("读取文件夹失败：{error}"))?
+}
+
+#[tauri::command]
+async fn builder_file2md(
+    workspace: String,
+    path: String,
+) -> Result<builder::convert::ConvertedDocument, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let root = builder::paths::root(&workspace)?;
+        builder::convert::convert(&root, &path)
+    })
+    .await
+    .map_err(|error| format!("转换文档失败：{error}"))?
+}
+
+#[tauri::command]
+async fn builder_shell(
+    workspace: String,
+    command: String,
+) -> Result<builder::shell::ShellResult, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let root = builder::paths::root(&workspace)?;
+        let (kind, path) = builder::env::shell();
+        builder::shell::run(&root, &kind, &path, &command)
+    })
+    .await
+    .map_err(|error| format!("执行命令失败：{error}"))?
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let client = reqwest::Client::builder()
@@ -869,7 +977,14 @@ pub fn run() {
             workspace_touch,
             workspace_set_policy,
             workspace_remove,
-            open_external_url
+            open_external_url,
+            builder_detect_env,
+            builder_file_read,
+            builder_file_write,
+            builder_file_edit,
+            builder_dir_read,
+            builder_file2md,
+            builder_shell
         ])
         .run(tauri::generate_context!())
         .expect("error while running Morrow Agent");

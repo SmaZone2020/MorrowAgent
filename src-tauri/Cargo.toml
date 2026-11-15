@@ -31,6 +31,10 @@ sevenz-rust2 = { version = "0.25", default-features = false, features = [
 serde_yaml = "0.9"
 sha2 = "0.10"
 walkdir = "2"
+# Builder Mode reads a source document as Markdown. The crate is the same
+# converter the Python `markitdown` CLI uses, so the output matches what an
+# author would see from the command line.
+markitdown-core = "0.2"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows-sys = { version = "0.61", features = [
