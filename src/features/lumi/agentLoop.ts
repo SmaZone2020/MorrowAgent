@@ -6,7 +6,7 @@ import {
   thinkingPayload,
 } from "@/features/settings/thinking";
 import { streamChat } from "@/features/settings/aiStream";
-import type { ChatMessage, ToolCall } from "@/features/settings/aiBridge";
+import type { ChatMessage, ToolCall, ToolDef } from "@/features/settings/aiBridge";
 import {
   toHistory,
   turnHasImage,
@@ -23,12 +23,28 @@ import {
 /** One round of the loop is one request; this bounds a runaway tool chain. */
 export const MAX_TOOL_ROUNDS = 4;
 
+/**
+ * What the loop does with a call before running it.
+ *
+ * `quiz` suspends the turn so the user can answer; `approve` suspends it so the
+ * user can allow or refuse the call. Both resume through the store.
+ */
+export type CallGate = "run" | "quiz" | "approve";
+
 export interface LoopDeps {
   systemPrompt: string;
   /** Per-request prompt; wins over `systemPrompt` when present. */
   promptFor?: (workspaceId: string) => string;
   /** Names of the tools this surface offers; empty means none. */
   toolNames: string[];
+  /** Definitions to send; wins over `toolNames` when present. */
+  defs?: () => ToolDef[];
+  /** Runs one call. Defaults to the package tools the names resolve to. */
+  runTool?: (call: ToolCall) => Promise<string>;
+  /** Per-call decision; defaults to parking only for the quiz tool. */
+  gate?: (call: ToolCall) => CallGate;
+  /** Upper bound on tool rounds for this surface. */
+  maxRounds?: number;
   context: () => ToolContext | null;
   /** Reads the live transcript; the loop must not capture a stale snapshot. */
   turns: () => ConversationTurn[];
@@ -46,6 +62,7 @@ export interface LoopDeps {
     calls: ToolCall[];
     results: Record<string, string>;
     message: string;
+    kind: "quiz" | "approve";
   }) => void;
   abortSignal: () => AbortSignal;
   /**
@@ -59,7 +76,7 @@ export interface LoopDeps {
 }
 
 /** Runs one tool, falling back to a sentence the model can read. */
-async function runTool(
+async function defaultRunTool(
   call: ToolCall,
   context: ToolContext | null,
 ): Promise<string> {
@@ -97,23 +114,34 @@ export function createLoop(deps: LoopDeps) {
 
     const context = deps.context();
     const results: Record<string, string> = {};
-    let needsUser = false;
+    let parked: "quiz" | "approve" | null = null;
     for (const call of calls) {
-      if (call.name === QUIZ_TOOL) {
-        needsUser = true;
+      const gate = deps.gate?.(call) ?? (call.name === QUIZ_TOOL ? "quiz" : "run");
+      if (gate === "quiz") {
+        parked = "quiz";
+        continue;
+      }
+      // A call the user has not allowed yet cannot be run now: the whole set
+      // parks, because a provider rejects a turn whose calls are partly
+      // answered, and the answer for this one is the approval itself.
+      if (gate === "approve") {
+        parked = "approve";
         continue;
       }
       // Sequential on purpose: two searches in one turn would spend the
       // account's quota twice for answers the model reads together anyway.
-      results[call.id] = await runTool(call, context);
+      results[call.id] = deps.runTool
+        ? await deps.runTool(call)
+        : await defaultRunTool(call, context);
     }
 
-    if (needsUser) {
+    if (parked) {
       deps.park({
         turnId: replyTurn.id,
         calls,
         results,
         message: replyTurn.content,
+        kind: parked,
       });
       return;
     }
@@ -129,7 +157,7 @@ export function createLoop(deps: LoopDeps) {
       deps.persist(workspaceId, conversationId, toolTurn);
     }
 
-    if (depth >= MAX_TOOL_ROUNDS) {
+    if (depth >= (deps.maxRounds ?? MAX_TOOL_ROUNDS)) {
       deps.releaseRequest();
       return;
     }
@@ -184,7 +212,11 @@ export function createLoop(deps: LoopDeps) {
         signal,
         maxTokens: prefs.maxTokens,
         temperature: prefs.temperature,
-        tools: deps.toolNames.length > 0 ? toolDefs(deps.toolNames) : undefined,
+        tools: deps.defs
+          ? deps.defs()
+          : deps.toolNames.length > 0
+            ? toolDefs(deps.toolNames)
+            : undefined,
         thinking,
         onProgress: (partial) => {
           // Switching conversations aborts the request, but a delta already in

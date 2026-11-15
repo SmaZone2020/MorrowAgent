@@ -1,4 +1,5 @@
 import type { ConversationState } from "@/features/lumi/conversationCore";
+import type { ToolCall } from "@/features/settings/aiBridge";
 import type { ConversationTurn } from "@/features/lumi/conversationTurn";
 
 /**
@@ -26,6 +27,8 @@ export interface ConversationRuntime {
   ) => void;
   /** Runs the request loop for one assistant turn. */
   request: (turn: ConversationTurn, depth: number) => Promise<void>;
+  /** Runs one tool call, for a surface that answers its own tools. */
+  runTool?: (call: ToolCall) => Promise<string>;
   /** Aborts the in-flight request, if any. */
   stop: () => void;
 }

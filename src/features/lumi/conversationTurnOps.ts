@@ -7,16 +7,70 @@ import type { MessageAttachment } from "@/features/lumi/history";
 import { prepareEdit } from "@/features/lumi/conversationHistoryOps";
 import { nextId, pendingKey, rememberedKey } from "@/features/lumi/conversationKeys";
 import type { ConversationRuntime } from "@/features/lumi/conversationRuntime";
+import type { PendingTurn } from "@/features/lumi/conversationCore";
+import type { ToolCall } from "@/features/settings/aiBridge";
 import { writeScope } from "@/features/uiState/store";
 
 /**
- * The send-side actions: a user message, a quiz answer, a retry, a deletion.
+ * The send-side actions: a user message, a quiz answer, an approval, a retry,
+ * a deletion.
  *
  * Every one of them ends by entering the request loop, which is why they share
  * this file: they all have to build a well-formed last turn before sending.
  */
 export function createTurnActions(runtime: ConversationRuntime) {
   const { get, set, scope, idPrefix, persist, request, stop } = runtime;
+
+  /** Calls in a parked turn whose answer is not known yet. */
+  const waitingCalls = (pending: PendingTurn): ToolCall[] =>
+    pending.calls.filter((call) => pending.results[call.id] === undefined);
+
+  /**
+   * Banks one answer and, once every call has one, turns them into tool rows
+   * and asks the model to continue.
+   *
+   * Specialised only in the value it is given: an approval runs the call first,
+   * a quiz answer is already a string. Banked answers are written back to the
+   * pause so a second call in the same turn does not lose the first.
+   */
+  const resume = async (
+    pending: PendingTurn,
+    resolve: (call: ToolCall) => Promise<string>,
+  ) => {
+    const workspaceId = get().workspaceId;
+    const conversationId = get().conversationId;
+    if (!workspaceId || !conversationId) return;
+
+    const results = { ...pending.results };
+    for (const call of waitingCalls(pending)) {
+      results[call.id] = await resolve(call);
+      // The loop can run for a while (a build, a conversion); persisting after
+      // each answer means a reload mid-pause loses at most the current call.
+      const banked = { ...pending, results };
+      set({ pending: banked });
+      writeScope(pendingKey(scope, workspaceId), banked);
+    }
+
+    const toolTurns: ConversationTurn[] = pending.calls.map((call) => ({
+      id: nextId("turn"),
+      role: "assistant",
+      content: results[call.id] ?? "",
+      toolCallId: call.id,
+    }));
+
+    set({ pending: null, sending: true });
+    writeScope(pendingKey(scope, workspaceId), null);
+    for (const turn of toolTurns) persist(workspaceId, conversationId, turn);
+
+    const nextReply: ConversationTurn = {
+      id: nextId("turn"),
+      role: "assistant",
+      content: "",
+      pending: true,
+    };
+    set((state) => ({ turns: [...state.turns, ...toolTurns, nextReply] }));
+    await request(nextReply, 0);
+  };
 
   return {
     send: async (message: string, attachments: MessageAttachment[] = []) => {
@@ -65,44 +119,41 @@ export function createTurnActions(runtime: ConversationRuntime) {
 
     answerQuiz: async (callId: string, output: string) => {
       const pending = get().pending;
-      const workspaceId = get().workspaceId;
-      const conversationId = get().conversationId;
-      if (!pending || !workspaceId || !conversationId) return;
+      if (!pending) return;
 
       const results = { ...pending.results, [callId]: output };
-      const waiting = pending.calls.filter(
-        (call) =>
-          call.name === "ask_questions" && results[call.id] === undefined,
-      );
+      const waiting = waitingCalls({ ...pending, results });
 
       // More sets in the same turn: keep the pause alive with the answer
       // banked, so the next submission completes the turn instead.
       if (waiting.length > 0) {
         const next = { ...pending, results };
         set({ pending: next });
-        writeScope(pendingKey(scope, workspaceId), next);
+        const workspaceId = get().workspaceId;
+        if (workspaceId) writeScope(pendingKey(scope, workspaceId), next);
         return;
       }
 
-      const toolTurns: ConversationTurn[] = pending.calls.map((call) => ({
-        id: nextId("turn"),
-        role: "assistant",
-        content: results[call.id] ?? "",
-        toolCallId: call.id,
-      }));
+      await resume({ ...pending, results }, async () => "");
+    },
 
-      set({ pending: null, sending: true });
-      writeScope(pendingKey(scope, workspaceId), null);
-      for (const turn of toolTurns) persist(workspaceId, conversationId, turn);
+    approveCall: async (callId: string, allowed: boolean, reason?: string) => {
+      const pending = get().pending;
+      const runTool = runtime.runTool;
+      if (!pending) return;
 
-      const nextReply: ConversationTurn = {
-        id: nextId("turn"),
-        role: "assistant",
-        content: "",
-        pending: true,
-      };
-      set((state) => ({ turns: [...state.turns, ...toolTurns, nextReply] }));
-      await request(nextReply, 0);
+      await resume(pending, async (call) => {
+        if (call.id !== callId) return pending.results[call.id] ?? "";
+        if (!allowed) {
+          return `用户拒绝了这个调用${reason ? `：${reason}` : "。"}请不要重试同一个调用，改用其他方式，或先问清楚需要什么。`;
+        }
+        if (!runTool) return "这个界面没有配置执行该工具的能力。";
+        try {
+          return await runTool(call);
+        } catch (error) {
+          return `工具执行失败：${error instanceof Error ? error.message : String(error)}`;
+        }
+      });
     },
 
     dismissQuiz: () => {

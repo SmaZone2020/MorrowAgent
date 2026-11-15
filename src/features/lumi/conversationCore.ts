@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { ToolCall } from "@/features/settings/aiBridge";
+import type { ToolCall, ToolDef } from "@/features/settings/aiBridge";
 import {
   appendMessage,
   type ConversationSummary,
@@ -10,7 +10,7 @@ import {
   shouldPersist,
   type ConversationTurn,
 } from "@/features/lumi/conversationTurn";
-import { createLoop } from "@/features/lumi/agentLoop";
+import { createLoop, type CallGate } from "@/features/lumi/agentLoop";
 import { readHydrated } from "@/features/lumi/conversationHistoryOps";
 import { nextId, pendingKey } from "@/features/lumi/conversationKeys";
 import { createListActions } from "@/features/lumi/conversationListOps";
@@ -22,7 +22,7 @@ import { writeScope } from "@/features/uiState/store";
 export type { ConversationTurn } from "@/features/lumi/conversationTurn";
 
 /** A tool call the client could not answer, kept until the user acts. */
-export interface PendingQuiz {
+export interface PendingTurn {
   /** The assistant turn the calls arrived on. */
   turnId: string;
   /** Every call of that turn: all results go back together. */
@@ -34,10 +34,18 @@ export interface PendingQuiz {
   results: Record<string, string>;
   /** The assistant turn's text, so the card can show what led to the quiz. */
   message: string;
+  /**
+   * Why the turn is parked: a question set the user has to answer, or a call
+   * that needs permission. Both resume the same way, so they share one slot.
+   */
+  kind: "quiz" | "approve";
 }
 
+/** The shape older transcripts and the Lumi page already use. */
+export type PendingQuiz = PendingTurn;
+
 /** The calls of a parked turn that still need the user. */
-export function unansweredQuizCalls(pending: PendingQuiz): ToolCall[] {
+export function unansweredQuizCalls(pending: PendingTurn): ToolCall[] {
   return pending.calls.filter(
     (call) =>
       call.name === "ask_questions" && pending.results[call.id] === undefined,
@@ -58,7 +66,7 @@ export interface ConversationState {
    * A quiz the model posed and the user has not answered. It blocks the turn:
    * the next request is the tool result, not another user message.
    */
-  pending: PendingQuiz | null;
+  pending: PendingTurn | null;
   /** Points the store at one package, discarding the previous one's screen state. */
   bindWorkspace: (workspaceId: string) => void;
   /** Pull the conversation the user last had open, else the newest one. */
@@ -71,6 +79,11 @@ export interface ConversationState {
   send: (message: string, attachments?: MessageAttachment[]) => Promise<void>;
   /** Resolves one parked quiz call with what the user did. */
   answerQuiz: (callId: string, output: string) => Promise<void>;
+  /**
+   * Resolves one parked approval: `allowed` runs the call, and a refusal hands
+   * `reason` back to the model as the tool result.
+   */
+  approveCall: (callId: string, allowed: boolean, reason?: string) => Promise<void>;
   /** Abandons the parked call so the composer is usable again. */
   dismissQuiz: () => void;
   /** Ask again for the last user message, dropping the answers after it. */
@@ -106,6 +119,17 @@ export interface ConversationStoreOptions {
    * resolve; it never poses questions of its own.
    */
   tools?: string[];
+  /** Definitions to send, when the surface's tools are not the package ones. */
+  defs?: () => ToolDef[];
+  /** Runs one call; a surface with its own tools has to answer them itself. */
+  runTool?: (call: ToolCall) => Promise<string>;
+  /**
+   * Decides what happens to a call before it runs. Builder Mode parks a call
+   * until the user allows it; the package surfaces run everything they know.
+   */
+  gate?: (call: ToolCall) => CallGate;
+  /** Upper bound on tool rounds, for a surface whose work takes longer. */
+  maxRounds?: number;
   /** Reads the package so a tool answer comes from real content. */
   context?: () => ToolContext | null;
   /**
@@ -136,6 +160,10 @@ export function createConversationStore({
   promptFor,
   idPrefix = "conv",
   tools: toolNames = [],
+  defs,
+  runTool,
+  gate,
+  maxRounds,
   context,
   onRequestSettled,
 }: ConversationStoreOptions) {
@@ -176,10 +204,15 @@ export function createConversationStore({
       idPrefix,
       persist,
       stop,
+      runTool,
       request: createLoop({
         systemPrompt,
         promptFor,
         toolNames,
+        defs,
+        runTool,
+        gate,
+        maxRounds,
         context: () => context?.() ?? null,
         turns: () => get().turns,
         conversationId: () => get().conversationId,
