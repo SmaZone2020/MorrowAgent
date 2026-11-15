@@ -9,6 +9,8 @@ import { Modal } from "@/components/Modal";
 import { ConversationList } from "@/features/lumi/ConversationList";
 import { BuilderMessages } from "@/features/builder/BuilderMessages";
 import { BuilderIntro } from "@/features/builder/BuilderIntro";
+import { ApprovalDock } from "@/features/builder/ApprovalDock";
+import { pendingApprovals } from "@/features/builder/approvals";
 import {
   EnvironmentSummary,
   FolderSlot,
@@ -261,14 +263,16 @@ export function BuilderPage() {
         ) : (
           <BuilderMessages
             turns={turns}
-            pending={pending}
-            onDecide={decide}
             onRetry={() => void regenerate()}
             onDelete={deleteTurns}
           />
         )}
 
-        <div className="shrink-0">
+        {/* `relative` is what lets the approval dock float above the composer
+            without moving the transcript: granting permission must not make
+            the message the user is reading jump. */}
+        <div className="relative shrink-0">
+          <ApprovalDock calls={pendingApprovals(pending)} onDecide={decide} />
           {configured ? (
             <PromptInput
               value={draft}

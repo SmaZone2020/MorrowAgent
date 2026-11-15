@@ -79,13 +79,12 @@ export function SearchControl({
           [
             {
               value: true,
-              label: "联网",
-              hint: "教材没讲、需要最新信息时才去搜，按次计费。",
+              label: "联网搜索",
+              hint: "使用DeepSeekAPI搜索服务",
             },
             {
               value: false,
-              label: "不联网",
-              hint: "只用手里的文件和教材回答，不花搜索的钱。",
+              label: "关闭联网",
             },
           ].map((option) => {
             const active = option.value === on;

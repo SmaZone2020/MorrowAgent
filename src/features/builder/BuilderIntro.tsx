@@ -1,23 +1,4 @@
-import { Link } from "react-router-dom";
-import { AnimatedBadge } from "@/vendor/beui/components/motion/animated-badge";
-
-/**
- * What Builder Mode is for, said once.
- *
- * The page is empty the first time it opens and the assistant is the only thing
- * that does anything, so the opening screen has to explain the deal: the folder
- * is the whole scope, the package is a set of files, and the first request is
- * what starts it. Three starters rather than a paragraph of instructions — a
- * user who reads none of them can still press one.
- */
 const STARTERS = [
-  {
-    key: "blank",
-    title: "从零搭一个学习包",
-    hint: "先看文件夹，再补齐九件必填文件",
-    prompt:
-      "我要从零做一个学习包。请先看看这个文件夹里已有什么，然后按规范补齐骨架，再逐步填充内容。",
-  },
   {
     key: "document",
     title: "用我的讲义做一个学习包",
@@ -34,18 +15,29 @@ const STARTERS = [
   },
 ];
 
+/**
+ * What Builder Mode is for, said once.
+ *
+ * The page is empty the first time it opens and the assistant is the only thing
+ * that does anything, so the opening screen has to explain the deal: the folder
+ * is the whole scope, the package is a set of files, and the first request is
+ * what starts it. Two starters rather than a paragraph of instructions — a user
+ * who reads neither can still press one.
+ */
 export function BuilderIntro({
   onPick,
 }: {
   onPick: (prompt: string) => void;
 }) {
   return (
-    <div className="flex min-h-full flex-col justify-center gap-5 py-6">
-      <div className="flex flex-col gap-1.5">
-        <h2 className="text-lg font-medium text-foreground">把文件夹交给 Lumi</h2>
+    <div className="flex min-h-full flex-col items-center justify-center gap-5 py-6">
+      <div className="flex flex-col items-center gap-1.5">
+        <h2 className="Siyuan text-[32px] font-medium text-foreground">
+          把文件夹交给 Lumi
+        </h2>
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-3">
+      <div className="grid w-full max-w-3xl grid-cols-1 gap-2 sm:grid-cols-2">
         {STARTERS.map((starter) => (
           <button
             key={starter.key}
@@ -61,27 +53,6 @@ export function BuilderIntro({
             </span>
           </button>
         ))}
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <AnimatedBadge status="neutral" size="sm" contentKey="writing">
-          file_write / file_edit
-        </AnimatedBadge>
-        <AnimatedBadge status="neutral" size="sm" contentKey="reading">
-          file_read / dir_read / file2md
-        </AnimatedBadge>
-        <AnimatedBadge status="neutral" size="sm" contentKey="shell">
-          shell
-        </AnimatedBadge>
-        <AnimatedBadge status="neutral" size="sm" contentKey="web">
-          web_search / fetch_page
-        </AnimatedBadge>
-        <Link
-          to="/settings/provider"
-          className="text-xs text-muted-foreground underline-offset-4 hover:underline"
-        >
-          模型配置
-        </Link>
       </div>
     </div>
   );

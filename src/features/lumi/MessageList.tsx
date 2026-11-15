@@ -11,16 +11,13 @@ import { MessageScroller } from "@/vendor/beui/components/agents/message-scrolle
 import { StreamingResponse } from "@/vendor/beui/components/agents/streaming-response";
 import { ReasoningText } from "@/vendor/beui/components/agents/loading-states";
 import { AgentDisclosure } from "@/vendor/beui/components/agents/agent-disclosure";
-import {
-  ToolResult,
-  ToolResultOutput,
-} from "@/vendor/beui/components/agents/tool-result";
 import { Markdown } from "@/features/rich/Markdown";
 import { LumiMark } from "@/features/lumi/LumiMark";
 import { TurnAttachments } from "@/features/lumi/AttachmentPreview";
 import { QuizTurn, isQuizCall } from "@/features/lumi/QuizTurn";
 import { TurnActions } from "@/features/lumi/TurnActions";
 import { TextWithReferences } from "@/features/knowledge/QuestionReference";
+import { ToolRunGroup, ToolTurnRow } from "@/features/lumi/ToolRunGroup";
 import {
   callNames,
   deletionScope,
@@ -101,28 +98,6 @@ function ReasoningPanel({
  * quiet line reports that work happened, and the substance lives in the card
  * above it.
  */
-function ToolTurnRow({
-  turn,
-  name,
-}: {
-  turn: ConversationTurn;
-  name: string;
-}) {
-  return (
-    <ToolResult
-      tool={name}
-      title={TOOL_LABEL[name] ?? "工具调用"}
-      status="success"
-      kind="custom"
-      className="text-foreground"
-      // No actions of its own: the message row above owns them, and a second
-      // trash icon here would delete half a tool round.
-    >
-      <ToolResultOutput language="text">{turn.content}</ToolResultOutput>
-    </ToolResult>
-  );
-}
-
 /** The prose and cards one assistant message is made of, in order. */
 function AssistantBody({
   group,
@@ -135,15 +110,48 @@ function AssistantBody({
   isWaiting: (callId: string) => boolean;
   onAnswerQuiz?: (callId: string, output: string) => void;
 }) {
+  /** Runs break on prose; each run renders once, at its first result row. */
+  // Every call id maps to its run: the render loop knows a row only by the
+  // call id of the turn it is rendering.
+  const rows = new Map<string, { key: string; run: ConversationTurn[] }>();
+  let current: { key: string; run: ConversationTurn[] } | null = null;
+  for (const turn of group.turns) {
+    if (!turn.toolCallId) {
+      current = null;
+      continue;
+    }
+    if (!current) {
+      current = { key: turn.id, run: [turn] };
+    } else {
+      current.run.push(turn);
+    }
+    rows.set(turn.toolCallId, current);
+  }
+
   return (
     <>
       {group.turns.map((turn) => {
         if (turn.toolCallId) {
+          const row = rows.get(turn.toolCallId)!;
+          if (row.run.length > 1) {
+            return row.run[0]!.id === turn.id ? (
+              <ToolRunGroup
+                key={row.key}
+                turns={row.run}
+                names={names}
+                labels={TOOL_LABEL}
+              />
+            ) : (
+              // Already rendered with the run's first result.
+              null
+            );
+          }
           return (
             <ToolTurnRow
               key={turn.id}
               turn={turn}
               name={names[turn.toolCallId] ?? ""}
+              labels={TOOL_LABEL}
             />
           );
         }

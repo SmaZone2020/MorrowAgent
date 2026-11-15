@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, CircleExclamation } from "@gravity-ui/icons";
-import {
+import { ChevronDown, CircleExclamation } from "@gravity-ui/icons";import {
   Message,
   MessageAvatar,
   MessageBubble,
@@ -11,14 +10,10 @@ import { MessageScroller } from "@/vendor/beui/components/agents/message-scrolle
 import { StreamingResponse } from "@/vendor/beui/components/agents/streaming-response";
 import { ReasoningText } from "@/vendor/beui/components/agents/loading-states";
 import { AgentDisclosure } from "@/vendor/beui/components/agents/agent-disclosure";
-import {
-  ToolResult,
-  ToolResultOutput,
-} from "@/vendor/beui/components/agents/tool-result";
 import { Markdown } from "@/features/rich/Markdown";
 import { TurnActions } from "@/features/lumi/TurnActions";
-import { ApprovalCard } from "@/features/builder/ApprovalCard";
 import { TOOL_LABEL } from "@/features/builder/toolDefs";
+import { ToolRunGroup, ToolTurnRow } from "@/features/lumi/ToolRunGroup";
 import {
   callNames,
   deletionScope,
@@ -26,7 +21,6 @@ import {
   type MessageGroup,
 } from "@/features/lumi/messageGroups";
 import type { ConversationTurn } from "@/features/lumi/conversationTurn";
-import type { PendingTurn } from "@/features/lumi/conversationCore";
 
 const BUILDING_PHRASES = [
   "正在看文件夹",
@@ -80,47 +74,67 @@ function ReasoningPanel({ text, pending }: { text: string; pending: boolean }) {
   );
 }
 
-function ToolTurnRow({ turn, name }: { turn: ConversationTurn; name: string }) {
-  return (
-    <ToolResult
-      tool={name}
-      title={TOOL_LABEL[name] ?? "工具调用"}
-      status="success"
-      kind="custom"
-      className="text-foreground"
-    >
-      <ToolResultOutput language="text">{turn.content}</ToolResultOutput>
-    </ToolResult>
-  );
-}
-
 /**
- * The prose and cards one assistant message is made of.
+ * The prose of one assistant message, in order.
+ * The tool calls that already ran
+ * render as result rows; the ones still waiting for permission live in the dock
+ * above the composer, not here, because a decision is about the next action
+ * rather than about history.
  *
- * The calls that still need approval render as cards; the ones that already ran
- * render as result rows. A call that was parked keeps its card after the turn
- * resumes, so the transcript still shows what the user agreed to.
+ * Consecutive result rows fold into one line — a build reads dozens of files,
+ * and the reader wants the shape of the work, not one row per read.
  */
 function AssistantBody({
   group,
   names,
-  awaiting,
-  onDecide,
 }: {
   group: MessageGroup;
   names: Record<string, string>;
-  awaiting: (callId: string) => boolean;
-  onDecide: (callId: string, decision: "allow" | "deny" | "always") => void;
 }) {
+  // Runs break on any prose turn between results, and each run renders once —
+  // at its first result — so a group of three reads is one line, not three.
+  // Every call id maps to its run: the render loop below knows a row only by
+  // the call id of the turn it is rendering.
+  const rows = new Map<string, { key: string; run: ConversationTurn[] }>();
+  let current: { key: string; run: ConversationTurn[] } | null = null;
+  for (const turn of group.turns) {
+    if (!turn.toolCallId) {
+      current = null;
+      continue;
+    }
+    if (!current) {
+      current = { key: turn.id, run: [turn] };
+    } else {
+      current.run.push(turn);
+    }
+    rows.set(turn.toolCallId, current);
+  }
+
   return (
     <>
       {group.turns.map((turn) => {
         if (turn.toolCallId) {
+          const row = rows.get(turn.toolCallId)!;
+          if (row.run.length > 1) {
+            return row.run[0]!.id === turn.id ? (
+              <ToolRunGroup
+                key={row.key}
+                turns={row.run}
+                names={names}
+                labels={TOOL_LABEL}
+              />
+            ) : (
+              // The group already rendered at the run's first result; the
+              // remaining rows belong to it and must not repeat.
+              null
+            );
+          }
           return (
             <ToolTurnRow
               key={turn.id}
               turn={turn}
               name={names[turn.toolCallId] ?? ""}
+              labels={TOOL_LABEL}
             />
           );
         }
@@ -177,15 +191,6 @@ function AssistantBody({
                 ) : null}
               </StreamingResponse>
             ) : null}
-            {turn.toolCalls
-              ?.filter((call) => awaiting(call.id))
-              .map((call) => (
-                <ApprovalCard
-                  key={call.id}
-                  call={call}
-                  onDecide={(decision) => onDecide(call.id, decision)}
-                />
-              ))}
           </div>
         );
       })}
@@ -195,22 +200,16 @@ function AssistantBody({
 
 export function BuilderMessages({
   turns,
-  pending,
-  onDecide,
   onRetry,
   onDelete,
 }: {
   turns: ConversationTurn[];
-  pending: PendingTurn | null;
-  onDecide: (callId: string, decision: "allow" | "deny" | "always") => void;
   onRetry: () => void;
   onDelete: (turnIds: string[]) => void;
 }) {
   const groups = groupTurns(turns);
   const names = callNames(turns);
   const busy = turns.at(-1)?.pending === true;
-  const awaiting = (callId: string) =>
-    pending !== null && pending.kind === "approve" && pending.results[callId] === undefined;
 
   return (
     <MessageScroller
@@ -280,12 +279,7 @@ export function BuilderMessages({
                   />
                 )
               ) : (
-                <AssistantBody
-                  group={group}
-                  names={names}
-                  awaiting={awaiting}
-                  onDecide={onDecide}
-                />
+                <AssistantBody group={group} names={names} />
               )}
               {group.pending ? null : (
                 <TurnActions
