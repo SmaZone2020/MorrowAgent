@@ -1,22 +1,36 @@
 name: Release
 
-# Builds the Windows installers and attaches them to a GitHub Release.
+# Builds the Windows installers and publishes them as a GitHub Release.
 #
-#   git tag v0.1.0 && git push origin v0.1.0
+#   git tag v0.1.0 && git push origin main --tags
 #
-# The tag must match the version in the five files `pnpm check:version` reads;
-# a mismatch stops the run before anything is compiled, because an installer
-# whose filename disagrees with the version in its About page is a bug the user
-# sees and we cannot patch afterwards.
+# The tag must match the version in the five files `pnpm check:version` reads,
+# and it must point at a commit on `main`. Both checks stop the run before
+# anything is compiled: an installer whose filename disagrees with the version
+# in its About page is a bug the user sees and we cannot patch afterwards, and a
+# release cut from an unreviewed branch is one nobody validated.
 #
-# A manual run builds the same installers and uploads them as workflow
-# artifacts without publishing a release, which is how a dry run is done.
+# A manual run builds the same installers and uploads them as workflow artifacts
+# without touching a release, which is how a dry run is done.
+#
+# Every `v*` tag publishes a stable release; there is no prerelease channel.
+# A `-rc` suffix would still have to match the five version strings, and the
+# version check treats it as an ordinary tag, so the suffix buys nothing today.
+#
+# The release is created as a draft and only flipped public once every installer
+# has been uploaded, so a failure halfway through leaves a draft to inspect
+# rather than a public release with assets missing.
 
 on:
   push:
     tags: ["v*"]
   workflow_dispatch:
 
+# Keyed on the ref, not a single shared lane: a shared group would make GitHub
+# keep only the newest *pending* run, so a middle tag pushed during a release
+# would be dropped without a trace. Per-tag lanes let every tag build, and
+# `cancel-in-progress: false` means a re-push of the same tag queues behind the
+# first instead of killing a half-finished publish.
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
@@ -32,8 +46,13 @@ jobs:
   verify:
     name: Verify
     runs-on: windows-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history: the ancestry check below has to see that the tag is
+          # reachable from `main`, and a shallow clone cannot answer that.
+          fetch-depth: 0
 
       # Node before pnpm: pnpm 11 needs Node >= 22.13 to start.
       - uses: actions/setup-node@v4
@@ -48,14 +67,35 @@ jobs:
           key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: pnpm-store-${{ runner.os }}-
 
-      # Pinned so a toolchain release cannot change the binary between builds.
+      # Pinned, and identical to `ci.yml`: the binary a tag ships must be built
+      # by the same compiler that turned `main` green.
       - uses: dtolnay/rust-toolchain@1.95.0
+        with:
+          components: clippy
 
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri -> target
 
       - run: pnpm install --frozen-lockfile
+
+      # A tag can be pushed from any branch. Publishing on the strength of one
+      # would let a release skip everything CI proved on `main`.
+      #
+      # HEAD rather than `github.sha`: on an annotated tag that variable can be
+      # the tag object's id instead of the commit, and the ancestry test would
+      # then fail for a perfectly good release.
+      - name: Tag is on main
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          git fetch --no-tags origin "+refs/heads/main:refs/remotes/origin/main"
+          commit="$(git rev-parse HEAD)"
+          if ! git merge-base --is-ancestor "$commit" origin/main; then
+            echo "::error::tag $GITHUB_REF_NAME ($commit) is not on main; releases are cut from main only"
+            exit 1
+          fi
+          echo "tag $GITHUB_REF_NAME is reachable from main ($commit)"
 
       - name: Version matches the tag
         if: startsWith(github.ref, 'refs/tags/')
@@ -77,6 +117,12 @@ jobs:
       - name: Build the frontend
         run: pnpm build
 
+      # The same bar as `ci.yml`. A tag must not be a way around a lint that
+      # would have failed a pull request.
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+        working-directory: src-tauri
+
       # These skip the tests that read `packages/` and `dist-packages/`, both of
       # which are gitignored while the content licensing is unsettled. The
       # package engine is still covered by the fixtures the tests build
@@ -89,6 +135,7 @@ jobs:
     name: Windows installers
     needs: verify
     runs-on: windows-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
@@ -104,7 +151,6 @@ jobs:
           key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: pnpm-store-${{ runner.os }}-
 
-      # Pinned so a toolchain release cannot change the binary between builds.
       - uses: dtolnay/rust-toolchain@1.95.0
 
       - uses: Swatinem/rust-cache@v2
@@ -116,6 +162,10 @@ jobs:
       # A tag publishes; a manual run only produces artifacts. The two are
       # separate steps rather than one action with conditional inputs, because
       # an empty `tagName` is easy to read as "publish to a release named ''".
+      #
+      # Draft here on purpose: tauri-action creates the release and uploads the
+      # installers in one step, and `releaseDraft: true` keeps a partial upload
+      # out of the public. A later step flips it once everything else passed.
       - name: Build and attach to the release
         if: startsWith(github.ref, 'refs/tags/')
         uses: tauri-apps/tauri-action@v0
@@ -125,13 +175,15 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: ${{ format('Morrow Agent {0}', github.ref_name) }}
           releaseBody: |
-            Windows installers for Morrow Agent. Both formats install the same app:
+            Morrow Agent ${{ github.ref_name }} — Windows 10/11 (x64).
+
+            Both installers install the same app:
 
             - `.msi` — for managed machines and anyone who prefers the Windows installer service.
             - `-setup.exe` — the NSIS installer, smaller and quicker to start.
 
-            The first release targets Windows 10/11 on x64. The build is not code-signed,
-            so SmartScreen will warn on first run; choose "More info → Run anyway".
+            The build is not code-signed, so SmartScreen will warn on first run;
+            choose "More info → Run anyway".
 
             The reference learning package is not bundled. Import a `.morrow` file from
             the shelf after the first launch.
@@ -142,14 +194,76 @@ jobs:
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         run: pnpm tauri:build
 
-      # Kept even when a release was published, so the run page has the
-      # installers without a trip through the releases tab.
+      # Uploaded before the release goes public: a failed upload must leave a
+      # draft, not a public release whose run page is missing its artifacts.
+      # Kept even after publishing, so the run page has the installers without a
+      # trip through the releases tab.
       - name: Upload installers
         uses: actions/upload-artifact@v4
         with:
-          name: morrow-agent-windows
+          name: morrow-agent-windows-${{ github.ref_name }}
           path: |
             src-tauri/target/release/bundle/msi/*.msi
             src-tauri/target/release/bundle/nsis/*.exe
           if-no-files-found: error
           retention-days: 30
+
+      # The publish gate: last, because only now is everything in place — the
+      # build succeeded, the assets are on the release, and the run page has its
+      # artifacts. Any failure above leaves an inspectable draft instead.
+      - name: Publish the release
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # Both installers must be on the draft before it becomes public.
+          # tauri-action uploads them, but a bundle that silently produced only
+          # one format would otherwise publish a release with a broken download.
+          assets="$(gh release view "$GITHUB_REF_NAME" --json assets --jq '.assets[].name')"
+          for want in .msi -setup.exe; do
+            found=""
+            while IFS= read -r asset; do
+              [[ "$asset" == *"$want" ]] && found="$asset" && break
+            done <<< "$assets"
+            if [[ -z "$found" ]]; then
+              echo "::error::release $GITHUB_REF_NAME has no *$want asset; leaving it as a draft"
+              exit 1
+            fi
+          done
+
+          # `--latest` only when this is the newest tag, so re-running an old
+          # tag cannot move the "latest" pointer backwards.
+          latest="$(gh release view --json tagName --jq .tagName 2>/dev/null || true)"
+          if [[ -n "$latest" && "$latest" != "$GITHUB_REF_NAME" ]] &&
+             [[ "$(printf '%s\n%s\n' "$latest" "$GITHUB_REF_NAME" | sort -V | tail -n1)" != "$GITHUB_REF_NAME" ]]; then
+            gh release edit "$GITHUB_REF_NAME" --draft=false --latest=false
+            echo "published release $GITHUB_REF_NAME (latest stays $latest)"
+          else
+            gh release edit "$GITHUB_REF_NAME" --draft=false --latest
+            echo "published release $GITHUB_REF_NAME as latest"
+          fi
+
+      - name: Summarize
+        shell: bash
+        run: |
+          {
+            echo "### ${{ github.ref_name }}"
+            if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+              echo "Published: https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}"
+            else
+              echo "Dry run: installers uploaded as a workflow artifact, no release touched."
+            fi
+            echo ""
+            echo "| File | Size |"
+            echo "| --- | --- |"
+            # `basename` rather than `$9`: the installers are named
+            # "Morrow Agent_0.1.0_x64-setup.exe", and an unquoted awk column
+            # would print only the last word of that.
+            for file in src-tauri/target/release/bundle/msi/*.msi \
+                        src-tauri/target/release/bundle/nsis/*.exe; do
+              echo "| \`$(basename "$file")\` | $(du -h "$file" | cut -f1) |"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"

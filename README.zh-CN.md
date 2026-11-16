@@ -110,15 +110,17 @@ MorrowAgent/
 
 CI 在每次推送到 `main` 和每个 Pull Request 上运行：类型检查、单元测试、生产构建，然后在 Windows 上跑 `clippy -D warnings` 与 `cargo test`。
 
-安装包由 `Release` 工作流产出。版本号写在五个文件里（`package.json`、`src-tauri/Cargo.toml`、`src-tauri/tauri.conf.json`、`src/app/config.ts`、`src-tauri/src/package/mod.rs`）；`pnpm check:version` 会断言它们一致，标签与版本号不符时在编译前就失败。
+发布由版本标签触发：推一个标签，`Release` 工作流就会构建 Windows 安装包并直接发布，中间不需要人工操作。
 
 ```bash
 # 改完五处版本号并提交后：
 git tag v0.2.0
-git push origin v0.2.0      # 产出 .msi 与 NSIS 安装包，并创建 GitHub Release 草稿
+git push origin main --tags     # 产出 .msi 与 NSIS 安装包，并发布 Release
 ```
 
-手动触发同一个工作流只产出安装包并上传为 workflow 产物，不会发布任何东西。
+版本号写在五个文件里（`package.json`、`src-tauri/Cargo.toml`、`src-tauri/tauri.conf.json`、`src/app/config.ts`、`src-tauri/src/package/mod.rs`）；`pnpm check:version` 会断言它们一致。标签与版本号不符、或标签所在的提交不在 `main` 的历史里，都会在编译前失败。
+
+手动触发同一个工作流只产出安装包并上传为 workflow 产物，不会创建或修改 Release。
 
 ## 文档
 

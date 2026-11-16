@@ -1,9 +1,15 @@
 name: CI
 
-# Everything that must be green before a change lands. The release workflow
-# repeats the cheap half of this against the tag, so a broken build cannot be
-# published just because CI was skipped on a tag push.
-
+# Everything that must be green before a change lands.
+#
+# A tag push does not trigger this workflow: `branches` filters push events to
+# `main`, and a workflow that names only `branches` never runs for tags.
+# Publishing is `release.yml`'s job, and it repeats these same checks against
+# the tag, so a tag cannot release something `main` would have rejected.
+#
+# Do not add a `tags-ignore` key here. GitHub only applies `branches` when
+# `tags` is absent, so defining `tags-ignore` would make every tag that does not
+# match it run the whole CI pipeline again.
 on:
   push:
     branches: [main]
@@ -25,6 +31,7 @@ jobs:
   web:
     name: Frontend
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -64,6 +71,7 @@ jobs:
     # credential store has a Windows-only implementation. A Linux job would
     # compile the stub and prove nothing about the binary users run.
     runs-on: windows-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -79,7 +87,7 @@ jobs:
           key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: pnpm-store-${{ runner.os }}-
 
-      # Pinned, not `@stable`: clippy runs with `-D warnings`, so a new toolchain
+      # Pinned, not `stable`: clippy runs with `-D warnings`, so a new toolchain
       # release that adds a lint would turn a green build red without a code
       # change. 1.95.0 is what the current tree was verified against.
       - uses: dtolnay/rust-toolchain@1.95.0

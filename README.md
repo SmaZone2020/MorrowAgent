@@ -111,17 +111,20 @@ MorrowAgent/
 CI runs on every push to `main` and every pull request: typecheck, unit tests,
 production build, then `clippy -D warnings` and `cargo test` on Windows.
 
-Installers are built by the `Release` workflow. The version lives in five files
-(`package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`,
-`src/app/config.ts`, `src-tauri/src/package/mod.rs`); `pnpm check:version`
-asserts they agree, and the release fails before compiling if the tag disagrees
-with them.
+Publishing is triggered by a version tag. Push one and `Release` builds the
+Windows installers and publishes them, with no manual step in between:
 
 ```bash
 # bump the five version strings, commit, then:
 git tag v0.2.0
-git push origin v0.2.0      # builds .msi + NSIS and drafts a GitHub Release
+git push origin main --tags     # builds .msi + NSIS and publishes the release
 ```
+
+The version lives in five files (`package.json`, `src-tauri/Cargo.toml`,
+`src-tauri/tauri.conf.json`, `src/app/config.ts`,
+`src-tauri/src/package/mod.rs`); `pnpm check:version` asserts they agree, and
+the release fails before compiling if the tag disagrees with them or if the
+tagged commit is not on `main`.
 
 A manual run of the workflow builds the same installers and uploads them as
 workflow artifacts, without publishing anything.

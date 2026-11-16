@@ -15,9 +15,11 @@
 | 工作流 | 触发 | 作用 |
 | --- | --- | --- |
 | `.github/workflows/ci.yml` | 推送到 `main`、Pull Request、手动 | 类型检查、单测、生产构建、`clippy -D warnings`、`cargo test` |
-| `.github/workflows/release.yml` | 推送 `v*` 标签、手动 | 校验版本号后产出 `.msi` 与 NSIS 安装包，并创建 Release 草稿 |
+| `.github/workflows/release.yml` | 推送 `v*` 标签、手动 | 校验版本号与分支后产出 `.msi` 与 NSIS 安装包，并**自动发布** Release |
 
-CI 与 Release 都先跑一遍「便宜的检查」，再动编译：一个装不上的安装包比一个红叉更难收拾。
+两者都先跑一遍「便宜的检查」，再动编译：一个装不上的安装包比一个红叉更难收拾。
+
+标签推送只触发 Release，不重复触发 CI——同一棵树编两遍没有意义；Release 自己会把 CI 的那套检查再跑一遍，所以标签无法绕过红线。
 
 ## 2. 为什么 Rust 任务跑在 Windows
 
@@ -51,16 +53,19 @@ git push origin main --tags
 
 工作流随后：
 
-1. `verify`：版本号、类型检查、单测、前端构建、`cargo test`。
-2. `bundle`：`tauri-apps/tauri-action` 编译并打包，把 `.msi` 与 `-setup.exe` 挂到 Release 草稿上，同时上传为 workflow 产物（保留 30 天）。
+1. `verify`：标签必须位于 `main` 的历史里（否则直接失败）；`--tag` 版本校验、类型检查、单测、前端构建、`clippy -D warnings`、`cargo test`。
+2. `bundle`：`tauri-apps/tauri-action` 编译并打包，把 `.msi` 与 `-setup.exe` 挂到一个**草稿** Release 上；同一步之后再 `Upload installers`，把安装包另存为 workflow 产物（保留 30 天）。
+3. `Publish the release`：确认草稿上 `.msi` 与 `-setup.exe` 两个资产都在，再执行 `gh release edit --draft=false`，Release 才对外公开。只有确实比当前 latest 新时才加 `--latest`，所以补发一个旧标签不会把「最新版本」指针往回调。
 
-草稿是刻意的：安装包没有代码签名，发布前需要人看一眼体积与文件名。
+「草稿 → 公开」两段式而不是直接公开：tauri-action 创建 Release 与上传资产是一步完成的，如果构建中途失败，草稿会留在那里等人看，而不是一个资产缺失的公开版本。发布前的资产检查也是同一个意思——只产出了 `.msi` 的版本不该被当成可下载的正式版。
 
-手动触发同一个工作流只跑 `pnpm tauri:build` 并上传产物，不创建 Release——这是演练用的路径。
+手动触发同一个工作流只跑 `pnpm tauri:build` 并上传产物，不创建也不修改 Release——这是演练用的路径。
 
 ## 5. 未签名的代价
 
 当前构建不做代码签名，首次运行会触发 SmartScreen。签名需要一张证书和几个仓库 Secret，属于发布策略问题而不是代码问题，见 `docs/OPEN-QUESTIONS.md`。
+
+因为发布是全自动的，签名缺失的影响更直接：用户点进 Release 就能下载，第一次运行会看到警告。发布说明里写明了「More info → Run anyway」，这一段必须随版本一起维护。
 
 ## 6. 全新克隆里会跳过的测试
 
