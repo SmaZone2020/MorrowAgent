@@ -227,6 +227,15 @@ fn chat_conversations(
     state.conversations(&workspace_id, limit.unwrap_or(20))
 }
 
+/// Every workspace's history in one read, for the rail that groups by package.
+#[tauri::command]
+fn chat_conversations_all(
+    state: State<'_, Store>,
+    limit: Option<i64>,
+) -> Result<Vec<ConversationSummary>, String> {
+    state.all_conversations(limit.unwrap_or(200))
+}
+
 #[tauri::command]
 fn chat_delete(state: State<'_, Store>, conversation_id: String) -> Result<(), String> {
     state.delete_conversation(&conversation_id)
@@ -263,6 +272,15 @@ fn chat_truncate(
 #[tauri::command]
 fn chat_reset(state: State<'_, Store>, workspace_id: String) -> Result<(), String> {
     state.reset(&workspace_id)
+}
+
+/// Archives the build conversations that predate per-folder workspaces.
+#[tauri::command]
+fn chat_adopt_builder(
+    state: State<'_, Store>,
+    workspace_id: String,
+) -> Result<usize, String> {
+    state.adopt_builder_rows(&workspace_id)
 }
 
 /// Settings-level wipe: every package's study data at once.
@@ -1009,12 +1027,14 @@ pub fn run() {
             chat_append,
             chat_messages,
             chat_conversations,
+            chat_conversations_all,
             chat_delete,
             chat_rename,
             chat_discard_empty,
             chat_delete_message,
             chat_truncate,
             chat_reset,
+            chat_adopt_builder,
             data_reset,
             data_stats,
             data_backup,

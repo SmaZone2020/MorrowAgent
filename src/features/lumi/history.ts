@@ -27,6 +27,11 @@ export interface ConversationSummary {
   id: string;
   title: string;
   updatedAt: number;
+  /**
+   * The workspace the row was written under. A conversation never moves: a
+   * different workspace is a different conversation.
+   */
+  workspaceId: string;
 }
 
 // History is optional by design: the browser preview has no database, and a
@@ -68,6 +73,19 @@ export async function loadConversations(
   });
 }
 
+/**
+ * Every workspace's rows in one read; the rail groups them itself.
+ *
+ * A package's own page only ever wants its own history, but the shelf's build
+ * history spans folders, and one read is cheaper than one query per group.
+ */
+export async function loadAllConversations(
+  limit = 200,
+): Promise<ConversationSummary[]> {
+  if (!isTauriRuntime) return [];
+  return invoke<ConversationSummary[]>("chat_conversations_all", { limit });
+}
+
 export async function renameConversation(
   conversationId: string,
   title: string,
@@ -104,4 +122,17 @@ export async function truncateFrom(
 ): Promise<void> {
   if (!isTauriRuntime) return;
   await invoke("chat_truncate", { conversationId, messageId });
+}
+
+/**
+ * Claims the build conversations that predate per-folder workspaces.
+ *
+ * They all lived under one fixed id, so the rail could only show them as one
+ * pile. The first folder bound after the change adopts them.
+ */
+export async function adoptBuilderConversations(
+  workspaceId: string,
+): Promise<void> {
+  if (!isTauriRuntime) return;
+  await invoke("chat_adopt_builder", { workspaceId });
 }

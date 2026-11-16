@@ -1,5 +1,6 @@
 import {
   discardEmptyConversation,
+  loadAllConversations,
   loadConversations,
   loadMessages,
   truncateFrom,
@@ -34,14 +35,22 @@ export interface HistoryPatch extends Partial<ConversationHistory> {}
  * A remembered id can point at a conversation deleted on another launch, so a
  * miss falls back to the newest row rather than an empty page; the pointer is
  * rewritten so the fallback is not repeated every launch.
+ *
+ * `listAll` reads every workspace's rows for the rail that groups them, but the
+ * conversation it reopens is still chosen from this workspace only: reopening
+ * another folder's transcript would silently switch what the page works on.
  */
 export async function readHydrated(
   scope: string,
   workspaceId: string,
+  listAll = false,
 ): Promise<HistoryPatch> {
-  const list = await loadConversations(workspaceId);
+  const list = listAll
+    ? await loadAllConversations()
+    : await loadConversations(workspaceId);
+  const own = list.filter((entry) => entry.workspaceId === workspaceId);
   const remembered = readScope<string | null>(rememberedKey(scope, workspaceId), null);
-  const target = list.find((entry) => entry.id === remembered) ?? list[0] ?? null;
+  const target = own.find((entry) => entry.id === remembered) ?? own[0] ?? null;
 
   if (!target) {
     if (remembered !== null) writeScope(rememberedKey(scope, workspaceId), null);

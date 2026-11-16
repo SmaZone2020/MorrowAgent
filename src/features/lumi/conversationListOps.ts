@@ -1,5 +1,6 @@
 import {
   deleteConversation,
+  loadAllConversations,
   loadConversations,
   loadMessages,
   renameConversation,
@@ -17,14 +18,23 @@ import { writeScope } from "@/features/uiState/store";
  * user can rename a conversation mid-stream without disturbing it.
  */
 export function createListActions(runtime: ConversationRuntime) {
-  const { get, set, scope, stop } = runtime;
+  const { get, set, scope, stop, listAll } = runtime;
+
+  /**
+   * One read for whichever list this surface keeps.
+   *
+   * The build rail groups by folder, so it wants every workspace at once; a
+   * package's own page only ever shows its own history.
+   */
+  const read = () =>
+    listAll ? loadAllConversations() : loadConversations(get().workspaceId ?? "");
 
   return {
     refreshList: async () => {
       const workspaceId = get().workspaceId;
       if (!workspaceId) return;
       try {
-        set({ list: await loadConversations(workspaceId), listLoaded: true });
+        set({ list: await read(), listLoaded: true });
       } catch {
         // Keep whatever list is on screen; a stale list beats an empty one.
       }
@@ -96,8 +106,17 @@ export function createListActions(runtime: ConversationRuntime) {
       }
 
       if (!wasOpen) return;
-      // Land on the next most recent conversation instead of a blank page.
-      const next = get().list[0];
+      // Land on the next most recent conversation instead of a blank page. In a
+      // cross-workspace list that has to be the next one in *this* workspace:
+      // binding the user to another package's transcript would be a silent
+      // workspace switch, which is exactly what the rail must not do.
+      const removed = get().list.find((entry) => entry.id === conversationId);
+      const next =
+        get().list.find(
+          (entry) =>
+            entry.id !== conversationId &&
+            (!listAll || entry.workspaceId === removed?.workspaceId),
+        ) ?? null;
       if (next) await get().openConversation(next.id);
       else {
         const workspaceId = get().workspaceId;

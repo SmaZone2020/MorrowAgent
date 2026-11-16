@@ -204,7 +204,7 @@ impl Store {
         let connection = self.lock()?;
         let mut statement = connection
             .prepare(
-                "SELECT id, title, updated_at FROM conversations
+                "SELECT id, title, updated_at, workspace_id FROM conversations
                  WHERE workspace_id = ?1
                  ORDER BY updated_at DESC LIMIT ?2",
             )
@@ -216,6 +216,37 @@ impl Store {
                     Id: row.get(0)?,
                     Title: row.get(1)?,
                     UpdatedAt: row.get(2)?,
+                    WorkspaceId: row.get(3)?,
+                })
+            })
+            .map_err(|error| format!("读取会话失败：{}", error))?;
+
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(|error| format!("解析会话失败：{}", error))
+    }
+
+    /// Every conversation, newest first, across all workspaces.
+    ///
+    /// The history rail groups by workspace, so it needs the whole set in one
+    /// read rather than one query per group. `limit` still applies, because a
+    /// shelf with ten installed packages would otherwise page in everything.
+    pub fn all_conversations(&self, limit: i64) -> Result<Vec<ConversationSummary>, String> {
+        let connection = self.lock()?;
+        let mut statement = connection
+            .prepare(
+                "SELECT id, title, updated_at, workspace_id FROM conversations
+                 WHERE workspace_id <> ''
+                 ORDER BY updated_at DESC LIMIT ?1",
+            )
+            .map_err(|error| format!("查询会话失败：{}", error))?;
+
+        let rows = statement
+            .query_map(params![limit], |row| {
+                Ok(ConversationSummary {
+                    Id: row.get(0)?,
+                    Title: row.get(1)?,
+                    UpdatedAt: row.get(2)?,
+                    WorkspaceId: row.get(3)?,
                 })
             })
             .map_err(|error| format!("读取会话失败：{}", error))?;
@@ -273,6 +304,23 @@ impl Store {
             )
             .map_err(|error| format!("清理空会话失败：{}", error))?;
         Ok(())
+    }
+
+    /// Gives build conversations written before a folder was a workspace a home.
+    ///
+    /// They all shared the fixed `builder` id, because the folder was a
+    /// page-level setting rather than something a transcript belonged to. The
+    /// first folder opened after the update claims them: that is a guess, but a
+    /// guess is better than a group the rail can never open, and the rows are
+    /// only ever claimed once.
+    pub fn adopt_builder_rows(&self, workspace_id: &str) -> Result<usize, String> {
+        let connection = self.lock()?;
+        connection
+            .execute(
+                "UPDATE conversations SET workspace_id = ?1 WHERE workspace_id = 'builder'",
+                params![workspace_id],
+            )
+            .map_err(|error| format!("归档旧构建会话失败：{}", error))
     }
 
     /// Wipes conversations and attempts in one workspace; credentials live
@@ -395,6 +443,53 @@ mod tests {
         let conversations = store.conversations("w1", 10).expect("conversations load");
         assert_eq!(conversations.len(), 1);
         assert_eq!(conversations[0].Title, "极限怎么算");
+        assert_eq!(conversations[0].WorkspaceId, "w1");
+
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn the_rail_reads_every_workspace_and_still_names_each_row_s_owner() {
+        let (path, store) = temp_store();
+        store
+            .append("c1", "w1", message("m1", "user", "第一个项目"))
+            .expect("w1 turn");
+        store
+            .append("c2", "w2", message("m2", "user", "第二个项目"))
+            .expect("w2 turn");
+
+        let all = store.all_conversations(50).expect("all");
+        assert_eq!(all.len(), 2);
+        let owners: Vec<&str> = all.iter().map(|row| row.WorkspaceId.as_str()).collect();
+        assert!(owners.contains(&"w1"));
+        assert!(owners.contains(&"w2"));
+
+        // Each package page still only sees its own.
+        assert_eq!(store.conversations("w1", 50).expect("w1").len(), 1);
+
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn adopting_build_rows_claims_only_the_legacy_group() {
+        let (path, store) = temp_store();
+        store
+            .append("old", "builder", message("m1", "user", "旧构建"))
+            .expect("legacy turn");
+        store
+            .append("new", "other", message("m2", "user", "别的会话"))
+            .expect("other turn");
+
+        let claimed = store.adopt_builder_rows("builder-calc-12345678").expect("adopt");
+        assert_eq!(claimed, 1);
+        // Running it again claims nothing: the pending update must not steal a
+        // later folder's rows.
+        assert_eq!(store.adopt_builder_rows("builder-other-87654321").expect("again"), 0);
+        assert_eq!(
+            store.conversations("builder-calc-12345678", 10).expect("load")[0].Id,
+            "old"
+        );
+        assert_eq!(store.conversations("other", 10).expect("other")[0].Id, "new");
 
         let _ = std::fs::remove_file(path);
     }
@@ -437,8 +532,7 @@ mod tests {
     }
 
     #[test]
-    fn discarding_an_empty_conversation_leaves_a_used_one_alone() {
-        let (path, store) = temp_store();
+    fn discarding_an_empty_conversation_leaves_a_used_one_alone() {        let (path, store) = temp_store();
 
         store
             .append("used", "w1", message("m1", "user", "hello"))

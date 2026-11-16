@@ -130,6 +130,14 @@ export interface ConversationStoreOptions {
   gate?: (call: ToolCall) => CallGate;
   /** Upper bound on tool rounds, for a surface whose work takes longer. */
   maxRounds?: number;
+  /**
+   * Loads every workspace's history into `list`, not just the bound one.
+   *
+   * The build rail groups conversations by the folder they were started in, so
+   * it needs the whole set; the transcript lookups still filter by workspace,
+   * which keeps opening, deleting and hydrating inside the bound folder.
+   */
+  listAll?: boolean;
   /** Reads the package so a tool answer comes from real content. */
   context?: () => ToolContext | null;
   /**
@@ -164,6 +172,7 @@ export function createConversationStore({
   runTool,
   gate,
   maxRounds,
+  listAll = false,
   context,
   onRequestSettled,
 }: ConversationStoreOptions) {
@@ -202,6 +211,7 @@ export function createConversationStore({
       set,
       scope,
       idPrefix,
+      listAll,
       persist,
       stop,
       runTool,
@@ -287,7 +297,12 @@ export function createConversationStore({
 
         hydrating = (async () => {
           try {
-            set(await readHydrated(scope, workspaceId));
+            const patch = await readHydrated(scope, workspaceId, listAll);
+            // The user can switch folders while this read is in flight, and a
+            // late answer must not paint another folder's transcript over the
+            // one they just chose.
+            if (get().workspaceId !== workspaceId) return;
+            set(patch);
           } catch {
             // No database (browser preview) or a broken file: start empty.
             set({ listLoaded: true });

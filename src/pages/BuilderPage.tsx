@@ -18,7 +18,16 @@ import {
   folderName,
   pickFolder,
 } from "@/features/builder/WorkspacePanel";
-import { BUILDER_WORKSPACE, useBuilderConversation } from "@/features/builder/conversation";
+import { useBuilderConversation } from "@/features/builder/conversation";
+import {
+  builderWorkspaceId,
+  builderWorkspaceLabel,
+  builderWorkspaceHint,
+  rememberBuilderFolder,
+  useBuilderFolders,
+} from "@/features/builder/workspaces";
+import { groupConversations } from "@/features/lumi/conversationGroups";
+import { adoptBuilderConversations } from "@/features/lumi/history";
 import { writeBoard } from "@/features/builder/board";
 import {
   isPermissionTier,
@@ -89,9 +98,6 @@ export function BuilderPage() {
   const list = useBuilderConversation((state) => state.list);
   const pending = useBuilderConversation((state) => state.pending);
   const bindWorkspace = useBuilderConversation((state) => state.bindWorkspace);
-  const hydrate = useBuilderConversation((state) => state.hydrate);
-  const listLoaded = useBuilderConversation((state) => state.listLoaded);
-  const bound = useBuilderConversation((state) => state.workspaceId);
   const openConversation = useBuilderConversation((state) => state.openConversation);
   const startNew = useBuilderConversation((state) => state.startNew);
   const rename = useBuilderConversation((state) => state.rename);
@@ -101,16 +107,33 @@ export function BuilderPage() {
   const regenerate = useBuilderConversation((state) => state.regenerate);
   const deleteTurns = useBuilderConversation((state) => state.deleteTurns);
   const approveCall = useBuilderConversation((state) => state.approveCall);
+  const folders = useBuilderFolders();
 
   // Bound by hand rather than through `useBoundConversation`: that hook reads
   // the package id from the workspace shell, and this page is not inside one.
-  useEffect(() => {
-    bindWorkspace(BUILDER_WORKSPACE);
-  }, [bindWorkspace]);
+  //
+  // The workspace is the folder, so switching folders binds a different one.
+  // A conversation never moves between them: the id a transcript is written
+  // under is the folder it was started in, and binding is what reopens that
+  // folder's own history.
+  const workspaceId = folder ? builderWorkspaceId(folder) : "";
 
   useEffect(() => {
-    if (bound === BUILDER_WORKSPACE && !listLoaded) void hydrate();
-  }, [bound, hydrate, listLoaded]);
+    if (!workspaceId) return;
+    // The id is a hash; this is what lets the rail print the folder's name.
+    rememberBuilderFolder(folder);
+    bindWorkspace(workspaceId);
+
+    // Ordered rather than parallel: conversations written before a folder
+    // *was* the workspace all shared one fixed id, and the first folder opened
+    // after the update claims them. Reading first would show a list the rail
+    // could not open into anything.
+    void (async () => {
+      await adoptBuilderConversations(workspaceId).catch(() => undefined);
+      if (useBuilderConversation.getState().workspaceId !== workspaceId) return;
+      await useBuilderConversation.getState().hydrate();
+    })();
+  }, [bindWorkspace, folder, workspaceId]);
 
   // The board is what the loop and the tool handlers read while a request is in
   // flight, so it has to be written on every change, not only before a send.
@@ -200,12 +223,28 @@ export function BuilderPage() {
   const empty = turns.length === 0;
   const tierLabel = TIERS.find((item) => item.id === tier)?.label ?? "操作审批";
 
+  // The rail groups by folder, newest activity first, except that the folder
+  // currently open is pinned to the top. Its group is only one whose rows can be
+  // reopened, and putting it first is what keeps the row the user is reading
+  // from moving down every time another project is touched. The label is the
+  // leaf name, not the path: a group header has room for one word.
+  const groups = groupConversations(
+    list,
+    (id) => builderWorkspaceLabel(id, folders),
+    [workspaceId],
+    (id) => builderWorkspaceHint(id, folders),
+  );
+
   return (
     <div className="flex h-full min-h-0 w-full">
       <ConversationList
         list={list}
+        groups={groups}
         activeId={conversationId}
         open={listOpen}
+        showTime={false}
+        openableWorkspaceId={workspaceId}
+        disabledHint="这个会话属于另一个文件夹：切换文件夹后新建会话才能继续"
         onToggle={() => setListOpen((value) => !value)}
         onSelect={(id) => void openConversation(id)}
         onCreate={() => {

@@ -9,6 +9,7 @@ import {
   TIERS,
   type PermissionTier,
 } from "@/features/builder/permission";
+import { folderName } from "@/features/builder/workspaces";
 
 /**
  * The two decisions a build starts with, and the machine it will run on.
@@ -29,9 +30,8 @@ export async function pickFolder(): Promise<string | null> {
 }
 
 /** The last segment of a path, for a chip that has no room for the whole one. */
-export function folderName(path: string): string {
-  return path.split(/[\\/]/).filter(Boolean).pop() ?? path;
-}
+export { folderName };
+
 
 /**
  * The folder the assistant may touch.

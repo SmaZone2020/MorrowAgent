@@ -65,6 +65,10 @@ pub struct ConversationSummary {
     pub Title: String,
     #[serde(rename = "updatedAt")]
     pub UpdatedAt: i64,
+    /// The workspace the row was written under. A conversation never changes
+    /// it: a different workspace means a different conversation.
+    #[serde(rename = "workspaceId")]
+    pub WorkspaceId: String,
 }
 
 #[derive(Debug, Clone, Serialize)]

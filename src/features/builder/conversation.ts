@@ -12,9 +12,10 @@ import { runBuilderTool } from "@/features/builder/toolRunner";
  * mechanism, the history list and the streaming controller are the same problem
  * on both surfaces, and only the prompt, the tools and the gate differ.
  *
- * The workspace id is the fixed string `builder`. A build does not belong to an
- * installed package, but rows in the history table are keyed by one, and a
- * stable name is what keeps builder conversations out of every package's list.
+ * A build's workspace is the folder it works in, so the page binds the id of
+ * the chosen folder rather than one fixed name (`builderWorkspaceId`). That is
+ * what lets the rail group builds by project while keeping a transcript in the
+ * folder it was written for: a conversation never moves between workspaces.
  */
 export const BUILDER_WORKSPACE = "builder";
 
@@ -35,6 +36,9 @@ export const useBuilderConversation = createConversationStore({
     return buildBuilderPrompt(folder || "（尚未选择）", env, tier);
   },
   idPrefix: "build",
+  // The rail groups builds by folder, so it holds every workspace's rows; the
+  // conversation it reopens is still chosen from the bound folder only.
+  listAll: true,
   defs: () => BUILDER_TOOL_DEFS,
   runTool: runBuilderTool,
   // The read-only tools run without asking in either tier; a write or a command

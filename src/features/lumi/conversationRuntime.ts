@@ -31,4 +31,9 @@ export interface ConversationRuntime {
   runTool?: (call: ToolCall) => Promise<string>;
   /** Aborts the in-flight request, if any. */
   stop: () => void;
+  /**
+   * Whether `list` holds every workspace's rows rather than the bound one's.
+   * The build rail groups by folder, so it reads the whole set at once.
+   */
+  listAll: boolean;
 }
