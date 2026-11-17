@@ -24,6 +24,43 @@ window.buildSlides = () => {
   // stale "05" sitting next to a "06 / 21" footer.
   const num = () => String(slides.length + 1).padStart(2, "0");
 
+  // The deck is one argument in six movements. Every page belongs to exactly
+  // one block, so the top rail can always answer "where are we, and what comes
+  // next" without a separate agenda page. `keys` are the data-k values, in the
+  // order they are pushed.
+  const BLOCKS = [
+    {
+      i: 1, n: "01", label: "缘起", en: "WHY", accent: "#8a6530", rgb: "138 101 48",
+      keys: ["policy", "problem", "answer", "loop", "evening"],
+      path: "政策原文 → 时代之问 → 我们的回答 → 七步闭环 → 一个学生的晚上",
+    },
+    {
+      i: 2, n: "02", label: "学伴", en: "COMPANION", accent: "#4f6b57", rgb: "79 107 87",
+      keys: ["lumi", "style", "modules", "ws", "diag", "report"],
+      path: "Lumi 是谁 → 怎么教 → 六个模块 → 对话界面 → 诊断 → 报告",
+    },
+    {
+      i: 3, n: "03", label: "积累", en: "EVIDENCE", accent: "#47616f", rgb: "71 97 111",
+      keys: ["profile", "train", "exam"],
+      path: "学习画像 → 错题本与专项训练 → 模拟考试",
+    },
+    {
+      i: 4, n: "04", label: "内容", en: "CONTENT", accent: "#7d6a55", rgb: "125 106 85",
+      keys: ["mlps", "builder", "pkgdata"],
+      path: "开放标准 → 构建器 → 首个参考包的全部数据",
+    },
+    {
+      i: 5, n: "05", label: "底座", en: "PLATFORM", accent: "#384248", rgb: "56 66 72",
+      keys: ["local", "ds", "dsnative", "arch", "quality", "metrics"],
+      path: "本地优先 → 国产模型 → 深度集成 → 三层架构 → 工程纪律 → 可量化的数",
+    },
+    {
+      i: 6, n: "06", label: "落地", en: "LANDING", accent: "#5c6b4f", rgb: "92 107 79",
+      keys: ["policymap", "rollout", "creed", "philo", "roadmap"],
+      path: "政策对照 → 推广路径 → 四个信念 → 四个理念 → 下一步",
+    },
+  ];
+
   const slides = [];
 
   /* ---------- 1 · cover ---------- */
@@ -41,20 +78,50 @@ window.buildSlides = () => {
     <h1 class="a d3">让每一个学生<br>都拥有<em>看得懂自己</em>的 AI 学伴</h1>
     <p class="slogan a d4">Morrow Agent · 面向自主学习的 AI 学习工作台</p>
     <div class="cover-meta a d5">
-      <span class="pill">陕西航空职业技术学院</span>
       <span class="pill">Morrow 团队</span>
+      <span class="pill">桌面 · Android 本地应用</span>
     </div>
     <div class="cover-lumi a-s d6">${LUMI_SVG()}</div>
   </section>`);
 
-  /* ---------- 2 · policy ---------- */
+  /* ---------- 2 · agenda ---------- */
+  // The whole deck in one screen: six movements, what each one proves, and how
+  // many pages it gets. This is the page a judge photographs.
+  slides.push(`
+  <section class="slide agenda" data-k="agenda">
+    <div class="grain"></div>
+    <div class="head">
+      <div>
+        <span class="kicker a-l d1">全场结构 · AGENDA</span>
+        <h2 class="slide-title a-l d2">六幕，回答一个问题：学生为什么学得下去</h2>
+      </div>
+      <div class="num a d1">${num()}</div>
+    </div>
+    <div class="ag-grid" data-stag=".07" data-d=".3">
+      ${BLOCKS.map(
+        (b) => `
+        <div class="ag a" style="--blk:${b.accent};--blk-rgb:${b.rgb}">
+          <div class="ag-top"><span>${b.n}</span><em>${b.en}</em></div>
+          <b>${b.label}</b>
+          <p>${b.path}</p>
+          <i>${b.keys.length} 页</i>
+        </div>`,
+      ).join("")}
+    </div>
+    <div class="ag-foot a d6">
+      ${window.icon("route")}
+      <span>演示顺序与页面顺序一致：前两幕讲为什么做、做成什么，中间两幕讲产品与内容，最后两幕讲工程底子与怎么落地。</span>
+    </div>
+  </section>`);
+
+  /* ---------- 3 · policy ---------- */
   slides.push(`
   <section class="slide" data-k="policy">
     <div class="grain"></div>
     <div class="head">
       <div>
-        <span class="kicker a-l d1">响应国家号召 · POLICY</span>
-        <h2 class="slide-title a-l d2">我们响应的不是口号，是行动计划的原文</h2>
+        <span class="kicker a-l d1">缘起 · 政策原文</span>
+        <h2 class="slide-title a-l d2">我们逐条读过行动计划的原文</h2>
       </div>
       <div class="num a d1">${num()}</div>
     </div>
@@ -87,7 +154,7 @@ window.buildSlides = () => {
     <div class="grain"></div>
     <div class="head">
       <div>
-        <span class="kicker a-l d1">时代之问 · WHY</span>
+        <span class="kicker a-l d1">缘起 · 时代之问</span>
         <h2 class="slide-title a-l d2">好老师不缺，缺的是“一直在你身边的老师”</h2>
       </div>
       <div class="num a d1">${num()}</div>
@@ -108,7 +175,7 @@ window.buildSlides = () => {
             <div class="b low" style="height:34%"><em>自学刷题</em><i>无人指导</i></div>
           </div>
         </div>
-        <div class="gapnote a d4">${window.icon("lightbulb")}<span>差距的根源不是天赋，而是能否获得持续、个性化的指导 —— 这正是 AI 可以补齐的部分。</span></div>
+        <div class="gapnote a d4">${window.icon("lightbulb")}<span>拉开差距的，是能否获得持续、个性化的指导 —— 这正是 AI 可以补齐的部分。</span></div>
       </div>
     </div>
   </section>`);
@@ -119,7 +186,7 @@ window.buildSlides = () => {
     <div class="grain"></div>
     <div class="head">
       <div>
-        <span class="kicker a-l d1">我们的回答 · ANSWER</span>
+        <span class="kicker a-l d1">缘起 · 我们的回答</span>
         <h2 class="slide-title a-l d2">优质教育资源普惠化</h2>
       </div>
       <div class="num a d1">${num()}</div>
@@ -165,7 +232,7 @@ window.buildSlides = () => {
     <div class="grain"></div>
     <div class="head">
       <div>
-        <span class="kicker a-l d1">核心理念 · LOOP</span>
+        <span class="kicker a-l d1">缘起 · 核心理念</span>
         <h2 class="slide-title a-l d2">七步学习闭环：AI 的终点，是让学生不再依赖 AI</h2>
       </div>
       <div class="num a d1">${num()}</div>
@@ -189,13 +256,47 @@ window.buildSlides = () => {
     </div>
   </section>`);
 
-  /* ---------- 6 · lumi ---------- */
+  /* ---------- 6 · one evening ---------- */
+  const evening = [
+    ["19:40", "打开就是任务", "昨天的错题已经排好，先做 6 道五分钟诊断，不用自己决定从哪开始。", true],
+    ["20:00", "定位缺口", "卡在「极限存在的判定」这一层，计算本身没问题 —— 诊断把原因追到更前面一层。", false],
+    ["20:15", "按缺口讲", "Lumi 先问你怎么想的，再从这一步往下讲，不从头讲一遍你已经会的东西。", false],
+    ["20:45", "变式训练", "8 道变式题验证这个缺口真的补上了，错的那 2 道连归因一起写进画像。", false],
+    ["21:30", "明天已经排好", "计划按今晚的结果重排，明天先做哪一道题，关掉应用时就已经定了。", false],
+  ];
+  slides.push(`
+  <section class="slide" data-k="evening">
+    <div class="grain"></div>
+    <div class="head">
+      <div>
+        <span class="kicker a-l d1">缘起 · 一个晚上</span>
+        <h2 class="slide-title a-l d2">把这套理念放进一个学生的两个半小时</h2>
+      </div>
+      <div class="num a d1">${num()}</div>
+    </div>
+    <div class="jt-wrap">
+      <div class="jt-track" data-stag=".1" data-d=".35">
+        ${evening.map(([t, h, p, hot]) => `
+          <div class="jstep a${hot ? " hot" : ""}">
+            <div class="jdot"></div>
+            <div class="card jcard">
+              <span class="jt">${t}</span>
+              <h3>${h}</h3>
+              <p>${p}</p>
+            </div>
+          </div>`).join("")}
+      </div>
+      <div class="jt-foot a d6">${window.icon("refresh")}<span>每一步都为下一步留下证据：诊断留下假设，讲解留下卡点，训练留下归因，计划只对证据负责。</span></div>
+    </div>
+  </section>`);
+
+  /* ---------- 7 · lumi ---------- */
   slides.push(`
   <section class="slide" data-k="lumi">
     <div class="grain"></div>
     <div class="head">
       <div>
-        <span class="kicker a-l d1">智能学伴 · LUMI</span>
+        <span class="kicker a-l d1">学伴 · 它是谁</span>
         <h2 class="slide-title a-l d2">认识 Lumi，一位“一直在身边”的学伴</h2>
       </div>
       <div class="num a d1">${num()}</div>
@@ -214,7 +315,7 @@ window.buildSlides = () => {
         <span class="chip c3">听得懂你的画板</span>
       </div>
       <div class="lumi-feats" data-stag=".1" data-d=".45">
-        <div class="card lfeat a">${window.icon("message")}<div><b>对话里长出真实组件</b><p>题目卡片、公式输入、手写画板、函数图像、知识图谱直接在对话流中渲染，不是套壳聊天窗。</p></div></div>
+        <div class="card lfeat a">${window.icon("message")}<div><b>对话里长出真实组件</b><p>题目卡片、公式输入、手写画板、函数图像、知识图谱直接在对话流中渲染，聊天窗只负责说话。</p></div></div>
         <div class="card lfeat a">${window.icon("pen")}<div><b>看得懂解题过程</b><p>画板笔迹按笔画聚合回传，Lumi 分析的是思路与根因，而不只判一个最终答案。</p></div></div>
         <div class="card lfeat a">${window.icon("heart")}<div><b>长期学习记忆</b><p>跨会话记住每个学生的错误类型、能力维度与学习偏好，越用越懂你。</p></div></div>
       </div>
@@ -237,7 +338,7 @@ window.buildSlides = () => {
   <section class="slide" data-k="style">
     <div class="grain"></div>
     <div class="head">
-      <div><span class="kicker a-l d1">智能学伴 · 个性化</span>
+      <div><span class="kicker a-l d1">学伴 · 怎么教</span>
       <h2 class="slide-title a-l d2">同一个 Lumi，按你的方式教你</h2></div>
       <div class="num a d1">${num()}</div>
     </div>
@@ -283,7 +384,7 @@ window.buildSlides = () => {
     <div class="grain"></div>
     <div class="head">
       <div>
-        <span class="kicker a-l d1">功能总览 · MODULES</span>
+        <span class="kicker a-l d1">学伴 · 六个模块</span>
         <h2 class="slide-title a-l d2">一个工作台，覆盖“学、练、测、补”全流程</h2>
       </div>
       <div class="num a d1">${num()}</div>
@@ -298,7 +399,7 @@ window.buildSlides = () => {
   <section class="slide" data-k="ws">
     <div class="grain"></div>
     <div class="head">
-      <div><span class="kicker a-l d1">功能细览 · 1/5</span>
+      <div><span class="kicker a-l d1">学伴 · 工作台 1/3</span>
       <h2 class="slide-title a-l d2">Lumi 工作台：对话即课堂</h2></div>
       <div class="num a d1">${num()}</div>
     </div>
@@ -317,7 +418,7 @@ window.buildSlides = () => {
   <section class="slide" data-k="diag">
     <div class="grain"></div>
     <div class="head">
-      <div><span class="kicker a-l d1">功能细览 · 2/5</span>
+      <div><span class="kicker a-l d1">学伴 · 工作台 2/3</span>
       <h2 class="slide-title a-l d2">自适应诊断：从“答错了”追到“为什么错”</h2></div>
       <div class="num a d1">${num()}</div>
     </div>
@@ -333,12 +434,55 @@ window.buildSlides = () => {
     </div>
   </section>`);
 
-  /* ---------- 10 · profile ---------- */
+  /* ---------- 11 · report ---------- */
+  const found = [
+    ["极限存在的判定", 34, "根因", "前置知识：左右极限"],
+    ["导数定义的应用", 58, "待验证", "变式题未通过"],
+    ["积分换元", 82, "已掌握", "连续 3 次变式正确"],
+  ];
+  slides.push(`
+  <section class="slide" data-k="report">
+    <div class="grain"></div>
+    <div class="head">
+      <div>
+        <span class="kicker a-l d1">学伴 · 工作台 3/3</span>
+        <h2 class="slide-title a-l d2">诊断最后交出来的，是一句能执行的话</h2>
+      </div>
+      <div class="num a d1">${num()}</div>
+    </div>
+    <div class="rep-wrap">
+      <div class="card rep a-s d2">
+        <div class="rep-head">
+          <div><b>今晚的诊断报告</b><span>6 道题 · 18 分钟 · 证据 14 条</span></div>
+          <span class="rep-badge">待确认 1 项</span>
+        </div>
+        <div class="rep-next">
+          <span class="lbl">下一步</span>
+          <p>先补「左右极限」，再回到极限存在的判定 —— 预计 25 分钟。</p>
+        </div>
+        <div class="rep-rows" data-stag=".1" data-d=".5">
+          ${found.map(([name, pct, state, note]) => `
+            <div class="rep-row a">
+              <div class="rep-name"><b>${name}</b><span>${note}</span></div>
+              <div class="rep-bar"><i style="width:${pct}%"></i></div>
+              <span class="rep-state ${state === "已掌握" ? "ok" : state === "根因" ? "bad" : ""}">${state}</span>
+            </div>`).join("")}
+        </div>
+        <p class="rep-note">${window.icon("shield")}掌握度是数字，置信度是标签：证据不足的一律标「待验证」，不写成结论。</p>
+      </div>
+      <div class="feat-list" data-stag=".1" data-d=".45">
+        <div class="card feat a">${window.icon("target")}<div><b>结论必须可执行</b><p>报告的最后一行永远是「接下来做什么」，省掉学生自己解读分数那一步。</p></div></div>
+        <div class="card feat a">${window.icon("route")}<div><b>一句话能被追问到底</b><p>每个结论都能点开看它依据哪几道题、哪几步作答，学生不信可以当场反驳。</p></div></div>
+      </div>
+    </div>
+  </section>`);
+
+  /* ---------- 12 · profile ---------- */
   slides.push(`
   <section class="slide" data-k="profile">
     <div class="grain"></div>
     <div class="head">
-      <div><span class="kicker a-l d1">功能细览 · 3/5</span>
+      <div><span class="kicker a-l d1">积累 · 学习画像</span>
       <h2 class="slide-title a-l d2">学习画像：给每个学生建一本“数字档案”</h2></div>
       <div class="num a d1">${num()}</div>
     </div>
@@ -357,7 +501,7 @@ window.buildSlides = () => {
   <section class="slide" data-k="train">
     <div class="grain"></div>
     <div class="head">
-      <div><span class="kicker a-l d1">功能细览 · 4/5</span>
+      <div><span class="kicker a-l d1">积累 · 错题与训练</span>
       <h2 class="slide-title a-l d2">错题本 · 专项训练：让每一道错题都有归宿</h2></div>
       <div class="num a d1">${num()}</div>
     </div>
@@ -366,7 +510,7 @@ window.buildSlides = () => {
       <div class="feat-list" data-stag=".1" data-d=".4">
         <div class="card feat a">${window.icon("book")}<div><b>自动收录与自动移出</b><p>答错自动进入错题本，重做答对自动移出，永远和作答历史保持同步。</p></div></div>
         <div class="card feat a">${window.icon("target")}<div><b>错误归因八类</b><p>概念理解、公式使用、计算失误、逻辑推理、方法选择、审题、迁移、表达不完整。</p></div></div>
-        <div class="card feat a">${window.icon("route")}<div><b>精准跳转重做</b><p>“去重做”直达那道错题本身，而不是笼统的知识点页面。</p>
+        <div class="card feat a">${window.icon("route")}<div><b>精准跳转重做</b><p>“去重做”直达那道错题本身，跳过笼统的知识点页面。</p>
           <div class="feat-formula">${formula("variation")}</div>
         </div></div>
       </div>
@@ -378,7 +522,7 @@ window.buildSlides = () => {
   <section class="slide" data-k="exam">
     <div class="grain"></div>
     <div class="head">
-      <div><span class="kicker a-l d1">功能细览 · 5/5</span>
+      <div><span class="kicker a-l d1">积累 · 模拟考试</span>
       <h2 class="slide-title a-l d2">模拟考试：像真考一样练</h2></div>
       <div class="num a d1">${num()}</div>
     </div>
@@ -397,7 +541,7 @@ window.buildSlides = () => {
   <section class="slide" data-k="mlps">
     <div class="grain"></div>
     <div class="head">
-      <div><span class="kicker a-l d1">特色亮点 · 1/2</span>
+      <div><span class="kicker a-l d1">内容 · 开放标准</span>
       <h2 class="slide-title a-l d2">自研开放内容标准：MLPS 学习包</h2></div>
       <div class="num a d1">${num()}</div>
     </div>
@@ -415,12 +559,80 @@ window.buildSlides = () => {
     </div>
   </section>`);
 
-  /* ---------- 14 · local first ---------- */
+  /* ---------- 17 · builder ---------- */
+  const buildSteps = [
+    ["dir_read", "先看文件夹", "已有的讲义、真题、错题截图先读一遍，不急着新建文件。"],
+    ["ask_questions", "问清楚怎么考", "这门课考试怎么判分、项目要检查什么，AI 判断不了就问，不猜。"],
+    ["file_write", "按标准写骨架", "九件必填文件 + 一个知识点 + 一道题，先跑通再补内容。"],
+    ["install_package", "一键装进书架", "打包、自检、安装同一步完成，校验失败就按清单逐条改。"],
+  ];
+  slides.push(`
+  <section class="slide" data-k="builder">
+    <div class="grain"></div>
+    <div class="head">
+      <div>
+        <span class="kicker a-l d1">内容 · 构建器</span>
+        <h2 class="slide-title a-l d2">老师把教案放进文件夹，剩下的交给构建器</h2>
+      </div>
+      <div class="num a d1">${num()}</div>
+    </div>
+    <div class="bld-wrap">
+      <div class="bld-flow" data-stag=".1" data-d=".35">
+        ${buildSteps.map(([cmd, t, p], i) => `
+          <div class="card bstep a">
+            <div class="bstep-head"><span class="bi">${i + 1}</span><code>${cmd}</code></div>
+            <b>${t}</b><p>${p}</p>
+          </div>`).join("")}
+      </div>
+      <div class="bld-note a d6">
+        ${window.icon("users")}
+        <span>构建器知道这个格式的每一条硬约束：写错会在安装那一步被拦下，学生打开之前问题就暴露了。</span>
+      </div>
+    </div>
+  </section>`);
+
+  /* ---------- 18 · what a package holds ---------- */
+  const pkgFacts = [
+    ["10 + 1", "章 + 附录", "函数与极限到曲线曲面积分，另附公式速查与考点总结"],
+    ["72", "个知识点", "每个知识点一篇结构化文档，带前置关系与来源"],
+    ["153", "道题", "题干、答案、解析、归因一一对应，无一道缺解析"],
+    ["13", "个题目文件", "按章节组织，新增题目只动自己那一份"],
+  ];
+  slides.push(`
+  <section class="slide" data-k="pkgdata">
+    <div class="grain"></div>
+    <div class="head">
+      <div>
+        <span class="kicker a-l d1">内容 · 参考包</span>
+        <h2 class="slide-title a-l d2">一个真的能跑完全程的学习包，长什么样</h2>
+      </div>
+      <div class="num a d1">${num()}</div>
+    </div>
+    <div class="pkgdata-wrap">
+      <div class="pd-stats" data-stag=".1" data-d=".35">
+        ${pkgFacts.map(([n, k, p]) => `<div class="card pd a"><b>${n}</b><span>${k}</span><p>${p}</p></div>`).join("")}
+      </div>
+      <div class="pd-tree card a-s d4">
+        <div class="pd-head">${window.icon("package")}<code>cn.morrow.calculus.shaanxi-upgrade</code></div>
+        <div class="pd-lines">
+          <div><i>manifest.yaml</i><em>身份、版本、兼容性</em></div>
+          <div><i>knowledge/</i><em>概念文档 + 章节树 + 前置关系</em></div>
+          <div><i>questions/</i><em>按章组织的题库</em></div>
+          <div><i>solutions/</i><em>与每道题对应的解析</em></div>
+          <div><i>taxonomy/</i><em>标签表 + 八类错误归因</em></div>
+          <div><i>citations/</i><em>每段内容的来源</em></div>
+          <div class="ok"><i>checksums.sha256</i><em>装之前先验，改一个字节就拒收</em></div>
+        </div>
+      </div>
+    </div>
+  </section>`);
+
+  /* ---------- 19 · local first ---------- */
   slides.push(`
   <section class="slide" data-k="local">
     <div class="grain"></div>
     <div class="head">
-      <div><span class="kicker a-l d1">特色亮点 · 2/2</span>
+      <div><span class="kicker a-l d1">底座 · 本地优先</span>
       <h2 class="slide-title a-l d2">本地优先：学生的数据，只属于学生</h2></div>
       <div class="num a d1">${num()}</div>
     </div>
@@ -443,7 +655,7 @@ window.buildSlides = () => {
   <section class="slide" data-k="ds">
     <div class="grain"></div>
     <div class="head">
-      <div><span class="kicker a-l d1">国产化底座 · DOMESTIC</span>
+      <div><span class="kicker a-l d1">底座 · 国产模型</span>
       <h2 class="slide-title a-l d2">国产大模型驱动，全栈自主可控</h2></div>
       <div class="num a d1">${num()}</div>
     </div>
@@ -480,14 +692,14 @@ window.buildSlides = () => {
     ["globe", "DeepSeek Search 联网检索", "教材之外的问题，Lumi 直接检索真实网页并给出可点击出处，答案不再受限于模型记忆。"],
     ["file", "Fetch 正文精读", "检索只是给候选；真正读的是抓取回来的清洗正文，避免被搜索结果摘要带偏。"],
     ["bolt", "思考强度可调", "四档深度：不思考 / 快 / 深入 / 最深。查定义省时间，做证明题再拉到最久。"],
-    ["plug", "与国产厂商深度耦合", "思考开关与推理强度按 DeepSeek 接口语义下发，而不是套一层通用参数。"],
+    ["plug", "与国产厂商深度耦合", "思考开关与推理强度按 DeepSeek 接口语义下发，不必套一层通用参数。"],
   ];
   slides.push(`
   <section class="slide" data-k="dsnative">
     <div class="grain"></div>
     <div class="head">
-      <div><span class="kicker a-l d1">国产化底座 · DEEP INTEGRATION</span>
-      <h2 class="slide-title a-l d2">不只是“能接上”，是把国产模型用透</h2></div>
+      <div><span class="kicker a-l d1">底座 · 深度集成</span>
+      <h2 class="slide-title a-l d2">把国产模型用透，接上只是起点</h2></div>
       <div class="num a d1">${num()}</div>
     </div>
     <div class="dsw-wrap">
@@ -519,7 +731,98 @@ window.buildSlides = () => {
     </div>
   </section>`);
 
-  /* ---------- 16 · policy map ---------- */
+  /* ---------- 22 · architecture ---------- */
+  const layers = [
+    ["客户端", ["Lumi 工作台", "组件渲染器", "知识库 / 画像 / 考试"], "var(--info)"],
+    ["应用服务层", ["对话编排", "学习流程", "诊断 · 记忆 · 题库"], "var(--success)"],
+    ["底座", ["模型适配层", "本地数据库", "学习包管理"], "var(--warning)"],
+  ];
+  slides.push(`
+  <section class="slide" data-k="arch">
+    <div class="grain"></div>
+    <div class="head">
+      <div>
+        <span class="kicker a-l d1">底座 · 三层架构</span>
+        <h2 class="slide-title a-l d2">三层结构，每一层都能被换掉</h2>
+      </div>
+      <div class="num a d1">${num()}</div>
+    </div>
+    <div class="arch-wrap">
+      <div class="arch-stack a-s d2">
+        ${layers.map(([name, items, color]) => `
+          <div class="card arch-layer">
+            <span class="al-name" style="color:${color}">${name}</span>
+            <div class="al-items">${items.map((i) => `<span>${i}</span>`).join("")}</div>
+          </div>`).join("")}
+        <div class="arch-arrow">${window.icon("refresh")}<span>每一层只依赖下一层的接口，不依赖它的实现</span></div>
+      </div>
+      <div class="feat-list" data-stag=".1" data-d=".4">
+        <div class="card feat a">${window.icon("plug")}<div><b>模型可换</b><p>DeepSeek / OpenAI / Anthropic / Gemini 走同一种适配层，换供应商不改业务代码。</p></div></div>
+        <div class="card feat a">${window.icon("package")}<div><b>内容可换</b><p>学习包以数据形式存在，换一门课不用改应用。</p></div></div>
+        <div class="card feat a">${window.icon("db")}<div><b>数据可留</b><p>个人数据只在本机，云端只负责推理，不负责存档。</p></div></div>
+      </div>
+    </div>
+  </section>`);
+
+  /* ---------- 23 · engineering ---------- */
+  const engRows = [
+    ["178", "前端单测", "24 个测试文件，覆盖对话、测题、学习包与构建器"],
+    ["107", "Rust 测试", "存储、包校验、安装路径、加密密钥"],
+    ["0", "允许的 lint 警告", "clippy -D warnings 与 tsc 都当红线，不积压"],
+    ["1", "条发布命令", "打 tag 即构建并发布；不在 main 上的标签直接拒绝"],
+  ];
+  slides.push(`
+  <section class="slide" data-k="quality">
+    <div class="grain"></div>
+    <div class="head">
+      <div>
+        <span class="kicker a-l d1">底座 · 工程纪律</span>
+        <h2 class="slide-title a-l d2">能装上、能升级、不丢数据，靠的是这些数</h2>
+      </div>
+      <div class="num a d1">${num()}</div>
+    </div>
+    <div class="eng-wrap" data-stag=".1" data-d=".35">
+      ${engRows.map(([n, k, p]) => `
+        <div class="card eng a">
+          <b>${n}</b>
+          <span>${k}</span>
+          <p>${p}</p>
+        </div>`).join("")}
+    </div>
+    <div class="eng-foot a d6">
+      ${window.icon("shield")}<span>数据库升级带迁移测试：应用换代之后，学生的作答历史一条都不能少。</span>
+    </div>
+  </section>`);
+
+  /* ---------- 24 · numbers ---------- */
+  const numRows = [
+    ["2 道", "一次诊断覆盖", "从「答错了」到「为什么错」的平均追问长度", 62],
+    ["8 类", "错误归因", "概念 · 公式 · 计算 · 逻辑 · 方法 · 审题 · 迁移 · 表达", 88],
+    ["7 步", "闭环", "每一步都留下证据，事后可以复查", 74],
+    ["3 档", "置信度", "已掌握 / 待验证 / 证据不足，绝不把猜测写成结论", 96],
+  ];
+  slides.push(`
+  <section class="slide" data-k="metrics">
+    <div class="grain"></div>
+    <div class="head">
+      <div>
+        <span class="kicker a-l d1">底座 · 可量化的数</span>
+        <h2 class="slide-title a-l d2">可以量化的，才叫真的做到</h2>
+      </div>
+      <div class="num a d1">${num()}</div>
+    </div>
+    <div class="met-wrap" data-stag=".1" data-d=".35">
+      ${numRows.map(([n, k, p, w]) => `
+        <div class="card met a">
+          <div class="met-top"><b>${n}</b><span>${k}</span></div>
+          <div class="met-bar"><i style="width:${w}%"></i></div>
+          <p>${p}</p>
+        </div>`).join("")}
+    </div>
+    <p class="met-note a d6">这些数字在产品里都能点开核对，学生甚至可以当场反驳。</p>
+  </section>`);
+
+  /* ---------- 25 · policy map ---------- */
   const policyRows = [
     ["第六条", "研发智能学伴。建设学生数字档案，根据学生能力、特质和爱好，动态优化学习路径。", "Lumi 智能学伴 + 学习画像 + 动态学习计划", "brain"],
     ["第十二条", "推动智能终端应用，通过大数据分析构建学生用户画像，以学生为中心配置学习资源，支撑规模教育下的个性学习。", "本地优先的桌面与移动端，一人一份学习画像", "users"],
@@ -532,7 +835,7 @@ window.buildSlides = () => {
   <section class="slide" data-k="policymap">
     <div class="grain"></div>
     <div class="head">
-      <div><span class="kicker a-l d1">政策对照 · POLICY MAP</span>
+      <div><span class="kicker a-l d1">落地 · 政策对照</span>
       <h2 class="slide-title a-l d2">政策条文，一条一条落在我们的功能里</h2></div>
       <div class="num a d1">${num()}</div>
     </div>
@@ -549,18 +852,54 @@ window.buildSlides = () => {
     </div>
   </section>`);
 
-  /* ---------- 17 · product philosophy ---------- */
+  /* ---------- 26 · rollout ---------- */
+  const rollout = [
+    ["现在", "一个考试、一个学科", "陕西专升本高等数学跑完整闭环，153 道题全部带解析。", true],
+    ["下一步", "同类考试横向复制", "同一套标准换内容即可：成人高考、职业资格、专升本其他科目。", false],
+    ["再下一步", "一所学校内的常态化", "老师用构建器产出自己的包，学生在自己的设备上用，数据不出校。", false],
+    ["之后", "区域共享", "学习包可校验、可版本化，一所学校做好的内容另一所可以直接装。", false],
+  ];
+  slides.push(`
+  <section class="slide" data-k="rollout">
+    <div class="grain"></div>
+    <div class="head">
+      <div>
+        <span class="kicker a-l d1">落地 · 推广路径</span>
+        <h2 class="slide-title a-l d2">先把一个做透，再谈规模</h2>
+      </div>
+      <div class="num a d1">${num()}</div>
+    </div>
+    <div class="roll-wrap">
+      <div class="roll-track" data-stag=".1" data-d=".35">
+        ${rollout.map(([step, t, p, hot]) => `
+          <div class="roll a${hot ? " hot" : ""}">
+            <span class="rs">${step}</span>
+            <b>${t}</b>
+            <p>${p}</p>
+          </div>`).join("")}
+      </div>
+      <div class="card roll-cost a-s d5">
+        ${window.icon("scale")}
+        <div>
+          <b>一所学校的增量成本</b>
+          <p>没有服务器要买、没有账号要开、没有数据要托管。装一个应用，导入一个包，用一台能跑浏览器的电脑就能开始。</p>
+        </div>
+      </div>
+    </div>
+  </section>`);
+
+  /* ---------- 27 · product philosophy ---------- */
   const credo = [
     ["把 AI 放在「辅助位」，不放在「替代位」", "产品里没有一键出答案的捷径。诊断先要求证据，讲解先确认你卡在哪一步 —— AI 强，但始终站在学生身后半步。"],
     ["先做减法，再做加法", "能不加的按钮就不加。一张纸、一个对话框、七个步骤，把复杂留给系统，把简单留给学生。"],
     ["宁可说「不确定」，也不假装确定", "掌握度与置信度分开呈现，证据不足就标注不足。在学习这件事上，一个虚假的确定性比一个诚实的问号更有害。"],
-    ["好用不是炫技，是可持续", "本地优先、国产模型、开源标准，都是为了让一所学校在不追加预算的前提下，也能长期用下去。"],
+    ["好用，更要能长期用下去", "本地优先、国产模型、开源标准，都是为了让一所学校在不追加预算的前提下，也能长期用下去。"],
   ];
   slides.push(`
   <section class="slide" data-k="creed">
     <div class="grain"></div>
     <div class="head">
-      <div><span class="kicker a-l d1">产品哲学 · CREDO</span>
+      <div><span class="kicker a-l d1">落地 · 产品哲学</span>
       <h2 class="slide-title a-l d2">我们相信的四件小事</h2></div>
       <div class="num a d1">${num()}</div>
     </div>
@@ -577,19 +916,47 @@ window.buildSlides = () => {
   <section class="slide" data-k="philo">
     <div class="grain"></div>
     <div class="head">
-      <div><span class="kicker a-l d1">先进理念 · PHILOSOPHY</span>
+      <div><span class="kicker a-l d1">落地 · 先进理念</span>
       <h2 class="slide-title a-l d2">四个理念，回答“AI 教育应该是什么”</h2></div>
       <div class="num a d1">${num()}</div>
     </div>
     <div class="philo-grid" data-stag=".09" data-d=".35">
       <div class="card philo a">${window.icon("scale")}<div><h3>教育公平</h3><p>优质教育资源不应受地域、家庭与师资限制。<em>让每个学生都获得持续、个性化的学习指导。</em></p></div></div>
       <div class="card philo a">${window.icon("compass")}<div><h3>自主学习</h3><p>AI 不应让学生越来越依赖 AI，而应让学生<em>逐渐拥有不依赖 AI 的能力</em> —— 这是产品的第一设计原则。</p></div></div>
-      <div class="card philo a">${window.icon("cpu")}<div><h3>AI Native Education</h3><p>不是给旧软件加 AI 按钮，而是<em>从底层重构学习系统</em>：Agent 理解意图、动态规划、验证效果。</p></div></div>
+      <div class="card philo a">${window.icon("cpu")}<div><h3>AI Native Education</h3><p><em>从底层重构学习系统</em>：给旧软件加一个 AI 按钮远远不够，Agent 要自己理解意图、动态规划、验证效果。</p></div></div>
       <div class="card philo a">${window.icon("heart")}<div><h3>无限可能</h3><p><em>过去的成绩，不应该定义未来的可能性。</em>让每个曾被认定“学不好”的学生，重新发现自己能学会。</p></div></div>
     </div>
   </section>`);
 
-  /* ---------- 18 · end ---------- */
+  /* ---------- 29 · roadmap ---------- */
+  const road = [
+    ["已验证", "闭环能跑通", "诊断 → 讲解 → 变式 → 画像 → 计划，一条链上每一步都有真实数据。", "ok"],
+    ["已验证", "内容能生产", "构建器把文件夹变成可安装的包，首个参考包 153 道题全部通过校验。", "ok"],
+    ["进行中", "跨学科复制", "同一标准换内容：换一门课不需要改应用，只需要写包。", "doing"],
+    ["进行中", "移动端对齐", "Android 与桌面共用同一套数据模型，个人数据留在设备里。", "doing"],
+    ["下一步", "效果可验证", "与学校合作做前后对照，让成绩单替我们说话。", "next"],
+  ];
+  slides.push(`
+  <section class="slide" data-k="roadmap">
+    <div class="grain"></div>
+    <div class="head">
+      <div>
+        <span class="kicker a-l d1">落地 · 下一步</span>
+        <h2 class="slide-title a-l d2">哪些已经做完，哪些还在路上</h2>
+      </div>
+      <div class="num a d1">${num()}</div>
+    </div>
+    <div class="road" data-stag=".08" data-d=".35">
+      ${road.map(([state, t, p, cls]) => `
+        <div class="card rrow a">
+          <span class="rst ${cls}">${state}</span>
+          <b>${t}</b>
+          <p>${p}</p>
+        </div>`).join("")}
+    </div>
+  </section>`);
+
+  /* ---------- 30 · end ---------- */
   slides.push(`
   <section class="slide end" data-k="end">
     <div class="grain"></div>
@@ -600,8 +967,69 @@ window.buildSlides = () => {
     <h1 class="a d2">把自学的能力<br>还给<em>每一个人</em></h1>
     <p class="sub a d3">期望构建开放、普惠、可持续演进的 AI 学习生态</p>
     <div class="thanks a d4">恳请各位评委指导</div>
-    <p class="meta a d5">陕西航空职业技术学院 · Morrow 团队 · 汉中市第八届职业院校技能大赛</p>
+    <p class="meta a d5">Morrow 团队 · 汉中市第八届职业院校技能大赛</p>
   </section>`);
 
-  return slides;
+  // ---------------------------------------------------------------------------
+  // Chapter pass. Every slide is stamped with the block it belongs to: an accent
+  // colour for the ambient wash, a small "02 学伴" chip in the header gutter, and
+  // the block's English word on the page that opens it. Doing it here rather
+  // than inside 30 templates keeps the chapter map in one readable place — move
+  // a page between blocks by moving one string.
+  // ---------------------------------------------------------------------------
+  const blockOf = new Map();
+  for (const b of BLOCKS) for (const k of b.keys) blockOf.set(k, b);
+
+  const keyOf = (html) => (html.match(/data-k="([a-z-]+)"/) || [])[1];
+
+  const decorate = (html) => {
+    const blk = blockOf.get(keyOf(html));
+    if (!blk) return html; // cover and end stay outside the chapter system
+    const k = keyOf(html);
+    const opens = blk.keys[0] === k;
+    const pos = blk.keys.indexOf(k) + 1;
+    const chip =
+      `<div class="blk-chip">` +
+      `<span>${blk.n}</span><b>${blk.label}</b><em>${blk.en}</em>` +
+      `</div>`;
+    // The page that opens a chapter names what follows: one line with the
+    // chapter's page count, so an audience that walked in mid-talk can
+    // resynchronise in three seconds.
+    const extra = opens
+      ? `<div class="blk-road a d5"><b>${blk.label}</b><span>${blk.path}</span>` +
+        `<em>${blk.keys.length} 页</em></div>`
+      : "";
+    return html
+      .replace(
+        /<section class="([^"]*)"/,
+        (_m, cls) =>
+          `<section class="${cls}${opens ? " blk-open" : ""}" data-blk="${blk.n}" ` +
+          `data-pos="${pos}/${blk.keys.length}" ` +
+          `style="--blk:${blk.accent};--blk-rgb:${blk.rgb}"`,
+      )
+      .replace('<div class="grain"></div>', `<div class="grain"></div>\n    ${chip}`)
+      .replace(/<\/section>\s*$/, `${extra}\n  </section>`);
+  };
+
+  // The chrome rail reads this: six stops, each pointing at the page that opens
+  // its block, so "jump back to the platform chapter" is one click during Q&A.
+  window.DECK_BLOCKS = BLOCKS.map((b) => ({
+    n: b.n,
+    label: b.label,
+    en: b.en,
+    accent: b.accent,
+    path: b.path,
+    start: slides.findIndex((html) => keyOf(html) === b.keys[0]),
+    size: b.keys.length,
+  }));
+
+  // Titles do not all arrive the same way: four entrances rotate page by page,
+  // so a run of card grids stops feeling like one template repeated 30 times.
+  const TITLE_IN = ["a-l", "a-t", "a-m", "a-b"];
+
+  return slides.map((html, i) => {
+    const out = decorate(html);
+    const anim = TITLE_IN[i % TITLE_IN.length];
+    return out.replace('class="slide-title a-l d2"', `class="slide-title ${anim} d2"`);
+  });
 };

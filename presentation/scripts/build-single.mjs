@@ -196,6 +196,7 @@ ${css}
 <body>
 <div id="progress"></div>
 <div id="stage"></div>
+<div id="rail"></div>
 <div id="counter"></div>
 <div id="hint"></div>
 
